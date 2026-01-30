@@ -12,6 +12,9 @@ from app.utils.fusion_logic import fuse_risk
 from app.routes.feedback import router as feedback_router
 from app.utils.confidence_logic import calculate_confidence
 from app.routes.dashboard import router as dashboard_router
+from app.ai.infer import ai_predict
+from app.ai.temporal_infer import temporal_predict
+
 
 
 
@@ -58,13 +61,70 @@ async def receive_camera_image(image: UploadFile = File(...)):
     else:
         ai_level = risk_level(risk_score)
 
+
     #FUSE WITH CITIZEN INPUTS
     final_level = fuse_risk(ai_level, "TEST_ZONE")
+
+    # =========================
+    # AI MODEL (CNN) PREDICTION
+    # =========================
+    ai_probability = ai_predict(filepath)
+
+    if ai_probability > 0.7:
+        ai_ml_level = "IMMINENT"
+    elif ai_probability > 0.5:
+        ai_ml_level = "WARNING"
+    else:
+        ai_ml_level = "SAFE"
+
+    # =========================
+    # SAFE FUSION (NEVER DOWNGRADE) CNN BASED
+    # =========================
+    LEVEL_ORDER = ["SAFE", "WATCH", "WARNING", "IMMINENT"]
+
+    final_level = max(
+    final_level,
+    ai_ml_level,
+    key=lambda x: LEVEL_ORDER.index(x)
+    )
     confidence = calculate_confidence(
     recent_risks=recent_risks,
     ai_level=ai_level,
     final_level=final_level
-)
+    )       
+    # =========================
+    # TEMPORAL AI (SEQUENCE)
+    # =========================
+    recent_sequence = []
+
+    for r in recent_risks[-10:]:
+        recent_sequence.append([
+        ai_probability,
+        risk_score,
+        features["brightness"],
+        features["edge_density"],
+        features["entropy"]
+        ])
+
+    if len(recent_sequence) == 10:
+        temporal_prob = temporal_predict(recent_sequence)
+    else:
+        temporal_prob = 0.0
+
+    if temporal_prob > 0.7:
+        temporal_level = "IMMINENT"
+    elif temporal_prob > 0.5:
+        temporal_level = "WARNING"
+    else:
+        temporal_level = "SAFE"
+
+    final_level = max(
+    final_level,
+    temporal_level,
+    key=lambda x: LEVEL_ORDER.index(x)
+    )
+
+
 
 
 
@@ -94,9 +154,13 @@ async def receive_camera_image(image: UploadFile = File(...)):
     "filename": filename,
     "features": features,
     "risk_score": risk_score,
-    "ai_level": ai_level,
+    "ai_level": ai_level,          # rule-based
+    "ai_ml_level": ai_ml_level,    # CNN-based
+    "ai_probability": ai_probability,
     "risk_level": final_level,
     "confidence": confidence,
-    "recent_risks": recent_risks
-}
+    "recent_risks": recent_risks,
+    "temporal_probability": temporal_prob,
+    "temporal_level": temporal_level
+    }
 
