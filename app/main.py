@@ -11,6 +11,7 @@ from app.routes.citizen import router as citizen_router
 from app.utils.fusion_logic import fuse_risk
 from app.routes.feedback import router as feedback_router
 from app.utils.confidence_logic import calculate_confidence
+from app.routes.dashboard import router as dashboard_router
 
 
 
@@ -20,6 +21,7 @@ from app.utils.confidence_logic import calculate_confidence
 app = FastAPI(title="Polaris Detection Server")
 app.include_router(citizen_router)
 app.include_router(feedback_router)
+app.include_router(dashboard_router)
 
 
 
@@ -80,6 +82,7 @@ async def receive_camera_image(image: UploadFile = File(...)):
         "features": features,
         "risk_score": risk_score,
         "risk_level": final_level,
+        "confidence": confidence,
         "ai_level": ai_level,
         "timestamp": timestamp
     }
