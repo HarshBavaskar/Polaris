@@ -138,13 +138,22 @@ async def receive_camera_image(image: UploadFile = File(...)):
 
     # 5. Save prediction
     prediction_doc = {
-        "image_id": image_result.inserted_id,
-        "features": features,
-        "risk_score": risk_score,
-        "risk_level": final_level,
-        "confidence": confidence,
-        "ai_level": ai_level,
-        "timestamp": timestamp
+    "image_id": image_result.inserted_id,
+    "timestamp": timestamp,
+
+    # Core outcomes
+    "risk_score": risk_score,
+    "risk_level": final_level,
+    "confidence": confidence,
+
+    # AI outputs (learning-critical)
+    "ai_probability": ai_probability,
+    "ai_ml_level": ai_ml_level,
+    "temporal_probability": temporal_prob,
+    "temporal_level": temporal_level,
+
+    # Features (for retraining & explainability)
+    "features": features
     }
     predictions_collection.insert_one(prediction_doc)
 
