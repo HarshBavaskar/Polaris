@@ -160,6 +160,9 @@ Polaris/
 
 - **Detection & AI System** – *Harsh Bavaskar*  
 - **Warning & Notification System** – *Teammate*
+- <a href = "https://github.com/harshbavaskar/simple-sqlite/graphs/contributors">
+  <img src = "https://contrib.rocks/image?repo=polaris/simple-sqlite"/>
+</a>
 
 ---
 
