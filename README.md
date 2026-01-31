@@ -1,6 +1,5 @@
 
-# 🌩️ Polaris
-## Cloudburst Early Warning & Alert System
+# 🌩️ **Polaris** - Cloudburst Early Warning & Alert System
 | **Current Version** | `v1.0` |
 --- | --- |
 
