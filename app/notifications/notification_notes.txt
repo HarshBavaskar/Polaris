@@ -1,0 +1,18 @@
+SEVERITY → CHANNEL → MESSAGE
+
+INFO → NO ACTION
+
+ADVISORY → APP_NOTIFICATION
+"Weather advisory issued. Monitor conditions."
+
+WATCH → PUSH_NOTIFICATION
+"Weather watch in effect. Stay alert."
+
+WARNING → PUSH_SMS
+"⚠️ WARNING: Heavy rainfall likely soon. Prepare for flooding."
+
+ALERT → SMS_SIREN
+"🚨 ALERT: Severe conditions detected. Move to safe areas immediately."
+
+EMERGENCY → ALL_CHANNELS
+"🆘 EMERGENCY: Life-threatening situation. Evacuate immediately."
