@@ -1,11 +1,16 @@
 
-# 🌩️ Polaris  
-## Cloudburst Early Warning & Alert System
+# 🌩️ **Polaris** - Cloudburst Early Warning & Alert System
+| **Current Version** | `v1.0` |
+--- | --- |
+
+---
+
 
 > **An AI-powered, real-time, hyperlocal cloudburst early warning system**  
 > combining **computer vision**, **temporal intelligence**, and **human-in-the-loop safety**.
 
 ---
+
 
 ## 📌 Overview
 
@@ -158,8 +163,13 @@ Polaris/
 
 ## 👥 Team
 
-- **Detection & AI System** – *Harsh Bavaskar*  
-- **Warning & Notification System** – *Teammate*
+<a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
+<img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
+</a>  
+
+##
+- **Detection & AI System** – *Harsh Bavaskar*        
+- **Warning & Notification System** – *Anisa D'souza*
 
 ---
 
