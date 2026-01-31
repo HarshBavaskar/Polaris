@@ -164,7 +164,7 @@ Polaris/
 
 ##
 - **Detection & AI System** – *Harsh Bavaskar*        
-- **Warning & Notification System** – *Teammate*
+- **Warning & Notification System** – *Anisa D'souza*
 
 ---
 
