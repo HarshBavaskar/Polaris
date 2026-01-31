@@ -1,11 +1,17 @@
 
-# 🌩️ Polaris  
+# 🌩️ Polaris
 ## Cloudburst Early Warning & Alert System
+| **Current Version** | `v1.0` |
+--- | --- |
+
+---
+
 
 > **An AI-powered, real-time, hyperlocal cloudburst early warning system**  
 > combining **computer vision**, **temporal intelligence**, and **human-in-the-loop safety**.
 
 ---
+
 
 ## 📌 Overview
 
