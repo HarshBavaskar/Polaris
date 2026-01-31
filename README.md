@@ -158,12 +158,12 @@ Polaris/
 
 ## 👥 Team
 
-- **Detection & AI System** – *Harsh Bavaskar*  
-- **Warning & Notification System** – *Teammate*
 <a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
 <img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
 </a>
 
+- **Detection & AI System** – *Harsh Bavaskar*  
+- **Warning & Notification System** – *Teammate*
 
 ---
 
