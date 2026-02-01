@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from app.utils.image_processing import extract_features
 from app.utils.risk_logic import calculate_risk, risk_level
-from app.database import images_collection, predictions_collection
+from app.database import images_collection, predictions_collection, alerts_collection
 from app.utils.time_series import get_recent_risks, is_sudden_spike
 from app.routes.citizen import router as citizen_router
 from app.utils.fusion_logic import fuse_risk
@@ -250,21 +250,24 @@ def get_latest_decision():
     return {"message": "Final decision not stored yet"}
 
 
+from datetime import datetime, timezone
+
 @app.post("/alert/dispatch")
 def dispatch_alert(payload: dict):
-    """
-    Payload example:
-    {
-      "channel": "SMS",
-      "severity": "ALERT",
-      "message": "Heavy rainfall expected in 30 minutes"
+    alert_doc = {
+        "channel": payload.get("channel"),
+        "severity": payload.get("severity"),
+        "message": payload.get("message"),
+        "timestamp": datetime.now(timezone.utc),
+        "status": "queued"
     }
-    """
-    # placeholder for now
+
+    alerts_collection.insert_one(alert_doc)
+
     return {
         "status": "queued",
-        "channel": payload.get("channel"),
-        "severity": payload.get("severity")
+        "channel": alert_doc["channel"],
+        "severity": alert_doc["severity"]
     }
 
 
