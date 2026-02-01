@@ -1,6 +1,8 @@
-# 🌩️ **Polaris** - Cloudburst Early Warning & Alert System
+# **Polaris** - Cloudburst Early Warning & Alert System
 
-| **Current Version** | `v2.0` |
+![Polaris Logo](https://example.com/path/to/image.png)
+
+| **Current Version** | `v0.2: Pre-Release` |
 | --- | --- |
 
 ---
@@ -10,7 +12,7 @@
 
 ---
 
-## 📌 Overview
+## Overview
 
 **Polaris** is a research-grade early warning system designed to detect **cloudburst-like conditions before severe impact occurs**.  
 Unlike traditional threshold-based systems, Polaris uses a **layered intelligence approach** that fuses:
@@ -24,7 +26,7 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## 🧠 System Architecture
+## System Architecture
 
 ```
 Camera / Images
@@ -52,24 +54,24 @@ MongoDB + Dashboard APIs
 
 ---
 
-## ✨ Key Capabilities
+## Key Capabilities
 
-### 🔍 Vision-Based Detection
+### Vision-Based Detection
 - Camera-based sky monitoring (currently laptop camera)
 - CNN learns cloud and storm visual patterns
 - Works even before rainfall begins
 
-### ⏱️ Temporal Intelligence
+### Temporal Intelligence
 - LSTM model learns **how conditions evolve**
 - Detects **rapid escalation**, not isolated frames
 - Significantly reduces false positives
 
-### 👥 Citizen Intelligence
+### Citizen Intelligence
 - Citizen-uploaded images
 - Water-level reports (Ankle / Knee / Waist)
 - Human inputs can **safely override AI**
 
-### 🧠 Explainable Decisions
+### Explainable Decisions
 Every prediction includes:
 - Risk score
 - Risk level
@@ -81,7 +83,7 @@ This ensures **auditability and trust** for authorities.
 
 ---
 
-## 🔔 Notification & Alert Routing
+## Notification & Alert Routing
 
 - API-based **alert routing system** triggered by AI decisions  
 - Severity-based alert handling:
@@ -92,7 +94,7 @@ This ensures **auditability and trust** for authorities.
 
 ---
 
-## 🏛️ Authority Feedback Loop
+## Authority Feedback Loop
 
 - Alerts can be marked as:
   - TRUE_POSITIVE
@@ -102,14 +104,14 @@ This ensures **auditability and trust** for authorities.
 
 ---
 
-## 🧪 AI Models Used
+## AI Models Used
 
-### 📷 Spatial AI (CNN)
+### Spatial AI (CNN)
 - Architecture: **MobileNetV2**
 - Task: Identify high-risk cloud patterns
 - Output: Probability of high-risk frame
 
-### ⏳ Temporal AI (LSTM)
+### Temporal AI (LSTM)
 - Input: Sequences of numeric features
 - Learns escalation trends across time
 - Core component for early warning
@@ -118,7 +120,7 @@ This ensures **auditability and trust** for authorities.
 
 ---
 
-## 🗄️ Data Storage (MongoDB)
+## Data Storage (MongoDB)
 
 Collections:
 - `alerts` – alert metadata  
@@ -129,7 +131,7 @@ Collections:
 
 ---
 
-## 📊 Dashboard & System APIs
+## Dashboard & System APIs
 
 ### Dashboard APIs
 - `/dashboard/risk-timeseries`
@@ -149,7 +151,7 @@ Compatible with:
 
 ---
 
-## 🧪 Postman Integration
+## Postman Integration
 
 - All core APIs are testable via **Postman**
 - Used for **live decision → alert validation**
@@ -157,7 +159,7 @@ Compatible with:
 
 ---
 
-## 🧩 Project Structure
+## Project Structure
 
 ```
 Polaris/
@@ -179,7 +181,7 @@ Polaris/
 
 ---
 
-## ⚙️ Technology Stack
+## Technology Stack
 
 | Layer | Technology |
 |------|-----------|
@@ -193,7 +195,7 @@ Polaris/
 
 ---
 
-## 👥 Team
+## Team
 
 <a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
 <img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
@@ -209,7 +211,7 @@ Polaris/
 ---
 
 
-## 🚦 Project Status
+## Project Status
 
 - ✅ Detection pipeline complete
 - ✅ CNN + LSTM integrated
@@ -220,7 +222,7 @@ Polaris/
 
 ---
 
-## 🔮 Future Roadmap
+## Future Roadmap
 
 - Hyperlocal sensor fusion (rainfall, humidity, pressure)
 - Multi-camera zone mapping
@@ -230,13 +232,13 @@ Polaris/
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 Polaris is an **early warning support system** and does not replace official meteorological agencies.  
 It is intended to **assist disaster response** with faster, hyperlocal insights.
 
 ---
-## ⭐ What Makes Polaris Different
+## What Makes Polaris Different
 
 - Not a black-box AI
 - Human-in-the-loop by design
