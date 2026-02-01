@@ -3,7 +3,9 @@
 | **Current Version** | `v0.2: Pre-Release` |
 | --- | --- |
 
-<img src="misc/Polaris.PNG" width="300" align="center"/>
+<p align="center">
+<img src="misc/Polaris.PNG" width="400"/>
+</p>
 
 ---
 
