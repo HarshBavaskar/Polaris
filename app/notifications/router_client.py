@@ -3,12 +3,12 @@
 """
 Notification Router Client (Phase 1)
 
-This will later connect to your partner's server:
+Connects to partner server:
 - GET /decision/latest
-- Decide channel/message using build_alert_payload()
+- Builds alert payload
 - POST /alert/dispatch
 
-Right now: safe to keep in repo; won't run unless you execute it.
+Runs only when explicitly executed.
 """
 
 import os
@@ -23,8 +23,7 @@ from app.notifications.alert_engine import build_alert_payload
 def http_get_json(url: str, timeout: int = 5) -> dict:
     req = Request(url, method="GET")
     with urlopen(req, timeout=timeout) as resp:
-        data = resp.read().decode("utf-8")
-        return json.loads(data)
+        return json.loads(resp.read().decode("utf-8"))
 
 
 def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
@@ -37,16 +36,20 @@ def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
 
 
 def main():
-    base_url = os.getenv("POLARIS_BASE_URL", "https://barometric-iesha-nonprovidentially.ngrok-free.dev/").rstrip("/")
+    base_url = os.getenv("POLARIS_BASE_URL")
     if not base_url:
-        print("POLARIS_BASE_URL is not set. Example: export POLARIS_BASE_URL='http://192.168.1.10:8000'")
+        print(
+            "POLARIS_BASE_URL not set. "
+            "Example: export POLARIS_BASE_URL='http://localhost:8000'"
+        )
         return
 
+    base_url = base_url.rstrip("/")
     decision_url = f"{base_url}/decision/latest"
     dispatch_url = f"{base_url}/alert/dispatch"
 
     print(f"Polling: {decision_url}")
-    last_signature = None  # prevents repeating the same alert forever
+    last_signature = None
 
     while True:
         try:
@@ -56,13 +59,10 @@ def main():
             time.sleep(5)
             continue
 
-        # Depending on partner response shape:
-        # If response is {"final_decision": {...}}, unwrap it.
-        final_decision = decision.get("final_decision", decision)
+        payload = build_alert_payload(decision)
 
-        payload = build_alert_payload(final_decision)
         if payload:
-            signature = (payload.get("severity"), payload.get("message"))
+            signature = (payload["severity"], payload["message"])
             if signature != last_signature:
                 print("Dispatching:", payload)
                 try:
@@ -72,8 +72,7 @@ def main():
                 except (URLError, HTTPError) as e:
                     print("POST failed:", e)
             else:
-                print("No new alert (duplicate).")
-
+                print("Duplicate alert ignored.")
         else:
             print("No alert needed.")
 
