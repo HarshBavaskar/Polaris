@@ -18,11 +18,20 @@ def build_alert_payload(final_decision: dict):
     Output: dict ready for POST /alert/dispatch OR None
     """
 
+    if not final_decision:
+        return None
+
+    # Handle wrapped responses safely
+    if "final_decision" in final_decision:
+        final_decision = final_decision["final_decision"]
+
     severity = final_decision.get("final_alert_severity")
 
     # No severity or INFO → no alert
-    if not severity or severity == "INFO":
+    if not severity or severity.upper() == "INFO":
         return None
+
+    severity = severity.upper()
 
     channel = SEVERITY_CHANNEL_MAP.get(severity)
     message_template = SEVERITY_MESSAGE_MAP.get(severity)
@@ -31,7 +40,9 @@ def build_alert_payload(final_decision: dict):
         return None
 
     message = message_template.format(
-        justification=final_decision.get("justification", "Condition detected"),
+        justification=final_decision.get(
+            "justification", "Condition detected"
+        ),
         final_eta=final_decision.get("final_eta", "unknown"),
     )
 
@@ -42,9 +53,7 @@ def build_alert_payload(final_decision: dict):
     }
 
 
-"""temporary test code 
-(just to see output"""
-
+# Local test
 if __name__ == "__main__":
     sample_decision = {
         "final_alert_severity": "WARNING",
