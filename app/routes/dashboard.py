@@ -56,3 +56,22 @@ def current_status():
         "confidence": latest.get("confidence"),
         "timestamp": latest.get("timestamp")
     }
+
+@router.get("/eta-timeseries")
+def eta_timeseries(minutes: int = 60):
+    since = datetime.utcnow() - timedelta(minutes=minutes)
+
+    cursor = predictions_collection.find(
+        {"timestamp": {"$gte": since}},
+        {"_id": 0, "timestamp": 1, "eta": 1}
+    ).sort("timestamp", 1)
+
+    data = []
+    for doc in cursor:
+        if "eta" in doc:
+            data.append({
+                "time": doc["timestamp"],
+                "eta": doc["eta"]
+            })
+
+    return data

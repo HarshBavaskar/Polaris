@@ -1,7 +1,8 @@
 from fastapi import FastAPI, UploadFile, File
 import os
 import shutil
-from datetime import datetime
+from datetime import datetime, timezone
+
 
 from app.utils.image_processing import extract_features
 from app.utils.risk_logic import calculate_risk, risk_level
@@ -14,6 +15,12 @@ from app.utils.confidence_logic import calculate_confidence
 from app.routes.dashboard import router as dashboard_router
 from app.ai.infer import ai_predict
 from app.ai.temporal_infer import temporal_predict
+from app.utils.eta_logic import estimate_eta
+from app.utils.alert_severity import determine_alert_severity
+from app.utils.justification import generate_authority_justification
+from app.utils.final_decision import build_final_decision
+from app.utils.eta_confidence import determine_eta_confidence
+
 
 
 
@@ -40,7 +47,7 @@ def root():
 @app.post("/input/camera")
 async def receive_camera_image(image: UploadFile = File(...)):
     # 1. Save image to disk
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
     filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{image.filename}"
     filepath = os.path.join(UPLOAD_DIR, filename)
 
@@ -119,11 +126,57 @@ async def receive_camera_image(image: UploadFile = File(...)):
         temporal_level = "SAFE"
 
     final_level = max(
-    final_level,
-    temporal_level,
-    key=lambda x: LEVEL_ORDER.index(x)
+        final_level,
+        temporal_level,
+        key=lambda x: LEVEL_ORDER.index(x)
     )
 
+
+    #ETA Calculation
+    eta = estimate_eta(
+    recent_risks=recent_risks,
+    temporal_probability=temporal_prob
+    )
+
+    eta_confidence = determine_eta_confidence(
+    recent_risks=recent_risks,
+    temporal_probability=temporal_prob,
+    confidence=confidence
+    )
+
+
+    # Determine alert severity
+    alert_severity = determine_alert_severity(
+        risk_level=final_level,
+        confidence=confidence,
+        eta=eta,
+        eta_confidence=eta_confidence
+    )
+
+
+    # Generate authority justification
+    authority_justification = generate_authority_justification(
+    risk_level=final_level,
+    confidence=confidence,
+    eta=eta,
+    eta_confidence=eta_confidence,
+    ai_probability=ai_probability,
+    temporal_probability=temporal_prob
+    )
+
+
+    final_decision = build_final_decision(
+    rule_level=ai_level,
+    cnn_level=ai_ml_level,
+    temporal_level=temporal_level,
+    confidence=confidence,
+    eta=eta,
+    eta_confidence=eta_confidence,
+    alert_severity=alert_severity,
+    cnn_probability=ai_probability,
+    temporal_probability=temporal_prob,
+    justification=authority_justification
+    )
 
 
 
@@ -153,9 +206,16 @@ async def receive_camera_image(image: UploadFile = File(...)):
     "temporal_level": temporal_level,
 
     # Features (for retraining & explainability)
-    "features": features
-    }
+    "features": features,
+    "eta": eta,
+    "alert_severity": alert_severity,
+    "authority_justification": authority_justification,
+    "eta_confidence": eta_confidence
+}
+    prediction_doc["final_decision"] = final_decision
     predictions_collection.insert_one(prediction_doc)
+
+    return final_decision
 
     # 6. Return response
     return {
@@ -170,6 +230,42 @@ async def receive_camera_image(image: UploadFile = File(...)):
     "confidence": confidence,
     "recent_risks": recent_risks,
     "temporal_probability": temporal_prob,
-    "temporal_level": temporal_level
+    "temporal_level": temporal_level,
+    "estimated_time_to_cloudburst": eta,
+    "eta_confidence": eta_confidence,
+    "alert_severity": alert_severity,
+    "authority_justification": authority_justification
     }
+
+@app.get("/decision/latest")
+def get_latest_decision():
+    doc = predictions_collection.find_one({}, sort=[("timestamp", -1)])
+
+    if not doc:
+        return {"message": "No decisions yet"}
+
+    if "final_decision" in doc:
+        return doc["final_decision"]
+
+    return {"message": "Final decision not stored yet"}
+
+
+@app.post("/alert/dispatch")
+def dispatch_alert(payload: dict):
+    """
+    Payload example:
+    {
+      "channel": "SMS",
+      "severity": "ALERT",
+      "message": "Heavy rainfall expected in 30 minutes"
+    }
+    """
+    # placeholder for now
+    return {
+        "status": "queued",
+        "channel": payload.get("channel"),
+        "severity": payload.get("severity")
+    }
+
+
 
