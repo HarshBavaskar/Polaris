@@ -1,18 +1,29 @@
-SEVERITY → CHANNEL → MESSAGE
+SSEVERITY → CHANNEL → MESSAGE LOGIC
 
-INFO → NO ACTION
+INFO
+→ No action (no alert dispatched)
 
-ADVISORY → APP_NOTIFICATION
-"Weather advisory issued. Monitor conditions."
+ADVISORY
+→ APP_NOTIFICATION
+→ "Weather advisory issued. Monitor conditions."
 
-WATCH → PUSH_NOTIFICATION
-"Weather watch in effect. Stay alert."
+WATCH
+→ PUSH_NOTIFICATION
+→ "Weather watch in effect. Stay alert."
 
-WARNING → PUSH_SMS
-"⚠️ WARNING: Heavy rainfall likely soon. Prepare for flooding."
+WARNING
+→ PUSH_SMS
+→ "⚠️ WARNING: {justification}. Expected impact in {final_eta} minutes."
 
-ALERT → SMS_SIREN
-"🚨 ALERT: Severe conditions detected. Move to safe areas immediately."
+ALERT
+→ SMS_SIREN
+→ "🚨 ALERT: {justification}. Move to safe areas immediately."
 
-EMERGENCY → ALL_CHANNELS
-"🆘 EMERGENCY: Life-threatening situation. Evacuate immediately."
+EMERGENCY
+→ ALL_CHANNELS
+→ "🆘 EMERGENCY: {justification}. Evacuate immediately."
+
+NOTES:
+- Message templates are dynamically populated using AI output
+- Alerts are never downgraded once severity is raised
+- INFO severity never triggers notifications
