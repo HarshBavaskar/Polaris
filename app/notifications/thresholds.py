@@ -5,6 +5,16 @@ Severity-to-channel and severity-to-message definitions.
 This module NEVER talks to APIs and NEVER modifies AI output.
 """
 
+# Severity order (used for comparison & downgrade protection)
+SEVERITY_ORDER = [
+    "INFO",
+    "ADVISORY",
+    "WATCH",
+    "WARNING",
+    "ALERT",
+    "EMERGENCY",
+]
+
 # Severity → Channel mapping
 SEVERITY_CHANNEL_MAP = {
     "INFO": None,
