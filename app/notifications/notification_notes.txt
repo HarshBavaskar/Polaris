@@ -1,4 +1,4 @@
-SSEVERITY → CHANNEL → MESSAGE LOGIC
+SEVERITY → CHANNEL → MESSAGE LOGIC
 
 INFO
 → No action (no alert dispatched)
