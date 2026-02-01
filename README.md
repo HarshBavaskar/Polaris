@@ -1,6 +1,4 @@
 <div align="center">
-      
-# **Polaris** - Cloudburst Early Warning & Alert System
 
 <img src="misc/Polaris.PNG" height="250"/>
       
