@@ -1,7 +1,11 @@
+<div align="center">
+
 # **Polaris** - Cloudburst Early Warning & Alert System
 
 | **Current Version** | `v0.2: Pre-Release` |
 | --- | --- |
+
+</div>
 
 <p align="center">
 <img src="misc/Polaris.PNG" width="400"/>
