@@ -3,12 +3,12 @@
 """
 Notification Router Client (Phase 1)
 
-Connects to partner server:
+This will later connect to your partner's server:
 - GET /decision/latest
-- Builds alert payload
+- Decide channel/message using build_alert_payload()
 - POST /alert/dispatch
 
-Runs only when explicitly executed.
+Right now: safe to keep in repo; won't run unless you execute it.
 """
 
 import os
@@ -23,7 +23,8 @@ from app.notifications.alert_engine import build_alert_payload
 def http_get_json(url: str, timeout: int = 5) -> dict:
     req = Request(url, method="GET")
     with urlopen(req, timeout=timeout) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+        data = resp.read().decode("utf-8")
+        return json.loads(data)
 
 
 def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
@@ -36,37 +37,23 @@ def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
 
 
 def main():
-    # REQUIRED:
-    # Set the server URL using an environment variable.
-    #
-    # Example (local):
-    # export POLARIS_BASE_URL="http://localhost:8000"
-    #
-    # Example (ngrok):
-    # export POLARIS_BASE_URL="https://xxxx.ngrok-free.dev"
-    #
-    base_url = os.getenv("POLARIS_BASE_URL")
-
-    # OPTIONAL (DEV ONLY):
-    # Uncomment the line below ONLY for quick local testing.
-    # Do NOT commit it enabled.
-    #
-    # base_url = base_url or "http://localhost:8000"
+    base_url = os.getenv(
+        "POLARIS_BASE_URL",
+        "https://barometric-iesha-nonprovidentially.ngrok-free.dev/"
+    ).rstrip("/")
 
     if not base_url:
         print(
-            "POLARIS_BASE_URL not set.\n"
-            "Run:\n"
-            "export POLARIS_BASE_URL='http://localhost:8000'"
+            "POLARIS_BASE_URL is not set. "
+            "Example: export POLARIS_BASE_URL='http://192.168.1.10:8000'"
         )
         return
 
-    base_url = base_url.rstrip("/")
     decision_url = f"{base_url}/decision/latest"
     dispatch_url = f"{base_url}/alert/dispatch"
 
     print(f"Polling: {decision_url}")
-    last_signature = None
+    last_signature = None  # prevents repeating the same alert forever
 
     while True:
         try:
@@ -76,10 +63,14 @@ def main():
             time.sleep(5)
             continue
 
-        payload = build_alert_payload(decision)
+        # Depending on partner response shape:
+        # If response is {"final_decision": {...}}, unwrap it.
+        final_decision = decision.get("final_decision", decision)
+
+        payload = build_alert_payload(final_decision)
 
         if payload:
-            signature = (payload["severity"], payload["message"])
+            signature = (payload.get("severity"), payload.get("message"))
             if signature != last_signature:
                 print("Dispatching:", payload)
                 try:
@@ -89,7 +80,7 @@ def main():
                 except (URLError, HTTPError) as e:
                     print("POST failed:", e)
             else:
-                print("Duplicate alert ignored.")
+                print("No new alert (duplicate).")
         else:
             print("No alert needed.")
 
