@@ -1,6 +1,12 @@
 fastapi
 uvicorn
-pymongo
+python-multipart
+pillow
 opencv-python
 numpy
-python-multipart
+scikit-image
+scipy
+pymongo
+torch
+torchvision
+python-dotenv
