@@ -36,11 +36,28 @@ def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
 
 
 def main():
+    # REQUIRED:
+    # Set the server URL using an environment variable.
+    #
+    # Example (local):
+    # export POLARIS_BASE_URL="http://localhost:8000"
+    #
+    # Example (ngrok):
+    # export POLARIS_BASE_URL="https://xxxx.ngrok-free.dev"
+    #
     base_url = os.getenv("POLARIS_BASE_URL")
+
+    # OPTIONAL (DEV ONLY):
+    # Uncomment the line below ONLY for quick local testing.
+    # Do NOT commit it enabled.
+    #
+    # base_url = base_url or "http://localhost:8000"
+
     if not base_url:
         print(
-            "POLARIS_BASE_URL not set. "
-            "Example: export POLARIS_BASE_URL='http://localhost:8000'"
+            "POLARIS_BASE_URL not set.\n"
+            "Run:\n"
+            "export POLARIS_BASE_URL='http://localhost:8000'"
         )
         return
 
