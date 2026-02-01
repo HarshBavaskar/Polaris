@@ -37,7 +37,7 @@ def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
 
 
 def main():
-    base_url = os.getenv("POLARIS_BASE_URL", "").rstrip("/")
+    base_url = os.getenv("POLARIS_BASE_URL", "https://barometric-iesha-nonprovidentially.ngrok-free.dev/").rstrip("/")
     if not base_url:
         print("POLARIS_BASE_URL is not set. Example: export POLARIS_BASE_URL='http://192.168.1.10:8000'")
         return
