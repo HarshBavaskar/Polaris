@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris.PNG" height="250"/>
       
-| **Current Version** | `v0.2: Pre-Release` |
+| **Current Version** | `v0.2A: Pre-Release` |
 | --- | --- |
 
 </div>
