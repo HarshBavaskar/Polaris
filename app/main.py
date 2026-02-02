@@ -20,6 +20,7 @@ from app.utils.alert_severity import determine_alert_severity
 from app.utils.justification import generate_authority_justification
 from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
+from app.notifications.valkey_pub import publish_decision
 
 
 
@@ -177,7 +178,7 @@ async def receive_camera_image(image: UploadFile = File(...)):
     temporal_probability=temporal_prob,
     justification=authority_justification
     )
-
+    publish_decision(final_decision)
 
 
 
