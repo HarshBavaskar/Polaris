@@ -12,4 +12,5 @@ predictions_collection = db["predictions"]
 citizen_reports_collection = db["citizen_reports"]
 feedback_collection = db["feedback"]
 alerts_collection = db["alerts"]
-
+safe_zones_collection = db["safe_zones"]
+historical_events_collection = db["historical_events"]

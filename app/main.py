@@ -270,5 +270,86 @@ def dispatch_alert(payload: dict):
         "severity": alert_doc["severity"]
     }
 
+@app.get("/alerts/latest")
+def get_latest_alerts(limit: int = 20):
+    alerts = list(
+        alerts_collection.find({}, {"_id": 0})
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
+    return alerts
+
+@app.get("/predictions/history")
+def get_prediction_history(hours: int = 24):
+    from datetime import timedelta
+
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(hours=hours)
+
+    preds = list(
+        predictions_collection.find(
+            {"timestamp": {"$gte": since}},
+            {
+                "_id": 0,
+                "timestamp": 1,
+                "risk_score": 1,
+                "confidence": 1,
+                "alert_severity": 1,
+            }
+        ).sort("timestamp", 1)
+    )
+
+    return preds
+
+@app.get("/map/live-risk")
+def get_live_risk_points(limit: int = 50):
+    points = list(
+        predictions_collection.find(
+            {},
+            {
+                "_id": 0,
+                "timestamp": 1,
+                "risk_score": 1,
+                "risk_level": 1,
+                "alert_severity": 1,
+            }
+        )
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
+
+    # TEMP: fixed location (replace later with camera metadata)
+    for p in points:
+        p["lat"] = 19.0760   # Mumbai
+        p["lng"] = 72.8777
+
+    return points
 
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # OK for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+from app.database import safe_zones_collection
+
+@app.get("/map/safe-zones")
+def get_safe_zones():
+    zones = list(
+        safe_zones_collection.find({}, {"_id": 0})
+    )
+    return zones
+
+from app.database import historical_events_collection
+
+@app.get("/map/historical-events")
+def get_historical_events():
+    events = list(
+        historical_events_collection.find({}, {"_id": 0})
+    )
+    return events
