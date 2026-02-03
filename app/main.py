@@ -20,6 +20,11 @@ from app.utils.alert_severity import determine_alert_severity
 from app.utils.justification import generate_authority_justification
 from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
+from app.routes.override import router as override_router
+from app.database import overrides_collection
+
+
+
 
 
 
@@ -32,6 +37,8 @@ app = FastAPI(title="Polaris Detection Server")
 app.include_router(citizen_router)
 app.include_router(feedback_router)
 app.include_router(dashboard_router)
+app.include_router(override_router)
+
 
 
 
@@ -239,15 +246,30 @@ async def receive_camera_image(image: UploadFile = File(...)):
 
 @app.get("/decision/latest")
 def get_latest_decision():
+    # 1️⃣ Check override FIRST
+    override = overrides_collection.find_one(
+        {"active": True},
+        sort=[("timestamp", -1)]
+    )
+
+    if override:
+        return {
+            "final_risk_level": override["risk_level"],
+            "final_confidence": 1.0,
+            "final_eta": "UNKNOWN",
+            "final_eta_confidence": "HIGH",
+            "final_alert_severity": override["alert_severity"],
+            "decision_state": "MANUAL_OVERRIDE",
+            "justification": f"Manual override by {override['author']}: {override['reason']}",
+        }
+
+    # 2️⃣ Otherwise return last AI decision
     doc = predictions_collection.find_one({}, sort=[("timestamp", -1)])
 
     if not doc:
         return {"message": "No decisions yet"}
 
-    if "final_decision" in doc:
-        return doc["final_decision"]
-
-    return {"message": "Final decision not stored yet"}
+    return doc.get("final_decision", {"message": "Final decision not stored yet"})
 
 
 from datetime import datetime, timezone

@@ -6,7 +6,7 @@ import RiskMap from "./components/RiskMap";
    Priority Computation
    ========================= */
 function computePriority(points, decision, safeZones) {
-  if (!points || points.length === 0 || !decision) return null;
+  if (!points || !decision || points.length === 0) return null;
 
   const top = points.reduce((a, b) =>
     (b.risk_score ?? 0) > (a.risk_score ?? 0) ? b : a
@@ -35,7 +35,7 @@ function computePriority(points, decision, safeZones) {
 
 export default function App() {
   /* =========================
-     State
+     STATE
      ========================= */
   const [decision, setDecision] = useState(null);
   const [alerts, setAlerts] = useState([]);
@@ -51,54 +51,172 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(true);
 
   /* =========================
-     Data Fetch
+     FETCH ALL DATA
+     ========================= */
+  const fetchAll = async () => {
+    try {
+      const [
+        decisionRes,
+        alertsRes,
+        riskRes,
+        safeRes,
+        historyRes,
+      ] = await Promise.all([
+        api.get("/decision/latest"),
+        api.get("/alerts/latest"),
+        api.get("/map/live-risk"),
+        api.get("/map/safe-zones"),
+        api.get("/map/historical-events"),
+      ]);
+
+      setDecision(decisionRes.data);
+      setAlerts(alertsRes.data || []);
+      setMapPoints(riskRes.data || []);
+      setSafeZones(safeRes.data || []);
+      setHistoricalEvents(historyRes.data || []);
+    } catch (err) {
+      console.error("Dashboard fetch error:", err);
+    }
+  };
+
+  /* =========================
+     AUTO-REFRESH (POLLING)
      ========================= */
   useEffect(() => {
-    api.get("/decision/latest").then(res => setDecision(res.data));
-    api.get("/alerts/latest").then(res => setAlerts(res.data));
-    api.get("/map/live-risk").then(res => setMapPoints(res.data));
-    api.get("/map/safe-zones").then(res => setSafeZones(res.data));
-    api.get("/map/historical-events").then(res => setHistoricalEvents(res.data));
+    fetchAll();
+
+    const interval = setInterval(() => {
+      fetchAll();
+    }, 5000); // refresh every 5s
+
+    return () => clearInterval(interval);
   }, []);
 
   /* =========================
-     Priority Calculation
+     PRIORITY PANEL (AI ONLY)
      ========================= */
   useEffect(() => {
-    if (decision && mapPoints.length && safeZones.length) {
+    if (
+      decision &&
+      decision.decision_state !== "MANUAL_OVERRIDE" &&
+      mapPoints.length &&
+      safeZones.length
+    ) {
       setPriority(computePriority(mapPoints, decision, safeZones));
     } else {
       setPriority(null);
     }
   }, [decision, mapPoints, safeZones]);
 
+  /* =========================
+     AUTHORITY OVERRIDE ACTIONS
+     ========================= */
+  const applyOverride = async () => {
+    await api.post("/override/set", {
+      risk_level: document.getElementById("ov-risk").value,
+      alert_severity: document.getElementById("ov-severity").value,
+      reason: document.getElementById("ov-reason").value,
+      author: "Authority Dashboard",
+    });
+    fetchAll();
+  };
+
+  const clearOverride = async () => {
+    await api.post("/override/clear");
+    fetchAll();
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
+      {/* =========================
+         OVERRIDE BANNER
+         ========================= */}
+      {decision?.decision_state === "MANUAL_OVERRIDE" && (
+        <div className="bg-red-700 text-white p-3 mb-4 rounded text-center font-bold">
+          ⚠️ MANUAL OVERRIDE ACTIVE — AI DECISIONS SUSPENDED
+        </div>
+      )}
+
       <h1 className="text-2xl font-bold mb-6">
         Polaris — Authority Dashboard
       </h1>
 
       {/* =========================
-         Current Status
+         SYSTEM STATUS
          ========================= */}
       <div className="bg-white p-4 rounded shadow mb-6">
-        <h2 className="text-lg font-semibold mb-2">Current System Status</h2>
+        <h2 className="text-lg font-semibold mb-2">System Status</h2>
 
         {decision ? (
           <ul className="text-sm space-y-1">
             <li><b>Risk Level:</b> {decision.final_risk_level}</li>
             <li><b>Alert Severity:</b> {decision.final_alert_severity}</li>
-            <li><b>ETA:</b> {decision.final_eta} ({decision.final_eta_confidence})</li>
+            <li>
+              <b>ETA:</b> {decision.final_eta} ({decision.final_eta_confidence})
+            </li>
             <li><b>Confidence:</b> {decision.final_confidence}</li>
+            <li>
+              <b>Decision Mode:</b>{" "}
+              {decision.decision_state === "MANUAL_OVERRIDE"
+                ? "MANUAL OVERRIDE"
+                : "Automated"}
+            </li>
             <li className="text-gray-600">{decision.justification}</li>
           </ul>
         ) : (
-          <p>Loading status…</p>
+          <p>Loading decision…</p>
         )}
       </div>
 
       {/* =========================
-         Priority Panel
+         AUTHORITY OVERRIDE PANEL
+         ========================= */}
+      <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded">
+        <h2 className="text-lg font-bold text-yellow-700 mb-2">
+          🛂 Authority Override
+        </h2>
+
+        <div className="flex gap-3 text-sm mb-3">
+          <select id="ov-risk" className="border p-1">
+            <option>SAFE</option>
+            <option>WATCH</option>
+            <option>WARNING</option>
+            <option>IMMINENT</option>
+          </select>
+
+          <select id="ov-severity" className="border p-1">
+            <option>INFO</option>
+            <option>ADVISORY</option>
+            <option>ALERT</option>
+            <option>EMERGENCY</option>
+          </select>
+
+          <input
+            id="ov-reason"
+            className="border p-1 flex-1"
+            placeholder="Reason for override"
+          />
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            className="bg-red-600 text-white px-3 py-1 rounded"
+            onClick={applyOverride}
+          >
+            Apply Override
+          </button>
+
+          <button
+            className="bg-gray-500 text-white px-3 py-1 rounded"
+            onClick={clearOverride}
+          >
+            Clear Override
+          </button>
+        </div>
+      </div>
+
+      {/* =========================
+         PRIORITY PANEL (AI)
          ========================= */}
       {priority && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
@@ -129,7 +247,7 @@ export default function App() {
       )}
 
       {/* =========================
-         Map Layer Toggles
+         MAP CONTROLS
          ========================= */}
       <div className="bg-white p-4 rounded shadow mb-4">
         <h2 className="text-lg font-semibold mb-2">Map Layers</h2>
@@ -159,19 +277,21 @@ export default function App() {
               checked={showHistory}
               onChange={() => setShowHistory(!showHistory)}
             />{" "}
-            Historical Incidents
+            Historical Events
           </label>
         </div>
+
+        {decision?.decision_state === "MANUAL_OVERRIDE" && (
+          <p className="text-xs text-gray-500 mt-2">
+            AI predictions shown for reference only during manual override
+          </p>
+        )}
       </div>
 
       {/* =========================
-         Risk Map
+         MAP
          ========================= */}
       <div className="bg-white p-4 rounded shadow mb-4">
-        <h2 className="text-lg font-semibold mb-2">
-          Live Cloudburst Risk Map
-        </h2>
-
         <RiskMap
           points={showHeatmap ? mapPoints : []}
           safeZones={showSafeZones ? safeZones : []}
@@ -180,19 +300,7 @@ export default function App() {
       </div>
 
       {/* =========================
-         Legend
-         ========================= */}
-      <div className="bg-white p-4 rounded shadow mb-6 text-sm">
-        <h2 className="font-semibold mb-2">Map Legend</h2>
-        <ul className="space-y-1">
-          <li>🔥 <b>Heatmap</b>: Higher intensity = higher risk</li>
-          <li>🟢 <b>Safe Zones</b>: Evacuation / shelter locations</li>
-          <li>🔴 <b>Historical Events</b>: Past cloudburst incidents</li>
-        </ul>
-      </div>
-
-      {/* =========================
-         Alerts Table
+         ALERTS
          ========================= */}
       <div className="bg-white p-4 rounded shadow">
         <h2 className="text-lg font-semibold mb-2">Recent Alerts</h2>

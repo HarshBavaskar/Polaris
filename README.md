@@ -1,30 +1,71 @@
 <div align="center">
 
 <img src="misc/Polaris.PNG" height="250"/>
-      
-| **Current Version** | `v0.3: Pre-Release` |
+
+| **Current Version** | `v0.4: Pre-Release` |
 | --- | --- |
 
 </div>
 
 ---
 
-> **An AI-powered, real-time, hyperlocal cloudburst early warning system**  
-> combining **computer vision**, **temporal intelligence**, and **human-in-the-loop safety**.
+> **An AI-powered, real-time, hyperlocal cloudburst early warning and decision system**  
+> combining **computer vision**, **temporal intelligence**, and **human-in-the-loop authority**.
 
 ---
 
 ## Overview
 
-**Polaris** is a research-grade early warning system designed to detect **cloudburst-like conditions before severe impact occurs**.  
+**Polaris** is a research-grade early warning and decision system designed to detect **cloudburst-like conditions before severe impact occurs**.  
 Unlike traditional threshold-based systems, Polaris uses a **layered intelligence approach** that fuses:
 
 - Visual understanding of the sky  
 - Temporal pattern learning  
 - Citizen-ground reports  
 - Rule-based safety logic  
+- Authority override controls  
 
 The result is a **trustworthy, explainable, and deployable** disaster-support system.
+
+---
+
+## What’s New in v0.4 (Major Update)
+
+### 🔐 Authority Override (System-Wide)
+- Manual authority override **globally supersedes AI**
+- Override applies **instantly**, without new sensor input
+- Centralized at `GET /decision/latest` (single source of truth)
+- Fully auditable (author, reason, timestamp)
+
+### 🧠 Final Decision Authority
+- AI outputs no longer conflict or fragment
+- One unified decision object:
+  - Risk level
+  - Alert severity
+  - ETA + ETA confidence
+  - Decision mode (`AUTOMATED` / `MANUAL_OVERRIDE`)
+- Used consistently by dashboard, alerts, and all client applications
+
+### 🗺️ Live Risk Mapping
+- Real-time cloudburst risk heatmap
+- Historical cloudburst incident overlay
+- Safe zones layer (currently static; auto-detection planned)
+- Auto-focus and pulse highlighting of highest-risk regions
+
+### 🚨 Escalation-Based Alerting
+- Severity escalation logic:
+  - `INFO → ADVISORY → ALERT → EMERGENCY`
+- Driven by:
+  - Risk level
+  - ETA
+  - Confidence
+  - Temporal probability
+- Cooldown enforcement per channel to prevent alert spam
+
+### 📡 Dashboard-First Architecture
+- Production-grade React dashboard (no Streamlit)
+- Polling-based live updates (5-second refresh)
+- Designed for command-center and authority-level operations
 
 ---
 
@@ -49,9 +90,12 @@ Citizen Input Fusion
 Safe Decision Fusion
 (Never Downgrade)
       ↓
-Final Risk Level + Confidence
+Final Decision Authority
+(AI OR Manual Override)
       ↓
-MongoDB + Dashboard APIs
+Alert Escalation Engine
+      ↓
+MongoDB + Dashboard & Map APIs
 ```
 
 ---
@@ -71,7 +115,22 @@ MongoDB + Dashboard APIs
 ### Citizen Intelligence
 - Citizen-uploaded images
 - Water-level reports (Ankle / Knee / Waist)
-- Human inputs can **safely override AI**
+- Human inputs influence risk but do not bypass safety logic
+
+### Dashboard & Visualization
+- Production-grade React dashboard
+- Live auto-updating system state (polling-based)
+- Manual override dominance clearly indicated
+- Interactive map with:
+  - Live risk heatmap
+  - Historical cloudburst incidents
+  - Safe zones layer
+- Designed for command-center usage
+
+### Authority Control (v0.4)
+- Manual authority override with global precedence
+- Override applies instantly system-wide
+- Fully auditable (author, reason, timestamp)
 
 ### Explainable Decisions
 Every prediction includes:
@@ -80,19 +139,21 @@ Every prediction includes:
 - Confidence score
 - AI probability (CNN)
 - Temporal probability (LSTM)
-
-This ensures **auditability and trust** for authorities.
+- ETA, ETA confidence
+- Decision mode (AUTOMATED / MANUAL_OVERRIDE)
 
 ---
 
 ## Notification & Alert Routing
 
-- API-based **alert routing system** triggered by AI decisions  
+- API-based **alert routing system** triggered by final decisions  
 - Severity-based alert handling:
   - **INFO** – No alert
-  - **WARNING** – Notification dispatched
-  - **EMERGENCY** – High-priority alert
-- Designed for **Postman-based testing** and easy integration with external systems
+  - **ADVISORY** – Stay alert
+  - **ALERT** – Prepare and restrict movement
+  - **EMERGENCY** – Immediate action required
+- Cooldown enforcement per channel
+- Manual override always supersedes AI
 
 ---
 
@@ -130,6 +191,7 @@ Collections:
 - `predictions` – risk, confidence, AI outputs  
 - `citizen_reports` – public inputs  
 - `feedback` – authority verification  
+- `overrides` – manual authority decisions  
 
 ---
 
@@ -139,17 +201,23 @@ Collections:
 - `/dashboard/risk-timeseries`
 - `/dashboard/confidence-timeseries`
 - `/dashboard/current-status`
+- `/alerts/latest`
+- `/map/live-risk`
+- `/map/safe-zones`
+- `/map/historical-events`
 
 ### Core System APIs
-- `GET  /decision/latest` – Fetch latest AI decision  
+- `GET  /decision/latest` – Authoritative system decision  
 - `POST /alert/dispatch` – Dispatch alert payload  
 - `POST /input/camera` – Camera image input  
+- `POST /override/set` – Authority override  
+- `POST /override/clear` – Clear override  
 
 Compatible with:
 - React
-- Streamlit
 - Grafana
 - Power BI
+- Postman
 
 ---
 
@@ -169,13 +237,21 @@ Polaris/
 │   ├── main.py
 │   ├── database.py
 │   ├── routes/
+│   │   ├── override.py
+│   │   ├── dashboard.py
+│   │   └── feedback.py
 │   ├── utils/
+│   │   ├── final_decision.py
+│   │   ├── alert_severity.py
+│   │   └── eta_logic.py
 │   ├── ai/
+│   │   ├── infer.py
+│   │   └── temporal_infer.py
 │   └── notifications/
 │       ├── thresholds.py
 │       ├── alert_engine.py
-│       ├── router_client.py
-│       └── test_alert_engine.py
+│       └── router_client.py
+├── polaris-dashboard/
 ├── polaris_dataset/
 ├── camera_client.py
 └── README.md
@@ -192,43 +268,37 @@ Polaris/
 | Computer Vision | OpenCV |
 | Temporal Learning | LSTM |
 | Database | MongoDB |
-| Notifications | API-based (Postman / HTTP) |
+| Frontend | React + Vite + Tailwind |
+| Mapping | Leaflet |
+| Notifications | API-based (HTTP / Postman) |
 | Deployment | Cloud-ready |
 
 ---
 
 ## Team
 
-<a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
-<img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
-</a>  
-
-##
-
 - **Detection & AI System** – *Harsh Bavaskar*  
-  (CNN, LSTM, rule-based logic, data collection, detection pipeline)
-
 - **Warning & Notification System** – *Anisa D'souza*  
-  (API routing, alert logic, Postman integration)
----
 
+---
 
 ## Project Status
 
 - ✅ Detection pipeline complete
 - ✅ CNN + LSTM integrated
 - ✅ Citizen & authority feedback loop
-- ✅ Dashboard-ready APIs
-- ✅ Notification & alert dispatch system integrated
+- ✅ Final decision authority implemented
+- ✅ Manual override system live
+- ✅ Live dashboard & geospatial map operational
 - 🔄 Continuous data collection & learning
 
 ---
 
 ## Future Roadmap
 
-- Hyperlocal sensor fusion (rainfall, humidity, pressure)
+- Automatic safe-zone detection
+- Hyperlocal sensor fusion
 - Multi-camera zone mapping
-- Transformer-based temporal models
 - Mobile apps for citizens & field authorities
 - Pilot deployments with local authorities
 
@@ -240,6 +310,7 @@ Polaris is an **early warning support system** and does not replace official met
 It is intended to **assist disaster response** with faster, hyperlocal insights.
 
 ---
+
 ## What Makes Polaris Different
 
 - Not a black-box AI

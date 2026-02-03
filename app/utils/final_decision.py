@@ -1,88 +1,35 @@
-LEVEL_ORDER = ["SAFE", "WATCH", "WARNING", "IMMINENT"]
-
-def determine_final_risk(
-    rule_level,
-    cnn_level,
-    temporal_level,
-    confidence
-):
-    # Pick highest suggested risk
-    candidate = max(
-        rule_level,
-        cnn_level,
-        temporal_level,
-        key=lambda x: LEVEL_ORDER.index(x)
-    )
-
-    # Safety gate: low confidence cannot jump to IMMINENT
-    if confidence < 0.5 and candidate == "IMMINENT":
-        return "WARNING"
-
-    return candidate
-
-def determine_final_eta(eta, eta_confidence):
-    return eta
-
-def compute_final_confidence(
-    base_confidence,
-    cnn_probability,
-    temporal_probability
-    ):
-    boost = 0.0
-
-    if cnn_probability > 0.6:
-        boost += 0.05
-    if temporal_probability > 0.6:
-        boost += 0.1
-
-    final_conf = base_confidence + boost
-    return round(min(final_conf, 1.0), 2)
-
-def determine_decision_state(alert_severity):
-    if alert_severity in ["ALERT", "EMERGENCY"]:
-        return "ACTIONABLE"
-    return "MONITOR"
+from app.database import overrides_collection
 
 def build_final_decision(
-    rule_level,
-    cnn_level,
-    temporal_level,
+    risk_level,
     confidence,
     eta,
     eta_confidence,
     alert_severity,
-    cnn_probability,
-    temporal_probability,
-    justification
+    justification,
 ):
-    final_risk = determine_final_risk(
-        rule_level,
-        cnn_level,
-        temporal_level,
-        confidence
+    override = overrides_collection.find_one(
+        {"active": True},
+        sort=[("timestamp", -1)]
     )
 
-    final_eta = determine_final_eta(
-        eta,
-        eta_confidence
-    )
-
-    final_confidence = compute_final_confidence(
-        confidence,
-        cnn_probability,
-        temporal_probability
-    )
-
-    decision_state = determine_decision_state(
-        alert_severity
-    )
+    if override:
+        return {
+            "final_risk_level": override["risk_level"],
+            "final_confidence": 1.0,
+            "final_eta": override.get("eta", "UNKNOWN"),
+            "final_eta_confidence": "HIGH",
+            "final_alert_severity": override["alert_severity"],
+            "decision_state": "MANUAL_OVERRIDE",
+            "justification": f"Manual override by {override['author']}: {override['reason']}",
+        }
 
     return {
-        "final_risk_level": final_risk,
-        "final_confidence": final_confidence,
-        "final_eta": final_eta,
+        "final_risk_level": risk_level,
+        "final_confidence": confidence,
+        "final_eta": eta,
         "final_eta_confidence": eta_confidence,
         "final_alert_severity": alert_severity,
-        "decision_state": decision_state,
-        "justification": justification
+        "decision_state": "AUTOMATED",
+        "justification": justification,
     }

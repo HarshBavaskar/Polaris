@@ -2,29 +2,31 @@ def determine_alert_severity(
     risk_level,
     confidence,
     eta,
-    eta_confidence
+    eta_confidence,
+    temporal_probability,
+    override=None
 ):
-    # Low overall certainty → no aggressive alerts
-    if confidence < 0.5:
-        return "INFO"
+    if override:
+        return override["alert_severity"]
 
-    # Highest severity only if ETA is short AND reliable
-    if (
-        risk_level == "IMMINENT"
-        and eta == "< 10 min"
-        and eta_confidence in ["HIGH", "MEDIUM"]
-    ):
+    if risk_level == "IMMINENT":
         return "EMERGENCY"
 
-    # Strong alert but not emergency
+    if eta in ["0–30 min"] and confidence >= 0.8:
+        return "EMERGENCY"
+
+    if temporal_probability >= 0.75:
+        return "EMERGENCY"
+
     if (
-        risk_level in ["IMMINENT", "WARNING"]
-        and eta in ["< 10 min", "10–30 min"]
+        risk_level == "WARNING"
+        and confidence >= 0.7
+        and eta in ["30–60 min"]
+        and eta_confidence != "LOW"
     ):
         return "ALERT"
 
-    # Early caution
-    if risk_level in ["WATCH", "WARNING"]:
+    if risk_level == "WATCH" and confidence >= 0.6:
         return "ADVISORY"
 
     return "INFO"
