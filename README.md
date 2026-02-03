@@ -277,8 +277,18 @@ Polaris/
 
 ## Team
 
+<a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
+<img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
+</a>  
+
+##
+
 - **Detection & AI System** – *Harsh Bavaskar*  
+  (CNN, LSTM, rule-based logic, data collection, detection pipeline)
+
 - **Warning & Notification System** – *Anisa D'souza*  
+  (API routing, alert logic, Postman integration)
+---
 
 ---
 
