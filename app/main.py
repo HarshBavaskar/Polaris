@@ -4,6 +4,7 @@ import shutil
 from datetime import datetime, timezone
 
 
+
 from app.utils.image_processing import extract_features
 from app.utils.risk_logic import calculate_risk, risk_level
 from app.database import images_collection, predictions_collection, alerts_collection
@@ -21,6 +22,7 @@ from app.utils.justification import generate_authority_justification
 from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
 from app.notifications.valkey_pub import publish_decision
+from app.notifications.deliver import deliver
 
 
 
@@ -263,12 +265,31 @@ def dispatch_alert(payload: dict):
         "status": "queued"
     }
 
-    alerts_collection.insert_one(alert_doc)
+    # 1. Store alert first (always)
+    result = alerts_collection.insert_one(alert_doc)
 
+    # 2. Try delivering alert (SMS / simulated / future push)
+    delivery_result = deliver(payload)
+
+    # 3. Update delivery status
+    new_status = "sent" if delivery_result.get("ok") else "failed"
+
+    alerts_collection.update_one(
+        {"_id": result.inserted_id},
+        {
+            "$set": {
+                "status": new_status,
+                "delivery": delivery_result
+            }
+        }
+    )
+
+    # 4. Return response
     return {
-        "status": "queued",
-        "channel": alert_doc["channel"],
-        "severity": alert_doc["severity"]
+        "status": new_status,
+        "channel": payload.get("channel"),
+        "severity": payload.get("severity"),
+        "delivery": delivery_result
     }
 
 @app.get("/alerts/latest")
