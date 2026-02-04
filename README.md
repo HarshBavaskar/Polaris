@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris.PNG" height="250"/>
 
-| **Current Version** | `v0.4: Pre-Release` |
+| **Current Version** | `v0.5: Pre-Release` |
 | --- | --- |
 
 </div>
@@ -29,43 +29,32 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in v0.4 (Major Update)
 
-### 🔐 Authority Override (System-Wide)
-- Manual authority override **globally supersedes AI**
-- Override applies **instantly**, without new sensor input
-- Centralized at `GET /decision/latest` (single source of truth)
-- Fully auditable (author, reason, timestamp)
+## What’s New in v0.5 (Major Update)
 
-### 🧠 Final Decision Authority
-- AI outputs no longer conflict or fragment
-- One unified decision object:
-  - Risk level
-  - Alert severity
-  - ETA + ETA confidence
-  - Decision mode (`AUTOMATED` / `MANUAL_OVERRIDE`)
-- Used consistently by dashboard, alerts, and all client applications
+### 🔄 Automated Decision-to-Alert Flow
+- Final decisions are automatically propagated without manual triggers
+- End-to-end pipeline runs continuously once services are started
+- Removes dependency on manual API calls for alert activation
 
-### 🗺️ Live Risk Mapping
-- Real-time cloudburst risk heatmap
-- Historical cloudburst incident overlay
-- Safe zones layer (currently static; auto-detection planned)
-- Auto-focus and pulse highlighting of highest-risk regions
+### 📦 Valkey Event Bus Integration
+- Valkey introduced as an event-driven messaging layer
+- AI decisions published to a dedicated channel
+- Notification router subscribes and reacts in real time
+- Clean decoupling between detection logic and alert delivery
 
-### 🚨 Escalation-Based Alerting
-- Severity escalation logic:
-  - `INFO → ADVISORY → ALERT → EMERGENCY`
-- Driven by:
-  - Risk level
-  - ETA
-  - Confidence
-  - Temporal probability
-- Cooldown enforcement per channel to prevent alert spam
+### 🚀 System Orchestration
+- Shell-based startup script to launch:
+  - Valkey service
+  - FastAPI backend
+  - Notification router
+- Simplifies local runs and pre-deployment testing
+- Reduces multi-terminal operational overhead
 
-### 📡 Dashboard-First Architecture
-- Production-grade React dashboard (no Streamlit)
-- Polling-based live updates (5-second refresh)
-- Designed for command-center and authority-level operations
+### 📲 SMS Notification Preparation
+- Alert delivery interface structured for SMS integration
+- Delivery status tracking (`queued`, `sent`, `failed`)
+- Gateway integration planned as next deployment step
 
 ---
 
@@ -93,13 +82,14 @@ Safe Decision Fusion
 Final Decision Authority
 (AI OR Manual Override)
       ↓
-Alert Escalation Engine
+Decision Publication (Valkey)
+      ↓
+Automated Alert Routing
       ↓
 MongoDB + Dashboard & Map APIs
 ```
 
 ---
-
 ## Key Capabilities
 
 ### Vision-Based Detection
@@ -142,18 +132,6 @@ Every prediction includes:
 - ETA, ETA confidence
 - Decision mode (AUTOMATED / MANUAL_OVERRIDE)
 
----
-
-## Notification & Alert Routing
-
-- API-based **alert routing system** triggered by final decisions  
-- Severity-based alert handling:
-  - **INFO** – No alert
-  - **ADVISORY** – Stay alert
-  - **ALERT** – Prepare and restrict movement
-  - **EMERGENCY** – Immediate action required
-- Cooldown enforcement per channel
-- Manual override always supersedes AI
 
 ---
 
@@ -221,11 +199,27 @@ Compatible with:
 
 ---
 
+
+## Notification & Alert Routing
+
+- Triggered by final decisions published via Valkey
+- Runs continuously once the system is started
+- Manual override always supersedes AI decisions
+
+### Alert Severity Levels
+- **INFO** – No alert
+- **ADVISORY** – Stay alert
+- **ALERT** – Prepare and restrict movement
+- **EMERGENCY** – Immediate action required
+
+---
+
 ## Postman Integration
 
-- All core APIs are testable via **Postman**
-- Used for **live decision → alert validation**
-- Enables backend testing without frontend dependency
+- Used strictly for API testing and validation
+- Helpful during development and debugging
+- Not required for normal automated system operation
+
 
 ---
 
@@ -250,7 +244,10 @@ Polaris/
 │   └── notifications/
 │       ├── thresholds.py
 │       ├── alert_engine.py
-│       └── router_client.py
+│       ├── router_client.py
+│       ├── valkey_pub.py
+│       ├── valkey_router.py
+│       └── run_all.sh
 ├── polaris-dashboard/
 ├── polaris_dataset/
 ├── camera_client.py
@@ -258,7 +255,6 @@ Polaris/
 ```
 
 ---
-
 ## Technology Stack
 
 | Layer | Technology |
@@ -268,9 +264,9 @@ Polaris/
 | Computer Vision | OpenCV |
 | Temporal Learning | LSTM |
 | Database | MongoDB |
+| Messaging | Valkey (Pub/Sub) |
 | Frontend | React + Vite + Tailwind |
 | Mapping | Leaflet |
-| Notifications | API-based (HTTP / Postman) |
 | Deployment | Cloud-ready |
 
 ---
@@ -287,9 +283,7 @@ Polaris/
   (CNN, LSTM, rule-based logic, data collection, detection pipeline)
 
 - **Warning & Notification System** – *Anisa D'souza*  
-  (API routing, alert logic, Postman integration)
----
-
+  (API routing, alert logic, Postman integration, Valkey integration)
 ---
 
 ## Project Status
@@ -300,6 +294,8 @@ Polaris/
 - ✅ Final decision authority implemented
 - ✅ Manual override system live
 - ✅ Live dashboard & geospatial map operational
+- ✅ Automated alert routing (Valkey)
+- 🔄 SMS delivery integration in progress
 - 🔄 Continuous data collection & learning
 
 ---
@@ -331,3 +327,4 @@ It is intended to **assist disaster response** with faster, hyperlocal insights.
 ---
 
 > *Polaris aims to detect danger early — when response still matters.*
+
