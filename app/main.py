@@ -2,6 +2,9 @@ from fastapi import FastAPI, UploadFile, File
 import os
 import shutil
 from datetime import datetime, timezone
+from contextlib import asynccontextmanager
+
+
 
 
 from app.utils.image_processing import extract_features
@@ -22,6 +25,13 @@ from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
 from app.routes.override import router as override_router
 from app.database import overrides_collection
+from app.routes.map import router as map_router
+from app.database import ensure_safezone_indexes
+from app.routes.safezones import router as safezones_router
+from app.database import safe_zones_collection
+from fastapi.middleware.cors import CORSMiddleware
+from app.database import historical_events_collection
+from app.routes.alerts import router as alerts_router
 
 
 
@@ -31,13 +41,32 @@ from app.database import overrides_collection
 
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    ensure_safezone_indexes()
+    yield
+    # Shutdown logic (optional, none needed now)
 
 
-app = FastAPI(title="Polaris Detection Server")
+
+
+app = FastAPI(title="Polaris Detection Server", lifespan=lifespan )
 app.include_router(citizen_router)
 app.include_router(feedback_router)
 app.include_router(dashboard_router)
 app.include_router(override_router)
+app.include_router(map_router)
+app.include_router(safezones_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # OK for development
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(alerts_router)
+
 
 
 
@@ -157,7 +186,8 @@ async def receive_camera_image(image: UploadFile = File(...)):
         risk_level=final_level,
         confidence=confidence,
         eta=eta,
-        eta_confidence=eta_confidence
+        eta_confidence=eta_confidence,
+        temporal_probability=temporal_prob
     )
 
 
@@ -173,17 +203,13 @@ async def receive_camera_image(image: UploadFile = File(...)):
 
 
     final_decision = build_final_decision(
-    rule_level=ai_level,
-    cnn_level=ai_ml_level,
-    temporal_level=temporal_level,
+    risk_level=final_level,
     confidence=confidence,
     eta=eta,
     eta_confidence=eta_confidence,
     alert_severity=alert_severity,
-    cnn_probability=ai_probability,
-    temporal_probability=temporal_prob,
     justification=authority_justification
-    )
+)
 
 
 
@@ -272,7 +298,7 @@ def get_latest_decision():
     return doc.get("final_decision", {"message": "Final decision not stored yet"})
 
 
-from datetime import datetime, timezone
+
 
 @app.post("/alert/dispatch")
 def dispatch_alert(payload: dict):
@@ -347,19 +373,6 @@ def get_live_risk_points(limit: int = 50):
 
     return points
 
-
-from fastapi.middleware.cors import CORSMiddleware
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # OK for development
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-from app.database import safe_zones_collection
-
 @app.get("/map/safe-zones")
 def get_safe_zones():
     zones = list(
@@ -367,7 +380,7 @@ def get_safe_zones():
     )
     return zones
 
-from app.database import historical_events_collection
+
 
 @app.get("/map/historical-events")
 def get_historical_events():
@@ -375,3 +388,4 @@ def get_historical_events():
         historical_events_collection.find({}, {"_id": 0})
     )
     return events
+

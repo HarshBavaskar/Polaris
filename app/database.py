@@ -15,3 +15,13 @@ alerts_collection = db["alerts"]
 safe_zones_collection = db["safe_zones"]
 historical_events_collection = db["historical_events"]
 overrides_collection = db["overrides"]
+safezones_collection = db["safe_zones"]
+
+def ensure_safezone_indexes():
+    safezones_collection.create_index(
+        "expires_at",
+        expireAfterSeconds=0
+    )
+    safezones_collection.create_index(
+        [("active", 1), ("confidence_level", 1)]
+    )
