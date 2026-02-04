@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris.PNG" height="250"/>
 
-| **Current Version** | `v0.5: Pre-Release` |
+| **Current Version** | `v0.6: Major Dashboard Update Release` |
 | --- | --- |
 
 </div>
@@ -29,32 +29,54 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
+## What’s New in v0.6 (Major Update)
 
-## What’s New in v0.5 (Major Update)
+### Command-Center Dashboard (Production-Grade)
+- Fully operational, production-grade dashboard UI
+- Designed for authority and command-center usage
+- Clean navigation, consistent visual semantics
+- Global auto-refresh mechanism (no manual reloads)
+- Live system state reflected without user interaction
 
-### 🔄 Automated Decision-to-Alert Flow
-- Final decisions are automatically propagated without manual triggers
-- End-to-end pipeline runs continuously once services are started
-- Removes dependency on manual API calls for alert activation
+### Advanced Geospatial Intelligence
+- Live cloudburst risk heatmap
+- Automatic map refocus on highest-risk zones
+- Historical cloudburst incident overlays
+- Safe zone visualization with confidence levels
+- Operator-controlled map layers (risk, history, safe zones)
 
-### 📦 Valkey Event Bus Integration
-- Valkey introduced as an event-driven messaging layer
-- AI decisions published to a dedicated channel
-- Notification router subscribes and reacts in real time
-- Clean decoupling between detection logic and alert delivery
+### Safe Zone Intelligence (Foundation)
+- Backend pipeline for automated safe zone detection
+- Risk filtering, temporal stability checks, clustering
+- Confidence-based safe zone ranking
+- Persistent safe zones with decay handling
+- Authority-safe architecture (manual zones can override AI)
 
-### 🚀 System Orchestration
-- Shell-based startup script to launch:
-  - Valkey service
-  - FastAPI backend
-  - Notification router
-- Simplifies local runs and pre-deployment testing
-- Reduces multi-terminal operational overhead
+### Unified Final Decision Authority
+- All AI outputs fused into a single authoritative decision
+- Eliminates fragmented or conflicting outputs
+- Final decision includes:
+  - Risk level
+  - ETA + ETA confidence
+  - Alert severity
+  - Decision mode (AUTOMATED / MANUAL_OVERRIDE)
+- Used consistently by dashboard, map, and alerting systems
 
-### 📲 SMS Notification Preparation
-- Alert delivery interface structured for SMS integration
-- Delivery status tracking (`queued`, `sent`, `failed`)
-- Gateway integration planned as next deployment step
+### Trends & Analytics
+- Risk score trend visualization
+- Confidence trend visualization
+- Designed for analysts and post-event review
+- Stable axes and clean interpretation (no noise)
+
+### Global Auto-Refresh Architecture
+- Single global reload heartbeat
+- No per-screen polling logic
+- Ensures live data consistency across:
+  - Dashboard
+  - Alerts
+  - Authority views
+  - Trends
+- Production-safe and memory-leak free
 
 ---
 
@@ -62,34 +84,35 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ```
 Camera / Images
-      ↓
+↓
 Image Feature Extraction
 (Brightness • Entropy • Edges)
-      ↓
+↓
 Rule-Based Risk Logic
-      ↓
+↓
 Time-Series Spike Detection
-      ↓
+↓
 CNN (Spatial AI)
-      ↓
+↓
 LSTM (Temporal AI)
-      ↓
+↓
 Citizen Input Fusion
-      ↓
+↓
 Safe Decision Fusion
 (Never Downgrade)
-      ↓
+↓
 Final Decision Authority
 (AI OR Manual Override)
-      ↓
+↓
 Decision Publication (Valkey)
-      ↓
+↓
 Automated Alert Routing
-      ↓
+↓
 MongoDB + Dashboard & Map APIs
 ```
 
 ---
+
 ## Key Capabilities
 
 ### Vision-Based Detection
@@ -108,16 +131,16 @@ MongoDB + Dashboard & Map APIs
 - Human inputs influence risk but do not bypass safety logic
 
 ### Dashboard & Visualization
-- Production-grade React dashboard
-- Live auto-updating system state (polling-based)
+- Production-grade command-center dashboard
+- Global auto-refresh (no manual reload)
 - Manual override dominance clearly indicated
 - Interactive map with:
   - Live risk heatmap
   - Historical cloudburst incidents
-  - Safe zones layer
-- Designed for command-center usage
+  - Safe zones with confidence
+- Designed for authority decision-making
 
-### Authority Control (v0.4)
+### Authority Control (v0.4+)
 - Manual authority override with global precedence
 - Override applies instantly system-wide
 - Fully auditable (author, reason, timestamp)
@@ -131,7 +154,6 @@ Every prediction includes:
 - Temporal probability (LSTM)
 - ETA, ETA confidence
 - Decision mode (AUTOMATED / MANUAL_OVERRIDE)
-
 
 ---
 
@@ -170,6 +192,7 @@ Collections:
 - `citizen_reports` – public inputs  
 - `feedback` – authority verification  
 - `overrides` – manual authority decisions  
+- `safe_zones` – automated & manual safe zones  
 
 ---
 
@@ -180,6 +203,7 @@ Collections:
 - `/dashboard/confidence-timeseries`
 - `/dashboard/current-status`
 - `/alerts/latest`
+- `/alerts/history`
 - `/map/live-risk`
 - `/map/safe-zones`
 - `/map/historical-events`
@@ -198,7 +222,6 @@ Compatible with:
 - Postman
 
 ---
-
 
 ## Notification & Alert Routing
 
@@ -220,7 +243,6 @@ Compatible with:
 - Helpful during development and debugging
 - Not required for normal automated system operation
 
-
 ---
 
 ## Project Structure
@@ -230,31 +252,68 @@ Polaris/
 ├── app/
 │   ├── main.py
 │   ├── database.py
+│   ├── lifespan.py
 │   ├── routes/
 │   │   ├── override.py
 │   │   ├── dashboard.py
+│   │   ├── map.py
+│   │   ├── alerts.py
+│   │   ├── decision.py
 │   │   └── feedback.py
 │   ├── utils/
 │   │   ├── final_decision.py
 │   │   ├── alert_severity.py
-│   │   └── eta_logic.py
+│   │   ├── eta_logic.py
+│   │   ├── eta_confidence.py
+│   │   ├── safezone_detector.py
+│   │   ├── escalation_rules.py
+│   │   └── confidence_logic.py
 │   ├── ai/
 │   │   ├── infer.py
-│   │   └── temporal_infer.py
-│   └── notifications/
-│       ├── thresholds.py
-│       ├── alert_engine.py
-│       ├── router_client.py
-│       ├── valkey_pub.py
-│       ├── valkey_router.py
-│       └── run_all.sh
+│   │   ├── temporal_infer.py
+│   │   ├── train_cnn.py
+│   │   └── train_lstm.py
+│   ├── notifications/
+│   │   ├── thresholds.py
+│   │   ├── alert_engine.py
+│   │   ├── router_client.py
+│   │   ├── valkey_pub.py
+│   │   ├── valkey_router.py
+│   │   ├── deliver.py
+│   │   └── run_all.sh
+│   └── models/
+│       ├── prediction.py
+│       ├── override.py
+│       └── safezone.py
 ├── polaris-dashboard/
+│   ├── lib/
+│   │   ├── core/
+│   │   │   ├── api_service.dart
+│   │   │   ├── global_reload.dart
+│   │   │   └── models/
+│   │   ├── layout/
+│   │   │   ├── app_shell.dart
+│   │   │   ├── side_nav.dart
+│   │   │   └── top_bar.dart
+│   │   ├── screens/
+│   │   │   ├── overview_screen.dart
+│   │   │   ├── map_screen.dart
+│   │   │   ├── alerts_screen.dart
+│   │   │   ├── trends_screen.dart
+│   │   │   └── authority_screen.dart
+│   │   └── main.dart
+│   ├── assets/
+│   │   └── polaris_logo.png
+│   └── pubspec.yaml
 ├── polaris_dataset/
 ├── camera_client.py
+├── CHANGELOG.md
 └── README.md
+
 ```
 
 ---
+
 ## Technology Stack
 
 | Layer | Technology |
@@ -265,8 +324,8 @@ Polaris/
 | Temporal Learning | LSTM |
 | Database | MongoDB |
 | Messaging | Valkey (Pub/Sub) |
-| Frontend | React + Vite + Tailwind |
-| Mapping | Leaflet |
+| Frontend | Flutter (Web) |
+| Mapping | OpenStreetMap |
 | Deployment | Cloud-ready |
 
 ---
@@ -279,11 +338,12 @@ Polaris/
 
 ##
 
-- **Detection & AI System** – *Harsh Bavaskar*  
-  (CNN, LSTM, rule-based logic, data collection, detection pipeline)
+- **Detection, AI & Dashboard System** – *Harsh Bavaskar*  
+  (CNN, LSTM, decision fusion, safe zones, dashboard, geospatial intelligence)
 
 - **Warning & Notification System** – *Anisa D'souza*  
-  (API routing, alert logic, Postman integration, Valkey integration)
+  (Valkey routing, alert logic, notification pipeline, SMS integration)
+
 ---
 
 ## Project Status
@@ -293,7 +353,8 @@ Polaris/
 - ✅ Citizen & authority feedback loop
 - ✅ Final decision authority implemented
 - ✅ Manual override system live
-- ✅ Live dashboard & geospatial map operational
+- ✅ Live dashboard & geospatial intelligence operational
+- ✅ Trends & analytics available
 - ✅ Automated alert routing (Valkey)
 - 🔄 SMS delivery integration in progress
 - 🔄 Continuous data collection & learning
@@ -302,7 +363,7 @@ Polaris/
 
 ## Future Roadmap
 
-- Automatic safe-zone detection
+- Automated safe-zone verification & confidence decay
 - Hyperlocal sensor fusion
 - Multi-camera zone mapping
 - Mobile apps for citizens & field authorities
@@ -327,4 +388,5 @@ It is intended to **assist disaster response** with faster, hyperlocal insights.
 ---
 
 > *Polaris aims to detect danger early — when response still matters.*
+
 
