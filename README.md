@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris.PNG" height="250"/>
 
-| **Current Version** | `v0.6: Major Dashboard Update Release` |
+| **Current Version** | `v0.7: Authority Platform & UX Overhaul Update Release` |
 | --- | --- |
 
 </div>
@@ -29,55 +29,61 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in v0.6 (Major Update)
+## What’s New in v0.7 (Major Authority Platform Release)
 
-### Command-Center Dashboard (Production-Grade)
-- Fully operational, production-grade dashboard UI
-- Designed for authority and command-center usage
-- Clean navigation, consistent visual semantics
-- Global auto-refresh mechanism (no manual reloads)
-- Live system state reflected without user interaction
+### Production-Grade Authority Dashboard
+- Migrated to a **Flutter-based command center UI**
+- Stable multi-page layout:
+  - Overview
+  - Live Risk Map
+  - Alerts
+  - Trends
+  - Authority Controls
+- Custom **Polaris branding** with system-wide auto refresh
+- Fully responsive with overflow-safe layouts
+
+### Live Situational Awareness
+- **Live camera feed** embedded directly in the Overview page
+- Real-time refresh without manual reload
+- Immediate visual context for decision-makers
+
+### Decision Analytics & Trends
+- Fully functional **Trends page** (no placeholders)
+- Live charts for:
+  - Risk score evolution
+  - Confidence trends
+  - Alert severity distribution
+- Backend-driven data with automatic polling
+
+### Real-Time Alerts & Push Notifications
+- Alerts now update reliably across dashboard views
+- **Side push notifications** for incoming alerts
+- Alert history synchronized with backend state
+- Cooldown logic prevents alert spam
+
+### Authority Controls (Hardened)
+- Stable manual override controls:
+  - Risk level
+  - Alert severity
+- **Clear override** option added
+- Override history view with full audit trail
+- Instant system-wide override propagation
+- Clear distinction between:
+  - `AUTOMATED`
+  - `MANUAL_OVERRIDE`
 
 ### Advanced Geospatial Intelligence
 - Live cloudburst risk heatmap
-- Automatic map refocus on highest-risk zones
-- Historical cloudburst incident overlays
-- Safe zone visualization with confidence levels
-- Operator-controlled map layers (risk, history, safe zones)
+- Historical incident overlays
+- Manual safe-zone creation & visualization
+- Auto-focus and pulse highlighting of highest-risk regions
+- Backend groundwork laid for automatic safe-zone detection
 
-### Safe Zone Intelligence (Foundation)
-- Backend pipeline for automated safe zone detection
-- Risk filtering, temporal stability checks, clustering
-- Confidence-based safe zone ranking
-- Persistent safe zones with decay handling
-- Authority-safe architecture (manual zones can override AI)
-
-### Unified Final Decision Authority
-- All AI outputs fused into a single authoritative decision
-- Eliminates fragmented or conflicting outputs
-- Final decision includes:
-  - Risk level
-  - ETA + ETA confidence
-  - Alert severity
-  - Decision mode (AUTOMATED / MANUAL_OVERRIDE)
-- Used consistently by dashboard, map, and alerting systems
-
-### Trends & Analytics
-- Risk score trend visualization
-- Confidence trend visualization
-- Designed for analysts and post-event review
-- Stable axes and clean interpretation (no noise)
-
-### Global Auto-Refresh Architecture
-- Single global reload heartbeat
-- No per-screen polling logic
-- Ensures live data consistency across:
-  - Dashboard
-  - Alerts
-  - Authority views
-  - Trends
-- Production-safe and memory-leak free
-
+### Backend Stability & Integration
+- Fixed inconsistent API responses and empty payloads
+- Unified decision → alert → UI propagation
+- Full compatibility with Swagger UI (no Postman dependency)
+- Strengthened contracts between backend, alerts, and UI
 ---
 
 ## System Architecture
