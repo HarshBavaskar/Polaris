@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:polaris_dashboard/core/global_reload.dart';
 import 'package:provider/provider.dart';
-
+import '../core/global_reload.dart';
 import '../core/api_service.dart';
 import '../core/models/alert_event.dart';
 import '../core/theme_utils.dart';
@@ -36,16 +35,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<void> loadAlerts() async {
-    try {
-      final data = await ApiService.fetchAlertHistory();
-      setState(() {
-        alerts = data.reversed.toList(); // latest on top
-        loading = false;
-      });
-    } catch (_) {
-      setState(() => loading = false);
-    }
+  try {
+    final data = await ApiService.fetchAlertHistory();
+
+    data.sort(
+      (a, b) => b.timestamp.compareTo(a.timestamp),
+    ); // newest first
+
+    setState(() {
+      alerts = data;
+      loading = false;
+    });
+  } catch (_) {
+    setState(() => loading = false);
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -26,6 +26,7 @@ from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
 from app.routes.override import router as override_router
 from app.database import overrides_collection
+from app.routes.camera import router as camera_router
 
 
 
@@ -81,6 +82,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(alerts_router)
+app.include_router(camera_router)
 
 
 
@@ -300,7 +302,7 @@ def get_latest_decision():
             "final_eta": "UNKNOWN",
             "final_eta_confidence": "HIGH",
             "final_alert_severity": override["alert_severity"],
-            "decision_state": "MANUAL_OVERRIDE",
+            "decision_mode": "MANUAL_OVERRIDE",
             "justification": f"Manual override by {override['author']}: {override['reason']}",
         }
 
