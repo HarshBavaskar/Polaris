@@ -2,45 +2,73 @@ from fastapi import APIRouter
 from datetime import datetime, timezone
 from app.database import overrides_collection
 
-router = APIRouter(prefix="/override", tags=["Override"])
+router = APIRouter(prefix="/override", tags=["Authority Override"])
+
 
 @router.post("/set")
 def set_override(payload: dict):
+    """
+    Expected payload:
+    {
+      "risk_level": "WARNING",
+      "alert_severity": "ALERT",
+      "decision_mode": "MANUAL_OVERRIDE",
+      "reason": "...",
+      "author": "Authority"
+    }
+    """
+
+    # Deactivate any existing override
     overrides_collection.update_many(
         {"active": True},
         {"$set": {"active": False}}
     )
 
     doc = {
+        "risk_level": payload.get("risk_level"),
+        "alert_severity": payload.get("alert_severity"),
+        "decision_mode": "MANUAL_OVERRIDE",
+        "reason": payload.get("reason"),
+        "author": payload.get("author", "Authority"),
         "active": True,
-        "risk_level": payload["risk_level"],
-        "alert_severity": payload["alert_severity"],
-        "reason": payload.get("reason", ""),
-        "author": payload.get("author", "Unknown"),
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(timezone.utc)
     }
 
     overrides_collection.insert_one(doc)
+
     return {"status": "override_set"}
+
 
 @router.post("/clear")
 def clear_override():
     overrides_collection.update_many(
         {"active": True},
-        {"$set": {"active": False}}
+        {
+            "$set": {
+                "active": False,
+                "cleared_at": datetime.now(timezone.utc)
+            }
+        }
     )
+
     return {"status": "override_cleared"}
+
+
+@router.get("/history")
+def get_override_history():
+    history = list(
+        overrides_collection.find(
+            {},
+            {"_id": 0}
+        ).sort("timestamp", -1)
+    )
+    return history
 
 
 @router.get("/active")
 def get_active_override():
-    doc = overrides_collection.find_one(
+    override = overrides_collection.find_one(
         {"active": True},
-        sort=[("timestamp", -1)]
+        {"_id": 0}
     )
-
-    if not doc:
-        return {"active": False}
-
-    doc["_id"] = str(doc["_id"])
-    return doc
+    return override

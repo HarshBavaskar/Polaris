@@ -20,8 +20,14 @@ def build_final_decision(
             "final_eta": override.get("eta", "UNKNOWN"),
             "final_eta_confidence": "HIGH",
             "final_alert_severity": override["alert_severity"],
-            "decision_state": "MANUAL_OVERRIDE",
-            "justification": f"Manual override by {override['author']}: {override['reason']}",
+
+            # 🔑 THIS IS THE CRITICAL FIX
+            "decision_mode": "MANUAL_OVERRIDE",
+
+            "justification": (
+                f"Manual override by {override.get('author', 'Authority')}: "
+                f"{override.get('reason', '')}"
+            ),
         }
 
     return {
@@ -30,6 +36,9 @@ def build_final_decision(
         "final_eta": eta,
         "final_eta_confidence": eta_confidence,
         "final_alert_severity": alert_severity,
-        "decision_state": "AUTOMATED",
+
+        # 🔑 MUST EXIST ALWAYS
+        "decision_mode": "AUTOMATED",
+
         "justification": justification,
     }

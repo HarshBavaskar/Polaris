@@ -1,8 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:polaris_dashboard/core/global_reload.dart';
-import 'package:provider/provider.dart';
-import '../core/api_service.dart';
-import '../core/models/override_state.dart';
+import 'package:http/http.dart' as http;
 
 class AuthorityScreen extends StatefulWidget {
   const AuthorityScreen({super.key});
@@ -12,158 +10,233 @@ class AuthorityScreen extends StatefulWidget {
 }
 
 class _AuthorityScreenState extends State<AuthorityScreen> {
-  OverrideState? active;
-  List<OverrideState> history = [];
   bool loading = true;
+  bool submitting = false;
 
-  String risk = "WATCH";
-  String severity = "ADVISORY";
-  final reasonCtrl = TextEditingController();
-  final authorCtrl = TextEditingController(text: "Authority");
+  Map<String, dynamic>? latestDecision;
+  List<dynamic> overrideHistory = [];
+
+  final TextEditingController reasonController = TextEditingController();
+
+  String selectedRiskLevel = "WATCH";
+  String selectedSeverity = "ADVISORY";
+
+  final List<String> riskLevels = ["SAFE", "WATCH", "WARNING", "IMMINENT"];
+  final List<String> severities = ["INFO", "ADVISORY", "ALERT", "EMERGENCY"];
+
+  final String baseUrl = "http://localhost:8000";
 
   @override
   void initState() {
     super.initState();
-    load();
+    loadAll();
   }
 
-  Future<void> load() async {
-  try {
-    final a = await ApiService.fetchActiveOverride();
-    final h = await ApiService.fetchOverrideHistory();
+  Future<void> loadAll() async {
+    setState(() => loading = true);
+    try {
+      final decisionRes =
+          await http.get(Uri.parse("$baseUrl/decision/latest"));
+      final historyRes =
+          await http.get(Uri.parse("$baseUrl/override/history"));
 
-    setState(() {
-      active = a;
-      history = h;
-      loading = false;
-    });
-  } catch (e) {
-    setState(() {
-      loading = false;
-    });
-  }
+      setState(() {
+        latestDecision = jsonDecode(decisionRes.body);
+        overrideHistory = jsonDecode(historyRes.body);
+        loading = false;
+      });
+    } catch (_) {
+      setState(() => loading = false);
+    }
   }
 
+  bool get isOverrideActive {
+    if (latestDecision == null) return false;
+    return latestDecision!["decision_mode"] == "MANUAL_OVERRIDE";
+  }
 
   Future<void> submitOverride() async {
-    if (reasonCtrl.text.trim().isEmpty) return;
+    if (reasonController.text.trim().isEmpty) return;
 
-    await ApiService.setOverride(
-      riskLevel: risk,
-      alertSeverity: severity,
-      reason: reasonCtrl.text,
-      author: authorCtrl.text,
+    setState(() => submitting = true);
+
+    await http.post(
+      Uri.parse("$baseUrl/override/set"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "risk_level": selectedRiskLevel,
+        "alert_severity": selectedSeverity,
+        "decision_mode": "MANUAL_OVERRIDE",
+        "reason": reasonController.text.trim(),
+        "author": "Authority",
+      }),
     );
 
-    reasonCtrl.clear();
-    await load();
+    reasonController.clear();
+    await loadAll();
+    setState(() => submitting = false);
+  }
+
+  Future<void> clearOverride() async {
+    setState(() => submitting = true);
+    await http.post(Uri.parse("$baseUrl/override/clear"));
+    await loadAll();
+    setState(() => submitting = false);
   }
 
   @override
   Widget build(BuildContext context) {
-    context.watch<GlobalReload>();
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const Text(
+            "Authority Control Panel",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
 
-          // ACTIVE OVERRIDE STATUS
+          if (isOverrideActive)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.red.shade100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red),
+              ),
+              child: const Text(
+                "MANUAL OVERRIDE ACTIVE — AI DECISIONS ARE SUSPENDED",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
+            ),
+
           Card(
-            color: active != null ? Colors.red.shade50 : Colors.green.shade50,
+            child: ListTile(
+              title: const Text("Current System Decision"),
+              subtitle: Text(
+                "Risk: ${latestDecision?["final_risk_level"]}\n"
+                "Severity: ${latestDecision?["final_alert_severity"]}\n"
+                "Mode: ${latestDecision?["decision_mode"]}",
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: Text(
-                active != null
-                    ? "MANUAL OVERRIDE ACTIVE — ${active!.riskLevel}"
-                    : "No manual override active",
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Manual Override Controls",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<String>(
+                    value: selectedRiskLevel,
+                    items: riskLevels
+                        .map((r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(r),
+                            ))
+                        .toList(),
+                    onChanged:
+                        isOverrideActive ? null : (v) => setState(() => selectedRiskLevel = v!),
+                    decoration: const InputDecoration(
+                      labelText: "Risk Level",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  DropdownButtonFormField<String>(
+                    value: selectedSeverity,
+                    items: severities
+                        .map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s),
+                            ))
+                        .toList(),
+                    onChanged:
+                        isOverrideActive ? null : (v) => setState(() => selectedSeverity = v!),
+                    decoration: const InputDecoration(
+                      labelText: "Alert Severity",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  TextField(
+                    controller: reasonController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: "Override Reason",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  ElevatedButton(
+                    onPressed:
+                        submitting || isOverrideActive ? null : submitOverride,
+                    child: const Text("Activate Manual Override"),
+                  ),
+                ],
               ),
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
-          // SET OVERRIDE
-          const Text(
-            "Set Manual Override",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              DropdownButton<String>(
-                value: risk,
-                items: const [
-                  DropdownMenuItem(value: "SAFE", child: Text("SAFE")),
-                  DropdownMenuItem(value: "WATCH", child: Text("WATCH")),
-                  DropdownMenuItem(value: "WARNING", child: Text("WARNING")),
-                  DropdownMenuItem(value: "IMMINENT", child: Text("IMMINENT")),
-                ],
-                onChanged: (v) => setState(() => risk = v!),
-              ),
-              const SizedBox(width: 16),
-              DropdownButton<String>(
-                value: severity,
-                items: const [
-                  DropdownMenuItem(value: "INFO", child: Text("INFO")),
-                  DropdownMenuItem(value: "ADVISORY", child: Text("ADVISORY")),
-                  DropdownMenuItem(value: "ALERT", child: Text("ALERT")),
-                  DropdownMenuItem(value: "EMERGENCY", child: Text("EMERGENCY")),
-                ],
-                onChanged: (v) => setState(() => severity = v!),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 12),
-
-          TextField(
-            controller: reasonCtrl,
-            decoration: const InputDecoration(
-              labelText: "Reason (required)",
-              border: OutlineInputBorder(),
+          if (isOverrideActive)
+            ElevatedButton.icon(
+              onPressed: submitting ? null : clearOverride,
+              icon: const Icon(Icons.cancel),
+              label: const Text("Clear Manual Override"),
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             ),
-          ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 32),
 
-          ElevatedButton(
-            onPressed: submitOverride,
-            child: const Text("Apply Manual Override"),
-          ),
-
-          const Divider(height: 40),
-
-          // HISTORY
           const Text(
             "Override History",
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-
           const SizedBox(height: 12),
 
-          Expanded(
-            child: history.isEmpty
-              ? const Center(child: Text("No override history available."))
-              : ListView.builder(
-              itemCount: history.length,
-              itemBuilder: (_, i) {
-              final h = history[i];
-              return ListTile(
-                title: Text("${h.riskLevel} · ${h.alertSeverity}"),
-                subtitle: Text(
-                "${h.reason}\n${h.author} · ${h.timestamp.toLocal()}",
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: overrideHistory.length,
+            itemBuilder: (context, index) {
+              final h = overrideHistory[index];
+              return Card(
+                child: ListTile(
+                  leading: const Icon(Icons.history),
+                  title: Text(h["reason"] ?? ""),
+                  subtitle: Text(
+                    "By ${h["author"] ?? "Unknown"}\n${h["timestamp"] ?? ""}",
+                  ),
                 ),
               );
             },
-          ),
           ),
         ],
       ),

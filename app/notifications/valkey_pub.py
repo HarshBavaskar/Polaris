@@ -5,7 +5,7 @@ from valkey import Valkey
 CHANNEL = os.getenv("POLARIS_VALKEY_CHANNEL", "polaris:decisions")
 
 def get_client() -> Valkey:
-    host = os.getenv("VALKEY_HOST", "localhost")
+    host = os.getenv("VALKEY_HOST", "127.0.0.1")
     port = int(os.getenv("VALKEY_PORT", "6379"))
     return Valkey(host=host, port=port, decode_responses=True)
 

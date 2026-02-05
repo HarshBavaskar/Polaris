@@ -64,10 +64,10 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
     } catch (_) {}
   }
 
-  Color riskColor(double score) {
-    if (score >= 0.8) return Colors.red;
-    if (score >= 0.6) return Colors.orange;
-    if (score >= 0.4) return Colors.yellow;
+  Color riskColor(double riskScore) {
+    if (riskScore >= 0.8) return Colors.red;
+    if (riskScore >= 0.6) return Colors.orange;
+    if (riskScore >= 0.4) return Colors.yellow;
     return Colors.green;
   }
 
