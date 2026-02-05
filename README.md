@@ -262,6 +262,7 @@ Polaris/
 │   ├── routes/
 │   │   ├── override.py
 │   │   ├── dashboard.py
+|   |   ├── camera.py
 │   │   ├── map.py
 │   │   ├── alerts.py
 │   │   ├── decision.py
