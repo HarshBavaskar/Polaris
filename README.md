@@ -29,7 +29,7 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in v0.7 (Major Authority Platform Release)
+## What’s New in v0.7 (Major Authority Platform Release `PHASE 1`)
 
 ### Production-Grade Authority Dashboard
 - Migrated to a **Flutter-based command center UI**
