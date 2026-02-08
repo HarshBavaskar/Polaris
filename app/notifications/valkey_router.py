@@ -1,13 +1,15 @@
 import json
 import os
 from valkey import Valkey
+from dotenv import load_dotenv
 
 from app.notifications.alert_engine import build_alert_payload
-from app.notifications.router_client import http_post_json  # reuse existing POST helper
+from app.notifications.router_client import http_post_json  # re-use your existing POST helper
 
+load_dotenv()
 
 def main():
-    # Backend base URL (ngrok or local)
+    # Where your backend lives (ngrok or local)
     base_url = os.getenv("POLARIS_BASE_URL", "").rstrip("/")
     if not base_url:
         print("Set POLARIS_BASE_URL first (local or ngrok).")
@@ -56,7 +58,6 @@ def main():
             last_signature = signature
         except Exception as e:
             print("Dispatch failed:", e)
-
 
 if __name__ == "__main__":
     main()
