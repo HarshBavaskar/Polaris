@@ -131,7 +131,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
                             : Image.network(
                                 _frameUrl,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Center(
+                                errorBuilder: (_,_, _) => const Center(
                                   child: Text(
                                     "Camera feed unavailable",
                                     style: TextStyle(color: Colors.red),

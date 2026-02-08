@@ -97,7 +97,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                     (p) => CircleMarker(
                       point: LatLng(p.lat, p.lng),
                       radius: 10,
-                      color: riskColor(p.riskScore).withOpacity(0.7),
+                      color: riskColor(p.riskScore).withValues(alpha: 0.5),
                       borderStrokeWidth: 1,
                       borderColor: Colors.black54,
                     ),
@@ -114,7 +114,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                       (z) => CircleMarker(
                         point: LatLng(z.lat, z.lng),
                         radius: 14,
-                        color: Colors.green.withOpacity(0.25),
+                        color: Colors.green.withValues(alpha: 0.25),
                         borderStrokeWidth: 2,
                         borderColor: Colors.green,
                       ),
