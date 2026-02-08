@@ -2,6 +2,9 @@ from fastapi import FastAPI, UploadFile, File
 import os
 import shutil
 from datetime import datetime, timezone
+from dotenv import load_dotenv
+from fastapi import Depends
+from app.auth.jwt_handler import verify_jwt, create_access_token
 
 
 
@@ -29,7 +32,7 @@ from app.notifications.deliver import deliver
 
 
 
-
+load_dotenv()
 
 app = FastAPI(title="Polaris Detection Server")
 app.include_router(citizen_router)
@@ -265,26 +268,19 @@ def dispatch_alert(payload: dict):
         "status": "queued"
     }
 
-    # 1. Store alert first (always)
+    # store first
     result = alerts_collection.insert_one(alert_doc)
 
-    # 2. Try delivering alert (SMS / simulated / future push)
+    # deliver (OneSignal push happens here)
     delivery_result = deliver(payload)
 
-    # 3. Update delivery status
+    # update status
     new_status = "sent" if delivery_result.get("ok") else "failed"
-
     alerts_collection.update_one(
         {"_id": result.inserted_id},
-        {
-            "$set": {
-                "status": new_status,
-                "delivery": delivery_result
-            }
-        }
+        {"$set": {"status": new_status, "delivery": delivery_result}}
     )
 
-    # 4. Return response
     return {
         "status": new_status,
         "channel": payload.get("channel"),
@@ -375,3 +371,12 @@ def get_historical_events():
         historical_events_collection.find({}, {"_id": 0})
     )
     return events
+
+@app.post("/auth/token")
+def issue_token():
+    """
+    Temporary token issuer.
+    Later this will be replaced by real user auth.
+    """
+    token = create_access_token({"role": "authority"})
+    return {"access_token": token, "token_type": "bearer"}
