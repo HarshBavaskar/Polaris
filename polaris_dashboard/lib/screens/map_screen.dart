@@ -32,7 +32,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
     super.initState();
     loadAll();
     refreshTimer =
-        Timer.periodic(const Duration(seconds: 10), (_) => loadAll());
+        Timer.periodic(const Duration(seconds: 3), (_) => loadAll());
   }
 
   @override
@@ -65,10 +65,11 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   }
 
   Color riskColor(double riskScore) {
-    if (riskScore >= 0.8) return Colors.red;
-    if (riskScore >= 0.6) return Colors.orange;
-    if (riskScore >= 0.4) return Colors.yellow;
-    return Colors.green;
+    // Keep thresholds aligned with backend risk_level() in app/utils/risk_logic.py
+    if (riskScore >= 0.8) return const Color.fromARGB(255, 255, 17, 0); // IMMINENT
+    if (riskScore >= 0.65) return const Color.fromARGB(255, 255, 153, 0); // WARNING
+    if (riskScore >= 0.4) return const Color.fromARGB(255, 255, 230, 0); // WATCH
+    return const Color.fromARGB(255, 0, 255, 0); // SAFE
   }
 
   @override
@@ -92,17 +93,20 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
 
             // Risk points
             CircleLayer(
-              circles: riskPoints
-                  .map(
-                    (p) => CircleMarker(
-                      point: LatLng(p.lat, p.lng),
-                      radius: 10,
-                      color: riskColor(p.riskScore).withValues(alpha: 0.5),
-                      borderStrokeWidth: 1,
-                      borderColor: Colors.black54,
-                    ),
-                  )
-                  .toList(),
+              circles: riskPoints.isEmpty
+                  ? <CircleMarker<Object>>[]
+                  : [
+                      () {
+                        final p = riskPoints.first; // latest only
+                        return CircleMarker(
+                          point: LatLng(p.lat, p.lng),
+                          radius: 10,
+                          color: riskColor(p.riskScore).withValues(alpha: 0.7),
+                          borderStrokeWidth: 1,
+                          borderColor: Colors.black54,
+                        );
+                      }(),
+                    ],
             ),
 
             // Safe zones
