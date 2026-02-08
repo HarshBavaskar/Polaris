@@ -147,7 +147,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: selectedRiskLevel,
+                    initialValue: selectedRiskLevel,
                     items: riskLevels
                         .map((r) => DropdownMenuItem(
                               value: r,
@@ -165,7 +165,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                    value: selectedSeverity,
+                    initialValue: selectedSeverity,
                     items: severities
                         .map((s) => DropdownMenuItem(
                               value: s,
