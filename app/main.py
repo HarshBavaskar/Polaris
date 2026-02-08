@@ -421,8 +421,6 @@ def get_historical_events():
     )
     return events
 
-<<<<<<< HEAD
-=======
 @app.post("/auth/token")
 def issue_token():
     """
@@ -431,4 +429,3 @@ def issue_token():
     """
     token = create_access_token({"role": "authority"})
     return {"access_token": token, "token_type": "bearer"}
->>>>>>> notification-system
