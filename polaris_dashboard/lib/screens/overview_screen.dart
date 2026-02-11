@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -14,11 +15,11 @@ class _OverviewScreenState extends State<OverviewScreen> {
   Timer? _cameraTimer;
   Timer? _decisionTimer;
 
-  String _frameUrl = "";
+  String _frameUrl = '';
   Map<String, dynamic>? decision;
 
-  final String baseUrl = "http://localhost:8000";
-  final String cameraEndpoint = "http://localhost:8000/camera/latest-frame";
+  final String baseUrl = 'http://localhost:8000';
+  final String cameraEndpoint = 'http://localhost:8000/camera/latest-frame';
 
   @override
   void initState() {
@@ -26,11 +27,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
     _refreshFrame();
     _fetchDecision();
 
-    _cameraTimer =
-        Timer.periodic(const Duration(seconds: 2), (_) => _refreshFrame());
-
-    _decisionTimer =
-        Timer.periodic(const Duration(seconds: 1), (_) => _fetchDecision());
+    _cameraTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshFrame());
+    _decisionTimer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchDecision());
   }
 
   @override
@@ -42,149 +40,175 @@ class _OverviewScreenState extends State<OverviewScreen> {
 
   void _refreshFrame() {
     setState(() {
-      _frameUrl =
-          "$cameraEndpoint?ts=${DateTime.now().millisecondsSinceEpoch}";
+      _frameUrl = '$cameraEndpoint?ts=${DateTime.now().millisecondsSinceEpoch}';
     });
   }
 
   Future<void> _fetchDecision() async {
     try {
-      final res =
-          await http.get(Uri.parse("$baseUrl/decision/latest"));
-
+      final res = await http.get(Uri.parse('$baseUrl/decision/latest'));
       if (res.statusCode != 200) return;
 
       final data = jsonDecode(res.body);
       if (data.isEmpty) return;
 
-      setState(() {
-        decision = data;
-      });
+      setState(() => decision = data);
     } catch (_) {}
   }
 
   Color _riskColor(String? risk) {
     switch (risk) {
-      case "IMMINENT":
-        return Colors.red;
-      case "WARNING":
-        return Colors.orange;
-      case "WATCH":
-        return Colors.yellow.shade700;
+      case 'IMMINENT':
+        return const Color(0xFFC53030);
+      case 'WARNING':
+        return const Color(0xFFDD6B20);
+      case 'WATCH':
+        return const Color(0xFFD69E2E);
       default:
-        return Colors.green;
-    }
-  }
-
-  Color _severityColor(String? severity) {
-    switch (severity) {
-      case "EMERGENCY":
-        return Colors.red;
-      case "ALERT":
-        return Colors.orange;
-      case "ADVISORY":
-        return Colors.yellow.shade700;
-      default:
-        return Colors.blue;
+        return const Color(0xFF2F855A);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+    final colorScheme = Theme.of(context).colorScheme;
+    final isCompact = MediaQuery.sizeOf(context).width < 1080;
+
+    final stats = <_MetricData>[
+      _MetricData(
+        title: 'Current Risk',
+        value: decision?['final_risk_level']?.toString() ?? '--',
+        color: _riskColor(decision?['final_risk_level']?.toString()),
+        icon: Icons.warning_amber_rounded,
+      ),
+      _MetricData(
+        title: 'Alert Severity',
+        value: decision?['final_alert_severity']?.toString() ?? '--',
+        color: _riskColor(decision?['final_alert_severity']?.toString()),
+        icon: Icons.notification_important_rounded,
+      ),
+      _MetricData(
+        title: 'Decision Mode',
+        value: decision?['decision_mode']?.toString() ?? '--',
+        color: decision?['decision_mode'] == 'MANUAL_OVERRIDE'
+            ? const Color(0xFFC53030)
+            : colorScheme.primary,
+        icon: Icons.settings_suggest_rounded,
+      ),
+      _MetricData(
+        title: 'ETA',
+        value: decision?['final_eta']?.toString() ?? '--',
+        color: colorScheme.secondary,
+        icon: Icons.schedule_rounded,
+      ),
+    ];
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        _refreshFrame();
+        await _fetchDecision();
+      },
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Authority Overview',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+              ),
+              FilledButton.icon(
+                onPressed: () {
+                  _refreshFrame();
+                  _fetchDecision();
+                },
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Refresh'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (isCompact) ...[
+            _cameraCard(context),
+            const SizedBox(height: 16),
+            ...stats.map((s) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _MetricCard(data: s),
+                )),
+          ] else
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 3, child: _cameraCard(context)),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: stats
+                        .map((s) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _MetricCard(data: s),
+                            ))
+                        .toList(),
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _cameraCard(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Card(
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ================= HEADER =================
-          const Text(
-            "Authority Overview",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          // ================= CAMERA + STATUS =================
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // LIVE CAMERA
-              Expanded(
-                flex: 2,
-                child: Card(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.all(12),
-                        child: Text(
-                          "Live Camera Feed",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: _frameUrl.isEmpty
-                            ? const Center(
-                                child: CircularProgressIndicator(),
-                              )
-                            : Image.network(
-                                _frameUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_,_, _) => const Center(
-                                  child: Text(
-                                    "Camera feed unavailable",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 12),
-                    ],
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            color: colorScheme.surfaceContainerHigh,
+            child: Row(
+              children: [
+                const Icon(Icons.videocam_rounded, size: 18),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Live Camera Feed',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
-              ),
-
-              const SizedBox(width: 16),
-
-              // STATUS CARDS (LIVE DATA)
-              Expanded(
-                flex: 1,
-                child: Column(
-                  children: [
-                    _StatusCard(
-                      title: "Current Risk",
-                      value: decision?["final_risk_level"] ?? "—",
-                      color: _riskColor(
-                          decision?["final_risk_level"]),
-                    ),
-                    const SizedBox(height: 12),
-                    _StatusCard(
-                      title: "Alert Severity",
-                      value:
-                          decision?["final_alert_severity"] ?? "—",
-                      color: _severityColor(
-                          decision?["final_alert_severity"]),
-                    ),
-                    const SizedBox(height: 12),
-                    _StatusCard(
-                      title: "Decision Mode",
-                      value: decision?["decision_mode"] ?? "—",
-                      color: decision?["decision_mode"] ==
-                              "MANUAL_OVERRIDE"
-                          ? Colors.red
-                          : Colors.blue,
-                    ),
-                    const SizedBox(height: 12),
-                    _StatusCard(
-                      title: "ETA",
-                      value: decision?["final_eta"] ?? "—",
-                      color: Colors.grey,
-                    ),
-                  ],
+                Container(
+                  width: 9,
+                  height: 9,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF00C36D),
+                    shape: BoxShape.circle,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
+          ),
+          AspectRatio(
+            aspectRatio: 16 / 9,
+            child: _frameUrl.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : Image.network(
+                    _frameUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Center(
+                      child: Text(
+                        'Camera feed unavailable',
+                        style: TextStyle(color: colorScheme.error),
+                      ),
+                    ),
+                  ),
           ),
         ],
       ),
@@ -192,51 +216,68 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 }
 
-// ================= STATUS CARD =================
-
-class _StatusCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final Color color;
-
-  const _StatusCard({
+class _MetricData {
+  const _MetricData({
     required this.title,
     required this.value,
     required this.color,
+    required this.icon,
   });
+
+  final String title;
+  final String value;
+  final Color color;
+  final IconData icon;
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({required this.data});
+
+  final _MetricData data;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 10,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {},
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: data.color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(data.icon, color: data.color),
               ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style:
-                      const TextStyle(fontSize: 12, color: Colors.grey),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.title,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.value,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ],
                 ),
-                Text(
-                  value,
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         ),
       ),
     );

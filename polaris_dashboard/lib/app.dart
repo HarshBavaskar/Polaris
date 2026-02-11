@@ -12,6 +12,7 @@ class PolarisApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: PolarisTheme.light,
       darkTheme: PolarisTheme.dark,
+      themeMode: ThemeMode.light,
       home: const AppShell(),
     );
   }

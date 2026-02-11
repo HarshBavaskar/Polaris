@@ -1,43 +1,115 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
-class TopBar extends StatelessWidget {
-  const TopBar({super.key});
+class TopBar extends StatefulWidget {
+  const TopBar({
+    super.key,
+    required this.title,
+    required this.isCompact,
+    this.onMenuTap,
+  });
+
+  final String title;
+  final bool isCompact;
+  final VoidCallback? onMenuTap;
+
+  @override
+  State<TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<TopBar> {
+  late Timer _clockTimer;
+  DateTime _now = DateTime.now().toUtc();
+
+  @override
+  void initState() {
+    super.initState();
+    _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) {
+        setState(() => _now = DateTime.now().toUtc());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _clockTimer.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(8, 16, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        border: const Border(
-          bottom: BorderSide(color: Colors.black12),
-        ),
+        color: colorScheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Row(
         children: [
-          Image.asset(
-            "assets/Polaris.png",
-            height: 60,
-          ),
-          const SizedBox(width: 20),
-          const Text(
-            "Dashboard",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.4,
+          if (widget.isCompact) ...[
+            IconButton(
+              onPressed: widget.onMenuTap,
+              icon: const Icon(Icons.menu_rounded),
+              tooltip: 'Open navigation',
+            ),
+            const SizedBox(width: 6),
+          ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/Polaris.png',
+              width: 30,
+              height: 30,
+              fit: BoxFit.cover,
             ),
           ),
-          const Spacer(),
-
-          // Right-side status (optional, keep if you want)
-          Text(
-            "Last update: ${DateTime.now().toUtc().toString().substring(11, 19)} UTC",
-            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Live command surface',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
           ),
-
-          
+          if (!widget.isCompact)
+            Chip(
+              avatar: const Icon(Icons.circle, size: 10, color: Color(0xFF00C36D)),
+              label: const Text('System online'),
+              visualDensity: VisualDensity.compact,
+            ),
+          const SizedBox(width: 10),
+          Text(
+            '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}:${_now.second.toString().padLeft(2, '0')} UTC',
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(width: 6),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.tune_rounded),
+            tooltip: 'Filters',
+          ),
         ],
       ),
     );
