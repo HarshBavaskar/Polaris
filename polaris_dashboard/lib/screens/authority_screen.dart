@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../core/api_service.dart';
+import '../core/models/safe_zone.dart';
 
 class AuthorityScreen extends StatefulWidget {
   const AuthorityScreen({super.key});
@@ -16,8 +18,15 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
 
   Map<String, dynamic>? latestDecision;
   List<dynamic> overrideHistory = [];
+  List<SafeZone> manualSafeZones = [];
+  String? disablingZoneId;
 
   final TextEditingController reasonController = TextEditingController();
+  final TextEditingController safeZoneLatController = TextEditingController();
+  final TextEditingController safeZoneLngController = TextEditingController();
+  final TextEditingController safeZoneRadiusController =
+      TextEditingController(text: '300');
+  final TextEditingController safeZoneReasonController = TextEditingController();
 
   String selectedRiskLevel = 'WATCH';
   String selectedSeverity = 'ADVISORY';
@@ -36,6 +45,10 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   @override
   void dispose() {
     reasonController.dispose();
+    safeZoneLatController.dispose();
+    safeZoneLngController.dispose();
+    safeZoneRadiusController.dispose();
+    safeZoneReasonController.dispose();
     super.dispose();
   }
 
@@ -44,11 +57,16 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
     try {
       final decisionRes = await http.get(Uri.parse('$baseUrl/decision/latest'));
       final historyRes = await http.get(Uri.parse('$baseUrl/override/history'));
+      final safeZones = await ApiService.fetchSafeZones();
+      final manual = safeZones
+          .where((z) => z.active && z.source.toUpperCase() == 'MANUAL')
+          .toList();
 
       if (!mounted) return;
       setState(() {
         latestDecision = jsonDecode(decisionRes.body);
         overrideHistory = jsonDecode(historyRes.body);
+        manualSafeZones = manual;
         loading = false;
       });
     } catch (_) {
@@ -92,6 +110,72 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
     setState(() => submitting = false);
   }
 
+  Future<void> submitManualSafeZone() async {
+    final lat = double.tryParse(safeZoneLatController.text.trim());
+    final lng = double.tryParse(safeZoneLngController.text.trim());
+    final radius = int.tryParse(safeZoneRadiusController.text.trim()) ?? 300;
+    final reason = safeZoneReasonController.text.trim();
+
+    if (lat == null || lng == null || reason.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter valid latitude, longitude and reason.')),
+      );
+      return;
+    }
+
+    setState(() => submitting = true);
+
+    try {
+      await ApiService.addManualSafeZone(
+        lat: lat,
+        lng: lng,
+        radius: radius,
+        reason: reason,
+        author: 'Authority',
+      );
+
+      if (!mounted) return;
+      safeZoneLatController.clear();
+      safeZoneLngController.clear();
+      safeZoneReasonController.clear();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Manual safe zone added successfully.')),
+      );
+      await loadAll();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to add manual safe zone.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => submitting = false);
+      }
+    }
+  }
+
+  Future<void> disableManualSafeZone(String zoneId) async {
+    setState(() => disablingZoneId = zoneId);
+
+    try {
+      await ApiService.disableManualSafeZone(zoneId: zoneId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Manual safe zone $zoneId disabled.')),
+      );
+      await loadAll();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to disable safe zone $zoneId.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => disablingZoneId = null);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (loading) {
@@ -130,6 +214,8 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
           _decisionCard(context),
           const SizedBox(height: 12),
           _controlsCard(context),
+          const SizedBox(height: 12),
+          _safeZoneCard(context),
         ] else
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -139,6 +225,10 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
               Expanded(child: _controlsCard(context)),
             ],
           ),
+        if (!isCompact) ...[
+          const SizedBox(height: 12),
+          _safeZoneCard(context),
+        ],
         const SizedBox(height: 18),
         if (isOverrideActive)
           Align(
@@ -232,13 +322,144 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   }
 
   Widget _historyCard(BuildContext context, dynamic history) {
+    final rawTimestamp = history['timestamp']?.toString();
+    final parsedLocalTimestamp =
+        rawTimestamp == null ? null : DateTime.tryParse(rawTimestamp)?.toLocal();
+    final displayTimestamp = parsedLocalTimestamp == null
+        ? (rawTimestamp ?? '')
+        : '${parsedLocalTimestamp.year.toString().padLeft(4, '0')}-'
+              '${parsedLocalTimestamp.month.toString().padLeft(2, '0')}-'
+              '${parsedLocalTimestamp.day.toString().padLeft(2, '0')} '
+              '${parsedLocalTimestamp.hour.toString().padLeft(2, '0')}:'
+              '${parsedLocalTimestamp.minute.toString().padLeft(2, '0')}:'
+              '${parsedLocalTimestamp.second.toString().padLeft(2, '0')}';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: const CircleAvatar(child: Icon(Icons.history_rounded)),
         title: Text(history['reason']?.toString() ?? ''),
         subtitle: Text(
-          'By ${history['author']?.toString() ?? 'Unknown'} | ${history['timestamp']?.toString() ?? ''}',
+          'By ${history['author']?.toString() ?? 'Unknown'} | $displayTimestamp',
+        ),
+      ),
+    );
+  }
+
+  Widget _safeZoneCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Manual Safe Zone',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: safeZoneLatController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: true,
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: 'Latitude'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: safeZoneLngController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      signed: true,
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(labelText: 'Longitude'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: safeZoneRadiusController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(labelText: 'Radius (meters)'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: safeZoneReasonController,
+              maxLines: 2,
+              decoration: const InputDecoration(labelText: 'Reason for safe zone'),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: submitting ? null : submitManualSafeZone,
+              icon: const Icon(Icons.add_location_alt_rounded),
+              label: const Text('Add Manual Safe Zone'),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Active Manual Safe Zones',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            if (manualSafeZones.isEmpty)
+              Text(
+                'No active manual safe zones.',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+              )
+            else
+              ...manualSafeZones.map((zone) {
+                final isDisabling = disablingZoneId == zone.zoneId;
+                return Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                zone.zoneId.isEmpty ? 'Manual Safe Zone' : zone.zoneId,
+                                style: const TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              const SizedBox(height: 2),
+                              Text('Lat: ${zone.lat}, Lng: ${zone.lng}'),
+                              Text('Radius: ${zone.radius} m'),
+                              if ((zone.reason ?? '').isNotEmpty)
+                                Text('Reason: ${zone.reason}'),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        FilledButton.tonalIcon(
+                          onPressed: isDisabling ? null : () => disableManualSafeZone(zone.zoneId),
+                          icon: isDisabling
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.block_rounded),
+                          label: const Text('Disable'),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+          ],
         ),
       ),
     );

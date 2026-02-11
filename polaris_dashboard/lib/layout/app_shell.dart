@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../screens/alerts_screen.dart';
 import '../screens/authority_screen.dart';
+import '../screens/citizen_verification_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/overview_screen.dart';
 import '../screens/trends_screen.dart';
@@ -25,6 +26,7 @@ class _AppShellState extends State<AppShell> {
     'Live Map',
     'Alerts',
     'Trends',
+    'Citizen Verification',
     'Authority',
   ];
 
@@ -35,6 +37,7 @@ class _AppShellState extends State<AppShell> {
     LiveMapScreen(),
     AlertsScreen(),
     TrendsScreen(),
+    CitizenVerificationScreen(),
     AuthorityScreen(),
   ];
 
@@ -209,6 +212,7 @@ class _AppShellState extends State<AppShell> {
                 NavigationDestination(icon: Icon(Icons.map_rounded), label: 'Map'),
                 NavigationDestination(icon: Icon(Icons.notifications_active_rounded), label: 'Alerts'),
                 NavigationDestination(icon: Icon(Icons.stacked_line_chart_rounded), label: 'Trends'),
+                NavigationDestination(icon: Icon(Icons.fact_check_rounded), label: 'Verify'),
                 NavigationDestination(icon: Icon(Icons.admin_panel_settings_rounded), label: 'Authority'),
               ],
             )

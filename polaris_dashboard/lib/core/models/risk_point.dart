@@ -15,7 +15,7 @@ class RiskPoint {
     final rawTimestamp = json["timestamp"];
     final parsedTimestamp = rawTimestamp == null
         ? null
-        : DateTime.tryParse(rawTimestamp.toString());
+        : DateTime.tryParse(rawTimestamp.toString())?.toLocal();
 
     return RiskPoint(
       lat: json["lat"].toDouble(),

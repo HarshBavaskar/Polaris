@@ -20,14 +20,14 @@ class TopBar extends StatefulWidget {
 
 class _TopBarState extends State<TopBar> {
   late Timer _clockTimer;
-  DateTime _now = DateTime.now().toUtc();
+  DateTime _now = DateTime.now();
 
   @override
   void initState() {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) {
-        setState(() => _now = DateTime.now().toUtc());
+        setState(() => _now = DateTime.now());
       }
     });
   }
@@ -83,7 +83,7 @@ class _TopBarState extends State<TopBar> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Live command surface',
+                  'Polaris: CloudBurst Early Warning and Alert System',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colorScheme.onSurfaceVariant,
                       ),
@@ -99,7 +99,7 @@ class _TopBarState extends State<TopBar> {
             ),
           const SizedBox(width: 10),
           Text(
-            '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}:${_now.second.toString().padLeft(2, '0')} UTC',
+            '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}:${_now.second.toString().padLeft(2, '0')} Local',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: colorScheme.onSurfaceVariant,
                 ),

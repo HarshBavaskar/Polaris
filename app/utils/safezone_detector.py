@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta,UTC
+from datetime import datetime, timedelta
 from math import radians, cos, sin, sqrt, atan2
 from statistics import mean
 
@@ -98,7 +98,7 @@ def rank_safezones(clusters):
             "MEDIUM" if score > 0.6 else
         "LOW"
         ),
-        "last_verified": datetime.now(timezone.utc).isoformat(),
+        "last_verified": datetime.now().isoformat(),
         "reason": "Low historical risk and stable conditions"
 })
 
@@ -118,7 +118,7 @@ def apply_confidence_decay(zone, minutes_elapsed):
     return zone
 
 def persist_safezones(zones, collection):
-    now = datetime.now(UTC)
+    now = datetime.now()
 
     for z in zones:
         expires_at = now + timedelta(minutes=30)

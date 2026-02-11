@@ -21,7 +21,7 @@ class OverrideState {
       riskLevel: json["risk_level"] ?? "UNKNOWN",
       alertSeverity: json["alert_severity"] ?? "UNKNOWN",
       reason: json["reason"] ?? "",
-      timestamp: DateTime.parse(json["timestamp"]),
+      timestamp: DateTime.parse(json["timestamp"]).toLocal(),
       author: json["author"] ?? "Unknown",
     );
   }

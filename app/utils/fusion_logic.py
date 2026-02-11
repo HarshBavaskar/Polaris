@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 
 def recent_water_reports(zone_id, minutes=15):
-    since = datetime.utcnow() - timedelta(minutes=minutes)
+    since = datetime.now() - timedelta(minutes=minutes)
     return citizen_reports_collection.count_documents({
         "zone_id": zone_id,
         "type": "WATER_LEVEL",

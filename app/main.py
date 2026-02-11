@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import datetime
 from contextlib import asynccontextmanager
 
 
@@ -103,7 +103,7 @@ def root():
 @app.post("/input/camera")
 async def receive_camera_image(image: UploadFile = File(...)):
     # 1. Save image to disk
-    timestamp = datetime.now(timezone.utc)
+    timestamp = datetime.now()
     filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{image.filename}"
     filepath = os.path.join(UPLOAD_DIR, filename)
 
@@ -326,7 +326,7 @@ def dispatch_alert(payload: dict):
         "channel": payload.get("channel"),
         "severity": payload.get("severity"),
         "message": payload.get("message"),
-        "timestamp": datetime.now(timezone.utc),
+        "timestamp": datetime.now(),
         "status": "queued"
     }
 
@@ -363,7 +363,7 @@ def get_latest_alerts(limit: int = 20):
 def get_prediction_history(hours: int = 24):
     from datetime import timedelta
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now()
     since = now - timedelta(hours=hours)
 
     preds = list(

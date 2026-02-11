@@ -8,6 +8,7 @@ import 'models/override_state.dart';
 import 'models/safe_zone.dart';
 import 'models/historical_incident.dart';
 import 'models/prediction.dart';
+import 'models/citizen_report.dart';
 
 class ApiService {
 
@@ -145,6 +146,81 @@ static Future<List<Prediction>> fetchPredictionHistory() async {
 
   final List data = json.decode(r.body);
   return data.map((e) => Prediction.fromJson(e)).toList();
+}
+
+static Future<void> addManualSafeZone({
+  required double lat,
+  required double lng,
+  required int radius,
+  required String reason,
+  required String author,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/safe-zones/manual/add"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "lat": lat,
+      "lng": lng,
+      "radius": radius,
+      "reason": reason,
+      "author": author,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to add manual safe zone");
+  }
+}
+
+static Future<void> disableManualSafeZone({
+  required String zoneId,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/safe-zones/manual/disable"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "zone_id": zoneId,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to disable manual safe zone");
+  }
+}
+
+static Future<List<CitizenReport>> fetchPendingCitizenReports() async {
+  final r = await http.get(
+    Uri.parse("${ApiConfig.baseUrl}/input/citizen/pending"),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to fetch pending citizen reports");
+  }
+
+  final List data = json.decode(r.body);
+  return data.map((e) => CitizenReport.fromJson(e)).toList();
+}
+
+static Future<void> reviewCitizenReport({
+  required String reportId,
+  required String action,
+  String verifier = "Authority",
+  String? notes,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/input/citizen/review"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "report_id": reportId,
+      "action": action,
+      "verifier": verifier,
+      "notes": notes,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to review citizen report");
+  }
 }
 }
 
