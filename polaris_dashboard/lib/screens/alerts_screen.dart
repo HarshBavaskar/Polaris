@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../core/global_reload.dart';
+
 import '../core/api_service.dart';
+import '../core/global_reload.dart';
 import '../core/models/alert_event.dart';
 import '../core/theme_utils.dart';
 
@@ -17,15 +19,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
   List<AlertEvent> alerts = [];
   bool loading = true;
   Timer? refreshTimer;
+  String selectedSeverity = 'ALL';
 
   @override
   void initState() {
     super.initState();
     loadAlerts();
-    refreshTimer = Timer.periodic(
-      const Duration(seconds: 10),
-      (_) => loadAlerts(),
-    );
+    refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => loadAlerts());
   }
 
   @override
@@ -35,74 +35,137 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<void> loadAlerts() async {
-  try {
-    final data = await ApiService.fetchAlertHistory();
-
-    data.sort(
-      (a, b) => b.timestamp.compareTo(a.timestamp),
-    ); // newest first
-
-    setState(() {
-      alerts = data;
-      loading = false;
-    });
-  } catch (_) {
-    setState(() => loading = false);
+    try {
+      final data = await ApiService.fetchAlertHistory();
+      data.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      if (!mounted) return;
+      setState(() {
+        alerts = data;
+        loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => loading = false);
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
     context.watch<GlobalReload>();
+
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (alerts.isEmpty) {
-      return const Center(
-        child: Text("No alerts dispatched yet."),
-      );
-    }
+    final severities = <String>{
+      'ALL',
+      ...alerts.map((a) => a.severity),
+    }.toList();
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(24),
-      itemCount: alerts.length,
-      itemBuilder: (_, i) {
-        final a = alerts[i];
-        return _alertCard(a);
-      },
+    final filtered = selectedSeverity == 'ALL'
+        ? alerts
+        : alerts.where((a) => a.severity == selectedSeverity).toList();
+
+    return RefreshIndicator(
+      onRefresh: loadAlerts,
+      child: ListView(
+        padding: const EdgeInsets.all(24),
+        children: [
+          Text(
+            'Alerts Feed',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${filtered.length} alerts visible',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: severities
+                .map(
+                  (s) => ChoiceChip(
+                    label: Text(s),
+                    selected: selectedSeverity == s,
+                    onSelected: (_) => setState(() => selectedSeverity = s),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 18),
+          if (filtered.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'No alerts dispatched yet.',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ),
+            )
+          else
+            ...filtered.map(_alertCard),
+        ],
+      ),
     );
   }
 
-  Widget _alertCard(AlertEvent a) {
-    final color = severityColor(a.severity);
+  Widget _alertCard(AlertEvent alert) {
+    final color = severityColor(alert.severity);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        border: Border(
-          left: BorderSide(color: color, width: 5),
-        ),
-        color: Colors.white,
-      ),
-      child: ListTile(
-        title: Text(
-          a.severity,
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        subtitle: Column(
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Text(a.message),
-            const SizedBox(height: 6),
-            Text(
-              "${a.channel} • ${a.timestamp.toLocal()}",
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            Container(
+              width: 12,
+              height: 12,
+              margin: const EdgeInsets.only(top: 5),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        alert.severity,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          color: color,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Chip(
+                        label: Text(alert.channel),
+                        visualDensity: VisualDensity.compact,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(alert.message),
+                  const SizedBox(height: 8),
+                  Text(
+                    alert.timestamp.toLocal().toString(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
