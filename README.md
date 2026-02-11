@@ -29,61 +29,97 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in v0.7 (Major Authority Platform Release `PHASE 1`)
+## What’s New in Polaris v0.7  
+### Major Authority Platform Release
 
-### Production-Grade Authority Dashboard
-- Migrated to a **Flutter-based command center UI**
-- Stable multi-page layout:
-  - Overview
-  - Live Risk Map
-  - Alerts
-  - Trends
-  - Authority Controls
-- Custom **Polaris branding** with system-wide auto refresh
-- Fully responsive with overflow-safe layouts
+---
 
-### Live Situational Awareness
-- **Live camera feed** embedded directly in the Overview page
-- Real-time refresh without manual reload
+## Production-Grade Authority Dashboard
+- Migrated to a Flutter-based multi-page command center UI:
+  - Overview  
+  - Live Risk Map  
+  - Alerts  
+  - Trends  
+  - Authority Controls  
+- Fully responsive layouts (desktop + mobile, overflow-safe)
+- Custom Polaris branding with system-wide auto refresh
+- Rebuilt navigation shell with dynamic top bar (live UTC clock + system status)
+
+---
+
+## Live Situational Awareness
+- Embedded live camera feed directly in Overview
+- Real-time automatic refresh (no manual reload required)
 - Immediate visual context for decision-makers
 
-### Decision Analytics & Trends
-- Fully functional **Trends page** (no placeholders)
-- Live charts for:
-  - Risk score evolution
-  - Confidence trends
-  - Alert severity distribution
-- Backend-driven data with automatic polling
+---
 
-### Real-Time Alerts & Push Notifications
-- Alerts now update reliably across dashboard views
-- **Side push notifications** for incoming alerts
-- Alert history synchronized with backend state
-- Cooldown logic prevents alert spam
+## Decision Analytics & Trends
+- Fully functional Trends page (no placeholders)
+- Live backend-driven charts:
+  - Risk score evolution  
+  - Confidence trends  
+  - Alert severity distribution  
+- Automatic polling for real-time updates
 
-### Authority Controls (Hardened)
+---
+
+## Real-Time Alerts & Push Notifications
+- Reliable alert synchronization across all dashboard views
+- Side push notifications for incoming alerts
+- Alert history fully aligned with backend state
+- Cooldown logic to prevent alert spam
+
+---
+
+## Hardened Authority Controls
 - Stable manual override controls:
-  - Risk level
-  - Alert severity
-- **Clear override** option added
-- Override history view with full audit trail
+  - Risk level  
+  - Alert severity  
+  - Clear override option  
+- Override history with full audit trail
 - Instant system-wide override propagation
-- Clear distinction between:
-  - `AUTOMATED`
-  - `MANUAL_OVERRIDE`
+- Clear distinction between `AUTOMATED` and `MANUAL_OVERRIDE`
 
-### Advanced Geospatial Intelligence
+---
+
+## Advanced Geospatial Intelligence
 - Live cloudburst risk heatmap
 - Historical incident overlays
-- Manual safe-zone creation & visualization
+- Manual safe-zone creation and visualization
 - Auto-focus and pulse highlighting of highest-risk regions
-- Backend groundwork laid for automatic safe-zone detection
+- Backend groundwork for automatic safe-zone detection
+- Fixed map risk point color logic
 
-### Backend Stability & Integration
-- Fixed inconsistent API responses and empty payloads
-- Unified decision → alert → UI propagation
-- Full compatibility with Swagger UI (no Postman dependency)
-- Strengthened contracts between backend, alerts, and UI
+---
+
+## Citizen Reporting & Verification
+- Introduced `CitizenReport` model with JSON serialization
+- API-integrated citizen report review workflow
+- Citizen Verification screen with:
+  - Pending report management  
+  - Approve / reject actions  
+  - Image preview support  
+
+---
+
+## UX and Visual Overhaul
+- Rebuilt global theme system with cohesive color architecture
+- Modernized cards, inputs, chips, and buttons
+- Responsive layout shell (desktop side panel + mobile drawer/bottom nav)
+- Added visual shaders and enhanced UI assets
+
+---
+
+## Backend Stability & Integration
+- Fixed inconsistent API responses and empty payload issues
+- Unified decision → alert → UI propagation pipeline
+- Strengthened backend-alert-dashboard contracts
+- Full Swagger UI compatibility (no Postman dependency)
+- Improved real-time messaging reliability
+
+Polaris v0.7 establishes a fully operational, authority-ready early warning command platform with hardened controls, real-time intelligence, and production-grade UX.
+
 ---
 
 ## System Architecture
