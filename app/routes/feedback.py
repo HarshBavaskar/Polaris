@@ -12,7 +12,7 @@ async def submit_feedback(
     doc = {
         "prediction_id": prediction_id,
         "label": label,  # FALSE_POSITIVE | TRUE_POSITIVE | LATE
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.now()
     }
 
     feedback_collection.insert_one(doc)

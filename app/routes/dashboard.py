@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 @router.get("/risk-timeseries")  #Risk Time-Series Endpoint
 def risk_timeseries(minutes: int = 60):
-    since = datetime.utcnow() - timedelta(minutes=minutes)
+    since = datetime.now() - timedelta(minutes=minutes)
 
     cursor = predictions_collection.find(
         {"timestamp": {"$gte": since}},
@@ -24,7 +24,7 @@ def risk_timeseries(minutes: int = 60):
 
 @router.get("/confidence-timeseries")    #Confidence Time-Series Endpoint
 def confidence_timeseries(minutes: int = 60):
-    since = datetime.utcnow() - timedelta(minutes=minutes)
+    since = datetime.now() - timedelta(minutes=minutes)
 
     cursor = predictions_collection.find(
         {"timestamp": {"$gte": since}},
@@ -59,7 +59,7 @@ def current_status():
 
 @router.get("/eta-timeseries")
 def eta_timeseries(minutes: int = 60):
-    since = datetime.utcnow() - timedelta(minutes=minutes)
+    since = datetime.now() - timedelta(minutes=minutes)
 
     cursor = predictions_collection.find(
         {"timestamp": {"$gte": since}},

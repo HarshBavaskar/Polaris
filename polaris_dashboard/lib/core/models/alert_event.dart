@@ -16,7 +16,7 @@ class AlertEvent {
       severity: json["severity"] ?? "UNKNOWN",
       channel: json["channel"] ?? "UNKNOWN",
       message: json["message"] ?? "",
-      timestamp: DateTime.parse(json["timestamp"]),
+      timestamp: DateTime.parse(json["timestamp"]).toLocal(),
     );
   }
 }

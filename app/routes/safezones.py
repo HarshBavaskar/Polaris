@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Body
 from pydantic import BaseModel, Field
-from datetime import datetime, UTC
+from datetime import datetime
 from app.database import safezones_collection
 
 router = APIRouter(prefix="/safe-zones", tags=["Safe Zones"])
@@ -31,7 +31,7 @@ class DisableSafeZoneRequest(BaseModel):
     description="Adds an authority-defined safe zone. Manual zones override auto zones for guidance."
 )
 def add_manual_safezone(payload: AddManualSafeZoneRequest):
-    now = datetime.now(UTC)
+    now = datetime.now()
 
     zone_id = f"MZ-{int(now.timestamp())}"
 
@@ -81,7 +81,7 @@ def disable_manual_safezone(payload: DisableSafeZoneRequest):
         {
             "$set": {
                 "active": False,
-                "last_verified": datetime.now(UTC)
+                "last_verified": datetime.now()
             }
         }
     )

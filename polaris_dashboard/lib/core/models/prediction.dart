@@ -13,7 +13,7 @@ class Prediction {
 
   factory Prediction.fromJson(Map<String, dynamic> json) {
     return Prediction(
-      timestamp: DateTime.parse(json["timestamp"]),
+      timestamp: DateTime.parse(json["timestamp"]).toLocal(),
       riskLevel: json["risk_level"],
       confidence: (json["confidence"] ?? 0).toDouble(),
       riskScore: (json["risk_score"] ?? 0).toDouble(),

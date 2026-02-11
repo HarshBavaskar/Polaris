@@ -23,7 +23,7 @@ try:
             print("Failed to capture image")
             break
 
-        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         image_path = f"{TEMP_DIR}/{timestamp}.jpg"
 
         cv2.imwrite(image_path, frame)

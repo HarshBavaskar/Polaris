@@ -17,6 +17,7 @@ class SideNav extends StatelessWidget {
     _NavItem('Live Map', Icons.map_rounded),
     _NavItem('Alerts', Icons.notifications_active_rounded),
     _NavItem('Trends', Icons.stacked_line_chart_rounded),
+    _NavItem('Citizen Verify', Icons.fact_check_rounded),
     _NavItem('Authority', Icons.admin_panel_settings_rounded),
   ];
 

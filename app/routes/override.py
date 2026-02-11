@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from datetime import datetime, timezone
+from datetime import datetime
 from app.database import overrides_collection
 
 router = APIRouter(prefix="/override", tags=["Authority Override"])
@@ -31,7 +31,7 @@ def set_override(payload: dict):
         "reason": payload.get("reason"),
         "author": payload.get("author", "Authority"),
         "active": True,
-        "timestamp": datetime.now(timezone.utc)
+        "timestamp": datetime.now()
     }
 
     overrides_collection.insert_one(doc)
@@ -46,7 +46,7 @@ def clear_override():
         {
             "$set": {
                 "active": False,
-                "cleared_at": datetime.now(timezone.utc)
+                "cleared_at": datetime.now()
             }
         }
     )

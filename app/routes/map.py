@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from datetime import datetime, UTC
+from datetime import datetime
 
 from app.database import safezones_collection
 from app.utils.safezone_detector import (
@@ -77,7 +77,7 @@ def get_auto_safezones():
     description="Returns active, non-expired safe zones for dashboard and alerts."
 )
 def get_active_safezones():
-    now = datetime.now(UTC)
+    now = datetime.now()
 
     zones = list(
         safezones_collection.find(
