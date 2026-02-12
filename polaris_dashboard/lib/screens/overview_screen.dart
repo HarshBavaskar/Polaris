@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/refresh_config.dart';
+
 class OverviewScreen extends StatefulWidget {
   const OverviewScreen({super.key});
 
@@ -14,6 +16,7 @@ class OverviewScreen extends StatefulWidget {
 class _OverviewScreenState extends State<OverviewScreen> {
   Timer? _cameraTimer;
   Timer? _decisionTimer;
+  bool _isFetchingDecision = false;
 
   String _frameUrl = '';
   Map<String, dynamic>? decision;
@@ -27,8 +30,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
     _refreshFrame();
     _fetchDecision();
 
-    _cameraTimer = Timer.periodic(const Duration(seconds: 2), (_) => _refreshFrame());
-    _decisionTimer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchDecision());
+    _cameraTimer = Timer.periodic(RefreshConfig.overviewCameraPoll, (_) => _refreshFrame());
+    _decisionTimer = Timer.periodic(RefreshConfig.overviewDecisionPoll, (_) => _fetchDecision());
   }
 
   @override
@@ -45,6 +48,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
   }
 
   Future<void> _fetchDecision() async {
+    if (_isFetchingDecision) return;
+    _isFetchingDecision = true;
     try {
       final res = await http.get(Uri.parse('$baseUrl/decision/latest'));
       if (res.statusCode != 200) return;
@@ -53,7 +58,10 @@ class _OverviewScreenState extends State<OverviewScreen> {
       if (data.isEmpty) return;
 
       setState(() => decision = data);
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isFetchingDecision = false;
+    }
   }
 
   Color _riskColor(String? risk) {

@@ -5,6 +5,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/refresh_config.dart';
+
 class TrendsScreen extends StatefulWidget {
   const TrendsScreen({super.key});
 
@@ -14,6 +16,7 @@ class TrendsScreen extends StatefulWidget {
 
 class _TrendsScreenState extends State<TrendsScreen> {
   Timer? _refreshTimer;
+  bool _isRefreshing = false;
 
   List<double> riskSeries = [];
   List<double> confidenceSeries = [];
@@ -27,7 +30,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
   void initState() {
     super.initState();
     _loadAll();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) => _loadAll());
+    _refreshTimer = Timer.periodic(RefreshConfig.trendsPoll, (_) => _loadAll());
   }
 
   @override
@@ -37,6 +40,8 @@ class _TrendsScreenState extends State<TrendsScreen> {
   }
 
   Future<void> _loadAll() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     await Future.wait([
       _loadRiskTrend(),
       _loadConfidenceTrend(),
@@ -46,6 +51,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
     if (mounted) {
       setState(() => loading = false);
     }
+    _isRefreshing = false;
   }
 
   Future<void> _loadRiskTrend() async {

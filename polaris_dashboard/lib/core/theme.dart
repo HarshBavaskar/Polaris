@@ -14,13 +14,13 @@ class PolarisTheme {
 
     final isDark = brightness == Brightness.dark;
     final scheme = baseScheme.copyWith(
-      primary: const Color(0xFF1A73E8),
-      secondary: const Color(0xFF00ACC1),
-      tertiary: const Color(0xFFFFB300),
-      surface: isDark ? const Color(0xFF121A24) : const Color(0xFFFFFFFF),
+      primary: isDark ? const Color(0xFFA3A3A3) : const Color(0xFF1A73E8),
+      secondary: isDark ? const Color(0xFF737373) : const Color(0xFF00ACC1),
+      tertiary: isDark ? const Color(0xFF525252) : const Color(0xFFFFB300),
+      surface: isDark ? const Color(0xFF18181B) : const Color(0xFFFFFFFF),
       surfaceContainerHigh:
-          isDark ? const Color(0xFF182434) : const Color(0xFFF2F7FF),
-      outlineVariant: isDark ? const Color(0xFF344256) : const Color(0xFFD8E3F2),
+          isDark ? const Color(0xFF27272A) : const Color(0xFFF2F7FF),
+      outlineVariant: isDark ? const Color(0x33525252) : const Color(0x3390A4BF),
     );
 
     final base = ThemeData(
@@ -28,7 +28,7 @@ class PolarisTheme {
       brightness: brightness,
       colorScheme: scheme,
       scaffoldBackgroundColor:
-          isDark ? const Color(0xFF0E141E) : const Color(0xFFF6FAFF),
+          isDark ? const Color(0xFF09090B) : const Color(0xFFF6FAFF),
     );
 
     return base.copyWith(
@@ -38,12 +38,12 @@ class PolarisTheme {
         elevation: 0,
       ),
       cardTheme: CardThemeData(
-        elevation: 0,
+        elevation: 1,
         color: scheme.surface,
         surfaceTintColor: scheme.surfaceTint,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: scheme.outlineVariant),
+          side: BorderSide(color: scheme.outlineVariant, width: 0.5),
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -51,11 +51,11 @@ class PolarisTheme {
         fillColor: scheme.surfaceContainerHigh,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderSide: BorderSide(color: scheme.outlineVariant, width: 0.5),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: scheme.outlineVariant),
+          borderSide: BorderSide(color: scheme.outlineVariant, width: 0.5),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -63,7 +63,7 @@ class PolarisTheme {
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
-        side: BorderSide(color: scheme.outlineVariant),
+        side: BorderSide(color: scheme.outlineVariant, width: 0.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(

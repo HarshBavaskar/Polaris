@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/refresh_config.dart';
 import '../screens/alerts_screen.dart';
 import '../screens/authority_screen.dart';
 import '../screens/citizen_verification_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/overview_screen.dart';
+import '../screens/settings_screen.dart';
 import '../screens/trends_screen.dart';
 import 'side_nav.dart';
 import 'top_bar.dart';
@@ -28,6 +30,7 @@ class _AppShellState extends State<AppShell> {
     'Trends',
     'Citizen Verification',
     'Authority',
+    'Settings',
   ];
 
   int selectedIndex = 0;
@@ -39,9 +42,11 @@ class _AppShellState extends State<AppShell> {
     TrendsScreen(),
     CitizenVerificationScreen(),
     AuthorityScreen(),
+    SettingsScreen(),
   ];
 
   Timer? _poller;
+  bool _isPolling = false;
   String? _lastAlertId;
   OverlayEntry? _toast;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -62,7 +67,9 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _startAlertPolling() {
-    _poller = Timer.periodic(const Duration(seconds: 5), (_) async {
+    _poller = Timer.periodic(RefreshConfig.appAlertPoll, (_) async {
+      if (_isPolling) return;
+      _isPolling = true;
       try {
         final res = await http.get(Uri.parse('$baseUrl/alerts/latest'));
         if (res.statusCode != 200) return;
@@ -78,7 +85,10 @@ class _AppShellState extends State<AppShell> {
             severity: data['severity']?.toString() ?? 'INFO',
           );
         }
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        _isPolling = false;
+      }
     });
   }
 
@@ -180,7 +190,7 @@ class _AppShellState extends State<AppShell> {
                     ),
                     Expanded(
                       child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 240),
+                        duration: RefreshConfig.screenSwitchAnimation,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
                         child: Padding(
@@ -214,6 +224,7 @@ class _AppShellState extends State<AppShell> {
                 NavigationDestination(icon: Icon(Icons.stacked_line_chart_rounded), label: 'Trends'),
                 NavigationDestination(icon: Icon(Icons.fact_check_rounded), label: 'Verify'),
                 NavigationDestination(icon: Icon(Icons.admin_panel_settings_rounded), label: 'Authority'),
+                NavigationDestination(icon: Icon(Icons.settings_rounded), label: 'Settings'),
               ],
             )
           : null,

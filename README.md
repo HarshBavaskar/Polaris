@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="misc/Polaris.PNG" height="250"/>
+<img src="misc/Polaris_Logo_Side.PNG" height="250"/>
 
-| **Current Version** | `v0.7: Authority Platform & UX Overhaul Update Release` |
+| **Current Version** | `v0.7A: Authority Platform & UX Overhaul Update` |
 | --- | --- |
 
 </div>
@@ -29,10 +29,13 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in Polaris v0.7  
+## What’s New in Polaris v0.7A  
 ### Major Authority Platform Release
 
 ---
+
+## Dashboard UI
+<img src="misc/flutter_01.png" height="250"/>
 
 ## Production-Grade Authority Dashboard
 - Migrated to a Flutter-based multi-page command center UI:
@@ -40,7 +43,9 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
   - Live Risk Map  
   - Alerts  
   - Trends  
+  - Citizen Verification
   - Authority Controls  
+  - Settings
 - Fully responsive layouts (desktop + mobile, overflow-safe)
 - Custom Polaris branding with system-wide auto refresh
 - Rebuilt navigation shell with dynamic top bar (live UTC clock + system status)
@@ -55,7 +60,7 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 ---
 
 ## Decision Analytics & Trends
-- Fully functional Trends page (no placeholders)
+- Fully functional Trends page
 - Live backend-driven charts:
   - Risk score evolution  
   - Confidence trends  
@@ -108,6 +113,7 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 - Modernized cards, inputs, chips, and buttons
 - Responsive layout shell (desktop side panel + mobile drawer/bottom nav)
 - Added visual shaders and enhanced UI assets
+- Added Dark Mode Toggle
 
 ---
 

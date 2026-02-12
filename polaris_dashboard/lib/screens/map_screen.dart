@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../core/refresh_config.dart';
 import '../core/api_service.dart';
 import '../core/models/historical_incident.dart';
 import '../core/models/risk_point.dart';
@@ -26,6 +27,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   bool showSafeZones = true;
   bool showIncidents = true;
   bool _hasAutoCentered = false;
+  bool _isLoading = false;
 
   Timer? refreshTimer;
 
@@ -33,7 +35,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   void initState() {
     super.initState();
     loadAll();
-    refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) => loadAll());
+    refreshTimer = Timer.periodic(RefreshConfig.mapPoll, (_) => loadAll());
   }
 
   @override
@@ -43,6 +45,8 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   }
 
   Future<void> loadAll() async {
+    if (_isLoading) return;
+    _isLoading = true;
     try {
       final rp = await ApiService.fetchLiveRiskPoints();
       final sz = await ApiService.fetchSafeZones();
@@ -62,7 +66,10 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
         mapController.move(LatLng(highest.lat, highest.lng), 12);
         _hasAutoCentered = true;
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isLoading = false;
+    }
   }
 
   Color riskColor(double riskScore) {
