@@ -1,1 +1,1 @@
- D:\\Polaris\\polaris_dashboard\\build\\7b08bd9a3037d59bb392791478782aeb\\dart_build_result.json: 
+ D:\\Polaris\\polaris_dashboard\\build\\7b08bd9a3037d59bb392791478782aeb\\dart_build_result.json:  D:\\Polaris\\polaris_dashboard\\.dart_tool\\package_config.json D:\\Polaris\\polaris_dashboard\\pubspec.yaml D:\\flutter\\bin\\cache\\dart-sdk\\version d:\\polaris\\polaris_dashboard\\.dart_tool\\package_config.json
