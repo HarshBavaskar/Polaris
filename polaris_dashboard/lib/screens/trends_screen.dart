@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/refresh_config.dart';
+import '../widgets/animated_reveal.dart';
 
 class TrendsScreen extends StatefulWidget {
   const TrendsScreen({super.key});
@@ -56,21 +57,32 @@ class _TrendsScreenState extends State<TrendsScreen> {
 
   Future<void> _loadRiskTrend() async {
     try {
-      final res = await http.get(Uri.parse('$baseUrl/dashboard/risk-timeseries'));
+      final res = await http.get(
+        Uri.parse('$baseUrl/dashboard/risk-timeseries'),
+      );
       if (res.statusCode != 200) return;
 
       final List data = jsonDecode(res.body);
-      riskSeries = data.map<double>((e) => (e['risk_score'] ?? 0).toDouble()).toList();
+      riskSeries = data.map<double>((e) {
+        final map = e as Map<String, dynamic>;
+        final value =
+            map['ensemble_score'] ?? map['risk_score'] ?? map['risk'] ?? 0;
+        return (value as num).toDouble();
+      }).toList();
     } catch (_) {}
   }
 
   Future<void> _loadConfidenceTrend() async {
     try {
-      final res = await http.get(Uri.parse('$baseUrl/dashboard/confidence-timeseries'));
+      final res = await http.get(
+        Uri.parse('$baseUrl/dashboard/confidence-timeseries'),
+      );
       if (res.statusCode != 200) return;
 
       final List data = jsonDecode(res.body);
-      confidenceSeries = data.map<double>((e) => (e['confidence'] ?? 0).toDouble()).toList();
+      confidenceSeries = data
+          .map<double>((e) => (e['confidence'] ?? 0).toDouble())
+          .toList();
     } catch (_) {}
   }
 
@@ -99,25 +111,36 @@ class _TrendsScreenState extends State<TrendsScreen> {
       children: [
         Text(
           'System Trends',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 20),
-        _ChartCard(
-          title: 'Risk Score Trend',
-          subtitle: 'Latest risk progression',
-          child: _lineChart(riskSeries, const Color(0xFFE53E3E)),
+        AnimatedReveal(
+          delay: const Duration(milliseconds: 40),
+          child: _ChartCard(
+            title: 'Risk Score Trend',
+            subtitle: 'Latest risk progression',
+            child: _lineChart(riskSeries, const Color(0xFFE53E3E)),
+          ),
         ),
         const SizedBox(height: 14),
-        _ChartCard(
-          title: 'Confidence Trend',
-          subtitle: 'Model confidence over time',
-          child: _lineChart(confidenceSeries, const Color(0xFF3182CE)),
+        AnimatedReveal(
+          delay: const Duration(milliseconds: 90),
+          child: _ChartCard(
+            title: 'Confidence Trend',
+            subtitle: 'Model confidence over time',
+            child: _lineChart(confidenceSeries, const Color(0xFF3182CE)),
+          ),
         ),
         const SizedBox(height: 14),
-        _ChartCard(
-          title: 'Alert Severity Distribution',
-          subtitle: 'Total dispatch count by severity',
-          child: _barChart(),
+        AnimatedReveal(
+          delay: const Duration(milliseconds: 140),
+          child: _ChartCard(
+            title: 'Alert Severity Distribution',
+            subtitle: 'Total dispatch count by severity',
+            child: _barChart(),
+          ),
         ),
       ],
     );
@@ -125,7 +148,10 @@ class _TrendsScreenState extends State<TrendsScreen> {
 
   Widget _lineChart(List<double> data, Color color) {
     if (data.isEmpty) {
-      return const SizedBox(height: 180, child: Center(child: Text('No data available')));
+      return const SizedBox(
+        height: 180,
+        child: Center(child: Text('No data available')),
+      );
     }
 
     final spots = <FlSpot>[];
@@ -148,9 +174,15 @@ class _TrendsScreenState extends State<TrendsScreen> {
             leftTitles: AxisTitles(
               sideTitles: SideTitles(showTitles: true, reservedSize: 34),
             ),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           lineBarsData: [
             LineChartBarData(
@@ -172,7 +204,10 @@ class _TrendsScreenState extends State<TrendsScreen> {
 
   Widget _barChart() {
     if (severityCounts.isEmpty) {
-      return const SizedBox(height: 180, child: Center(child: Text('No alert distribution data')));
+      return const SizedBox(
+        height: 180,
+        child: Center(child: Text('No alert distribution data')),
+      );
     }
 
     final entries = severityCounts.entries.toList()
@@ -186,8 +221,12 @@ class _TrendsScreenState extends State<TrendsScreen> {
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(enabled: true),
           titlesData: FlTitlesData(
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
             leftTitles: AxisTitles(
               sideTitles: SideTitles(showTitles: true, reservedSize: 34),
             ),
@@ -196,10 +235,14 @@ class _TrendsScreenState extends State<TrendsScreen> {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= entries.length) return const SizedBox.shrink();
+                  if (index < 0 || index >= entries.length)
+                    return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Text(entries[index].key, style: const TextStyle(fontSize: 11)),
+                    child: Text(
+                      entries[index].key,
+                      style: const TextStyle(fontSize: 11),
+                    ),
                   );
                 },
               ),
@@ -243,14 +286,18 @@ class _ChartCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 2),
             Text(
               subtitle,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 14),
             child,

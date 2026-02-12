@@ -11,6 +11,8 @@ class RefreshConfig {
   static const Duration mapPoll = Duration(seconds: 2);
   static const Duration trendsPoll = Duration(seconds: 3);
   static const Duration alertsPoll = Duration(seconds: 6);
+  static const Duration settingsPoll = Duration(seconds: 5);
+  static const Duration citizenVerificationPoll = Duration(seconds: 5);
 
   // Marquee travel speed in pixels/second for smooth readable movement.
   static const double marqueePixelsPerSecond = 95;

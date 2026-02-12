@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import '../core/refresh_config.dart';
 import '../core/api_service.dart';
+import '../core/api.dart';
 import '../core/models/historical_incident.dart';
 import '../core/models/risk_point.dart';
 import '../core/models/safe_zone.dart';
@@ -28,6 +31,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   bool showIncidents = true;
   bool _hasAutoCentered = false;
   bool _isLoading = false;
+  bool _manualOverrideActive = false;
 
   Timer? refreshTimer;
 
@@ -52,17 +56,22 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
       final sz = await ApiService.fetchSafeZones();
       final hi = await ApiService.fetchHistoricalIncidents();
       final uniqueRiskPoints = _latestRiskPerExactLocation(rp);
+      final adjustedRiskPoints = await _applyLatestDecisionToRiskPoints(
+        uniqueRiskPoints,
+      );
 
       if (!mounted) return;
 
       setState(() {
-        riskPoints = uniqueRiskPoints;
+        riskPoints = adjustedRiskPoints;
         safeZones = sz;
         incidents = hi;
       });
 
       if (!_hasAutoCentered && riskPoints.isNotEmpty) {
-        final highest = riskPoints.reduce((a, b) => a.riskScore > b.riskScore ? a : b);
+        final highest = riskPoints.reduce(
+          (a, b) => a.riskScore > b.riskScore ? a : b,
+        );
         mapController.move(LatLng(highest.lat, highest.lng), 12);
         _hasAutoCentered = true;
       }
@@ -79,6 +88,64 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
     return const Color(0xFF2F855A);
   }
 
+  double _riskScoreFromLevel(String level) {
+    return switch (level) {
+      'IMMINENT' => 0.95,
+      'WARNING' => 0.75,
+      'WATCH' => 0.50,
+      _ => 0.20,
+    };
+  }
+
+  Future<List<RiskPoint>> _applyLatestDecisionToRiskPoints(
+    List<RiskPoint> points,
+  ) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${ApiConfig.baseUrl}/decision/latest'),
+      );
+      if (response.statusCode != 200) {
+        _manualOverrideActive = false;
+        return points;
+      }
+
+      final data = jsonDecode(response.body);
+      if (data is! Map<String, dynamic>) {
+        _manualOverrideActive = false;
+        return points;
+      }
+
+      final mode = data['decision_mode']?.toString().toUpperCase() ?? '';
+      _manualOverrideActive = mode == 'MANUAL_OVERRIDE';
+      final level =
+          data['final_risk_level']?.toString().toUpperCase() ?? 'SAFE';
+      final liveScore = _riskScoreFromLevel(level);
+
+      if (points.isEmpty) {
+        return [
+          RiskPoint(
+            lat: 19.0760,
+            lng: 72.8777,
+            riskScore: liveScore,
+            timestamp: DateTime.now(),
+          ),
+        ];
+      }
+
+      return points.map((p) {
+        return RiskPoint(
+          lat: p.lat,
+          lng: p.lng,
+          riskScore: liveScore,
+          timestamp: p.timestamp ?? DateTime.now(),
+        );
+      }).toList();
+    } catch (_) {
+      _manualOverrideActive = false;
+      return points;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -92,8 +159,9 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: const ['a', 'b', 'c'],
+                urlTemplate:
+                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                subdomains: const ['a', 'b', 'c', 'd'],
               ),
               CircleLayer(
                 circles: riskPoints
@@ -155,8 +223,8 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                   Text(
                     'Layers',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
@@ -196,49 +264,72 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                   Text(
                     'Map Summary',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text('Risk points: ${riskPoints.length}'),
-                  Text('Safe zones: ${safeZones.where((e) => e.active).length}'),
+                  Text(
+                    'Safe zones: ${safeZones.where((e) => e.active).length}',
+                  ),
                   Text('Incidents: ${incidents.length}'),
+                  if (_manualOverrideActive) ...[
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Manual override active',
+                      style: TextStyle(
+                        color: Color(0xFFC53030),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         ),
+        if (_isLoading && riskPoints.isEmpty)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: ColoredBox(
+                color: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: 0.75),
+                child: const Center(child: CircularProgressIndicator()),
+              ),
+            ),
+          ),
       ],
     );
+  }
+}
+
+List<RiskPoint> _latestRiskPerExactLocation(List<RiskPoint> points) {
+  final byLocation = <String, RiskPoint>{};
+
+  for (final point in points) {
+    final key = '${point.lat},${point.lng}';
+    final current = byLocation[key];
+
+    if (current == null) {
+      byLocation[key] = point;
+      continue;
+    }
+
+    final currentTs = current.timestamp;
+    final nextTs = point.timestamp;
+
+    if (currentTs == null && nextTs == null) {
+      if (point.riskScore >= current.riskScore) {
+        byLocation[key] = point;
+      }
+      continue;
+    }
+
+    if (nextTs != null && (currentTs == null || nextTs.isAfter(currentTs))) {
+      byLocation[key] = point;
     }
   }
 
-  List<RiskPoint> _latestRiskPerExactLocation(List<RiskPoint> points) {
-    final byLocation = <String, RiskPoint>{};
-
-    for (final point in points) {
-      final key = '${point.lat},${point.lng}';
-      final current = byLocation[key];
-
-      if (current == null) {
-        byLocation[key] = point;
-        continue;
-      }
-
-      final currentTs = current.timestamp;
-      final nextTs = point.timestamp;
-
-      if (currentTs == null && nextTs == null) {
-        if (point.riskScore >= current.riskScore) {
-          byLocation[key] = point;
-        }
-        continue;
-      }
-
-      if (nextTs != null && (currentTs == null || nextTs.isAfter(currentTs))) {
-        byLocation[key] = point;
-      }
-    }
-
-    return byLocation.values.toList();
-  }
+  return byLocation.values.toList();
+}

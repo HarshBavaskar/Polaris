@@ -46,6 +46,9 @@ def build_alert_payload(final_decision: dict):
         final_eta=final_decision.get("final_eta", "unknown"),
     )
 
+    if str(final_decision.get("decision_mode", "")).upper() == "MANUAL_OVERRIDE":
+        message = f"[MANUAL OVERRIDE] {message}"
+
     return {
         "severity": severity,
         "channel": channel,

@@ -1,17 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/api_service.dart';
 import '../core/api.dart';
+import '../core/refresh_config.dart';
 import '../core/models/citizen_report.dart';
 
 class CitizenVerificationScreen extends StatefulWidget {
   const CitizenVerificationScreen({super.key});
 
   @override
-  State<CitizenVerificationScreen> createState() => _CitizenVerificationScreenState();
+  State<CitizenVerificationScreen> createState() =>
+      _CitizenVerificationScreenState();
 }
 
 class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
+  Timer? _refreshTimer;
+  bool _isRefreshing = false;
   bool loading = true;
   String? processingReportId;
   List<CitizenReport> pendingReports = [];
@@ -20,20 +26,38 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
   void initState() {
     super.initState();
     _loadPending();
+    _refreshTimer = Timer.periodic(
+      RefreshConfig.citizenVerificationPoll,
+      (_) => _loadPending(silent: true),
+    );
   }
 
-  Future<void> _loadPending() async {
-    setState(() => loading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadPending({bool silent = false}) async {
+    if (_isRefreshing || processingReportId != null) return;
+    _isRefreshing = true;
+    if (!silent) {
+      setState(() => loading = true);
+    }
     try {
       final data = await ApiService.fetchPendingCitizenReports();
       if (!mounted) return;
       setState(() {
         pendingReports = data;
-        loading = false;
+        if (!silent) loading = false;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => loading = false);
+      if (!silent) {
+        setState(() => loading = false);
+      }
+    } finally {
+      _isRefreshing = false;
     }
   }
 
@@ -76,8 +100,8 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
                 child: Text(
                   'Citizen Verification',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               FilledButton.icon(
@@ -91,8 +115,8 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
           Text(
             'Pending reports: ${pendingReports.length}',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 16),
           if (pendingReports.isEmpty)
@@ -122,7 +146,9 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              report.type == "IMAGE" ? 'Citizen Image Report' : 'Citizen Water Level Report',
+              report.type == "IMAGE"
+                  ? 'Citizen Image Report'
+                  : 'Citizen Water Level Report',
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
@@ -132,8 +158,10 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
               children: [
                 Chip(label: Text('Report: ${report.reportId}')),
                 Chip(label: Text('Zone: ${report.zoneId}')),
-                if (report.level != null) Chip(label: Text('Level: ${report.level}')),
-                if (report.filename != null) Chip(label: Text('File: ${report.filename}')),
+                if (report.level != null)
+                  Chip(label: Text('Level: ${report.level}')),
+                if (report.filename != null)
+                  Chip(label: Text('File: ${report.filename}')),
               ],
             ),
             if (report.timestamp != null) ...[
@@ -145,7 +173,8 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
                 ),
               ),
             ],
-            if (report.type == "IMAGE" && (report.filename ?? "").isNotEmpty) ...[
+            if (report.type == "IMAGE" &&
+                (report.filename ?? "").isNotEmpty) ...[
               const SizedBox(height: 10),
               _photoPreview(report),
             ],
@@ -153,7 +182,9 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
             Row(
               children: [
                 FilledButton.icon(
-                  onPressed: isProcessing ? null : () => _review(report, "APPROVE"),
+                  onPressed: isProcessing
+                      ? null
+                      : () => _review(report, "APPROVE"),
                   icon: isProcessing
                       ? const SizedBox(
                           width: 14,
@@ -165,7 +196,9 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
                 ),
                 const SizedBox(width: 8),
                 FilledButton.tonalIcon(
-                  onPressed: isProcessing ? null : () => _review(report, "REJECT"),
+                  onPressed: isProcessing
+                      ? null
+                      : () => _review(report, "REJECT"),
                   icon: const Icon(Icons.cancel_rounded),
                   label: const Text('Reject'),
                 ),

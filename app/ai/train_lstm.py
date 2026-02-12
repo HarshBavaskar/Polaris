@@ -19,20 +19,50 @@ class TemporalLSTM(nn.Module):
         _, (h_n, _) = self.lstm(x)
         return self.fc(h_n[-1])
 
-model = TemporalLSTM().to(DEVICE)
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+def train_lstm(
+    model_path: str = "polaris_lstm.pth",
+    epochs: int = 10,
+    learning_rate: float = 1e-3,
+):
+    X, y = build_temporal_dataset()
+    if len(X) == 0:
+        return {
+            "skipped": True,
+            "reason": "Temporal dataset is empty.",
+            "samples": 0,
+            "epochs": 0,
+            "model_path": model_path,
+        }
 
-X, y = X.to(DEVICE), y.to(DEVICE)
+    X_tensor = torch.tensor(X, dtype=torch.float32).to(DEVICE)
+    y_tensor = torch.tensor(y, dtype=torch.long).to(DEVICE)
 
-for epoch in range(10):
-    optimizer.zero_grad()
-    outputs = model(X)
-    loss = criterion(outputs, y)
-    loss.backward()
-    optimizer.step()
+    model = TemporalLSTM().to(DEVICE)
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+    last_loss = None
 
-    print(f"Epoch {epoch+1}, Loss: {loss.item():.4f}")
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+        outputs = model(X_tensor)
+        loss = criterion(outputs, y_tensor)
+        loss.backward()
+        optimizer.step()
+        last_loss = float(loss.item())
 
-torch.save(model.state_dict(), "polaris_lstm.pth")
-print("Temporal model saved")
+        print(f"Epoch {epoch + 1}, Loss: {last_loss:.4f}")
+
+    torch.save(model.state_dict(), model_path)
+    print("Temporal model saved")
+
+    return {
+        "skipped": False,
+        "samples": len(X),
+        "epochs": epochs,
+        "last_epoch_loss": round(last_loss or 0.0, 4),
+        "model_path": model_path,
+    }
+
+
+if __name__ == "__main__":
+    train_lstm()

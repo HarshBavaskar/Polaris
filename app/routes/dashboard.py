@@ -9,14 +9,17 @@ def risk_timeseries(minutes: int = 60):
 
     cursor = predictions_collection.find(
         {"timestamp": {"$gte": since}},
-        {"_id": 0, "timestamp": 1, "risk_score": 1, "risk_level": 1}
+        {"_id": 0, "timestamp": 1, "risk_score": 1, "ensemble_score": 1, "risk_level": 1}
     ).sort("timestamp", 1)
 
     data = []
     for doc in cursor:
         data.append({
             "time": doc["timestamp"],
-            "risk": doc["risk_score"],
+            # Keep both keys for backward compatibility with existing clients.
+            "risk_score": doc.get("risk_score", 0),
+            "risk": doc.get("risk_score", 0),
+            "ensemble_score": doc.get("ensemble_score"),
             "level": doc["risk_level"]
         })
 

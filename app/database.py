@@ -16,6 +16,7 @@ safe_zones_collection = db["safe_zones"]
 historical_events_collection = db["historical_events"]
 overrides_collection = db["overrides"]
 safezones_collection = db["safe_zones"]
+active_learning_collection = db["active_learning_samples"]
 
 def ensure_safezone_indexes():
     safezones_collection.create_index(
@@ -24,4 +25,14 @@ def ensure_safezone_indexes():
     )
     safezones_collection.create_index(
         [("active", 1), ("confidence_level", 1)]
+    )
+
+
+def ensure_active_learning_indexes():
+    active_learning_collection.create_index(
+        [("status", 1), ("queued_at", -1)]
+    )
+    active_learning_collection.create_index(
+        [("prediction_id", 1)],
+        unique=True
     )

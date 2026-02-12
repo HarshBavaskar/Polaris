@@ -22,14 +22,21 @@ from app.utils.confidence_logic import calculate_confidence
 from app.routes.dashboard import router as dashboard_router
 from app.ai.infer import ai_predict
 from app.ai.temporal_infer import temporal_predict
+from app.ai.ensemble import compute_ensemble_score, level_from_score
 from app.utils.eta_logic import estimate_eta
 from app.utils.alert_severity import determine_alert_severity
 from app.utils.justification import generate_authority_justification
 from app.utils.final_decision import build_final_decision
 from app.utils.eta_confidence import determine_eta_confidence
+from app.utils.active_learning import (
+    feedback_bias,
+    should_queue_for_active_learning,
+    queue_active_learning_sample,
+)
 from app.routes.override import router as override_router
 from app.database import overrides_collection
 from app.routes.camera import router as camera_router
+from app.routes.admin_ml import router as admin_ml_router
 
 
 
@@ -45,7 +52,7 @@ load_dotenv()
 
 app = FastAPI(title="Polaris Detection Server")
 from app.routes.map import router as map_router
-from app.database import ensure_safezone_indexes
+from app.database import ensure_safezone_indexes, ensure_active_learning_indexes
 from app.routes.safezones import router as safezones_router
 from app.database import safe_zones_collection
 from fastapi.middleware.cors import CORSMiddleware
@@ -64,6 +71,7 @@ from app.routes.alerts import router as alerts_router
 async def lifespan(app: FastAPI):
     # Startup logic
     ensure_safezone_indexes()
+    ensure_active_learning_indexes()
     yield
     # Shutdown logic (optional, none needed now)
 
@@ -86,6 +94,7 @@ app.add_middleware(
 )
 app.include_router(alerts_router)
 app.include_router(camera_router)
+app.include_router(admin_ml_router)
 
 
 
@@ -98,6 +107,27 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @app.get("/")
 def root():
     return {"status": "Polaris server running"}
+
+
+@app.get("/backend/health")
+def backend_health():
+    return {
+        "up": True,
+        "service": "polaris-backend",
+        "timestamp": datetime.now()
+    }
+
+
+@app.post("/backend/start")
+def backend_start():
+    # This API acknowledges start requests from the dashboard.
+    # The process is already running if this endpoint is reachable.
+    return {
+        "ok": True,
+        "started": False,
+        "message": "Backend is already running.",
+        "timestamp": datetime.now()
+    }
 
 
 @app.post("/input/camera")
@@ -116,17 +146,18 @@ async def receive_camera_image(image: UploadFile = File(...)):
     # 3. Calculate risk
     risk_score = calculate_risk(features)
 
-    recent_risks = get_recent_risks(limit=5)
+    recent_risks = get_recent_risks(limit=10)
     recent_risks.append(risk_score)
+    spike_detected = is_sudden_spike(recent_risks)
 
-    if is_sudden_spike(recent_risks):
+    if spike_detected:
         ai_level = "IMMINENT"
     else:
         ai_level = risk_level(risk_score)
 
 
-    #FUSE WITH CITIZEN INPUTS
-    final_level = fuse_risk(ai_level, "TEST_ZONE")
+    # Fuse rule-based decision with citizen inputs first.
+    fused_rule_level = fuse_risk(ai_level, "TEST_ZONE")
 
     # =========================
     # AI MODEL (CNN) PREDICTION
@@ -140,21 +171,6 @@ async def receive_camera_image(image: UploadFile = File(...)):
     else:
         ai_ml_level = "SAFE"
 
-    # =========================
-    # SAFE FUSION (NEVER DOWNGRADE) CNN BASED
-    # =========================
-    LEVEL_ORDER = ["SAFE", "WATCH", "WARNING", "IMMINENT"]
-
-    final_level = max(
-    final_level,
-    ai_ml_level,
-    key=lambda x: LEVEL_ORDER.index(x)
-    )
-    confidence = calculate_confidence(
-    recent_risks=recent_risks,
-    ai_level=ai_level,
-    final_level=final_level
-    )       
     # =========================
     # TEMPORAL AI (SEQUENCE)
     # =========================
@@ -181,10 +197,37 @@ async def receive_camera_image(image: UploadFile = File(...)):
     else:
         temporal_level = "SAFE"
 
+    # =========================
+    # ENSEMBLE SCORING (rule + cnn + temporal + feedback)
+    # =========================
+    adaptive_bias = feedback_bias(window=200)
+    ensemble_score = compute_ensemble_score(
+        rule_risk_score=risk_score,
+        cnn_probability=ai_probability,
+        temporal_probability=temporal_prob,
+        recent_risks=recent_risks,
+        feedback_bias=adaptive_bias,
+        sudden_spike=spike_detected,
+    )
+    ensemble_level = level_from_score(ensemble_score)
+
+    # Keep the highest risk suggested by consensus-aware sources.
+    LEVEL_ORDER = ["SAFE", "WATCH", "WARNING", "IMMINENT"]
     final_level = max(
-        final_level,
+        fused_rule_level,
+        ai_ml_level,
         temporal_level,
+        ensemble_level,
         key=lambda x: LEVEL_ORDER.index(x)
+    )
+
+    confidence = calculate_confidence(
+        recent_risks=recent_risks,
+        ai_level=ai_level,
+        final_level=final_level,
+        ai_probability=ai_probability,
+        temporal_probability=temporal_prob,
+        ensemble_score=ensemble_score,
     )
 
 
@@ -249,6 +292,7 @@ async def receive_camera_image(image: UploadFile = File(...)):
 
     # Core outcomes
     "risk_score": risk_score,
+    "ensemble_score": ensemble_score,
     "risk_level": final_level,
     "confidence": confidence,
 
@@ -266,7 +310,27 @@ async def receive_camera_image(image: UploadFile = File(...)):
     "eta_confidence": eta_confidence
 }
     prediction_doc["final_decision"] = final_decision
-    predictions_collection.insert_one(prediction_doc)
+    prediction_result = predictions_collection.insert_one(prediction_doc)
+
+    if should_queue_for_active_learning(
+        confidence=confidence,
+        ensemble_score=ensemble_score,
+        cnn_probability=ai_probability,
+        temporal_probability=temporal_prob,
+    ):
+        try:
+            queue_active_learning_sample(
+                prediction_id=prediction_result.inserted_id,
+                image_path=filepath,
+                risk_score=risk_score,
+                ensemble_score=ensemble_score,
+                confidence=confidence,
+                cnn_probability=ai_probability,
+                temporal_probability=temporal_prob,
+                features=features,
+            )
+        except Exception:
+            pass
 
     return final_decision
 
