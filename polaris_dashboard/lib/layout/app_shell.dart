@@ -12,6 +12,7 @@ import '../screens/map_screen.dart';
 import '../screens/overview_screen.dart';
 import '../screens/settings_screen.dart';
 import '../screens/trends_screen.dart';
+import '../widgets/polaris_startup_loader.dart';
 import 'side_nav.dart';
 import 'top_bar.dart';
 
@@ -46,7 +47,9 @@ class _AppShellState extends State<AppShell> {
   ];
 
   Timer? _poller;
+  Timer? _startupTimer;
   bool _isPolling = false;
+  bool _showStartupLoader = true;
   String? _lastAlertId;
   OverlayEntry? _toast;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
@@ -57,10 +60,14 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     _startAlertPolling();
+    _startupTimer = Timer(const Duration(milliseconds: 1700), () {
+      if (mounted) setState(() => _showStartupLoader = false);
+    });
   }
 
   @override
   void dispose() {
+    _startupTimer?.cancel();
     _poller?.cancel();
     _removeToast();
     super.dispose();
@@ -155,6 +162,12 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showStartupLoader) {
+      return const Scaffold(
+        body: Center(child: PolarisStartupLoader()),
+      );
+    }
+
     final isCompact = MediaQuery.sizeOf(context).width < 980;
     return Scaffold(
       key: _scaffoldKey,
@@ -193,6 +206,19 @@ class _AppShellState extends State<AppShell> {
                         duration: RefreshConfig.screenSwitchAnimation,
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
+                        transitionBuilder: (child, animation) {
+                          final slide = Tween<Offset>(
+                            begin: const Offset(0.02, 0),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          ));
+                          return FadeTransition(
+                            opacity: animation,
+                            child: SlideTransition(position: slide, child: child),
+                          );
+                        },
                         child: Padding(
                           key: ValueKey(selectedIndex),
                           padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),

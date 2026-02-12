@@ -6,6 +6,7 @@ import '../core/api_service.dart';
 import '../core/refresh_config.dart';
 import '../core/models/alert_event.dart';
 import '../core/theme_utils.dart';
+import '../widgets/animated_reveal.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -87,32 +88,44 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 ),
           ),
           const SizedBox(height: 14),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: severities
-                .map(
-                  (s) => ChoiceChip(
-                    label: Text(s),
-                    selected: selectedSeverity == s,
-                    onSelected: (_) => setState(() => selectedSeverity = s),
-                  ),
-                )
-                .toList(),
+          AnimatedReveal(
+            delay: const Duration(milliseconds: 40),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: severities
+                  .map(
+                    (s) => ChoiceChip(
+                      label: Text(s),
+                      selected: selectedSeverity == s,
+                      onSelected: (_) => setState(() => selectedSeverity = s),
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
           const SizedBox(height: 18),
           if (filtered.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Text(
-                  'No alerts dispatched yet.',
-                  style: Theme.of(context).textTheme.bodyLarge,
+            AnimatedReveal(
+              delay: const Duration(milliseconds: 90),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Text(
+                    'No alerts dispatched yet.',
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
                 ),
               ),
             )
           else
-            ...filtered.map(_alertCard),
+            ...List.generate(
+              filtered.length,
+              (index) => AnimatedReveal(
+                delay: Duration(milliseconds: 90 + (index * 40)),
+                child: _alertCard(filtered[index]),
+              ),
+            ),
         ],
       ),
     );

@@ -119,35 +119,47 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 1, end: selected ? 1.02 : 1),
+      duration: const Duration(milliseconds: 180),
       curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        color: selected ? colorScheme.primary.withValues(alpha: 0.13) : null,
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
+      builder: (context, scale, child) {
+        return Transform.scale(scale: scale, child: child);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(14),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-            child: Row(
-              children: [
-                Icon(
-                  item.icon,
-                  color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  item.title,
-                  style: TextStyle(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: selected ? colorScheme.primary : colorScheme.onSurface,
+          color: selected ? colorScheme.primary.withValues(alpha: 0.13) : null,
+        ),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              child: Row(
+                children: [
+                  AnimatedScale(
+                    duration: const Duration(milliseconds: 180),
+                    scale: selected ? 1.08 : 1,
+                    child: Icon(
+                      item.icon,
+                      color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected ? colorScheme.primary : colorScheme.onSurface,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -96,7 +96,7 @@ class _TopBarState extends State<TopBar> {
 
       final next = messages.isEmpty
           ? 'No active alerts. System monitoring is active.'
-          : messages.join('   •   ');
+          : messages.join('   |   ');
 
       if (mounted) {
         setState(() {
@@ -120,7 +120,7 @@ class _TopBarState extends State<TopBar> {
     final status = alert['status']?.toString().toUpperCase();
     final severity = alert['severity']?.toString().toUpperCase() ?? 'INFO';
     if (status != null && {'QUEUED', 'ACTIVE', 'IN_PROGRESS'}.contains(status)) return true;
-    return {'EMERGENCY', 'ALERT'}.contains(severity);
+    return {'EMERGENCY', 'ALERT', 'WARNING', 'WATCH', 'ADVISORY'}.contains(severity);
   }
 
   int _severityRank(String severity) {
@@ -245,7 +245,8 @@ class _TopBarState extends State<TopBar> {
             const SizedBox(width: 6),
           ],
           Expanded(
-            child: Container(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 320),
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 12),
               decoration: BoxDecoration(
@@ -274,7 +275,7 @@ class _TopBarState extends State<TopBar> {
           const SizedBox(width: 10),
           if (!widget.isCompact)
             Chip(
-              avatar: const Icon(Icons.circle, size: 10, color: Color(0xFF00C36D)),
+              avatar: const _PulsingStatusDot(),
               label: const Text('System online'),
               visualDensity: VisualDensity.compact,
             ),
@@ -352,19 +353,8 @@ class _SeamlessMarqueeState extends State<_SeamlessMarquee>
         final textWidth = tp.width;
         final containerWidth = constraints.maxWidth;
 
-        if (textWidth <= containerWidth) {
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              widget.text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: style,
-            ),
-          );
-        }
-
         final distance = textWidth + _gap;
+        final repeatCount = math.max(2, (containerWidth / distance).ceil() + 2);
         final durationMs = _computeDurationMs(distance);
         if (durationMs != _lastDurationMs) {
           _lastDurationMs = durationMs;
@@ -386,11 +376,10 @@ class _SeamlessMarqueeState extends State<_SeamlessMarquee>
                   maxWidth: double.infinity,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(widget.text, maxLines: 1, style: style),
-                      const SizedBox(width: _gap),
-                      Text(widget.text, maxLines: 1, style: style),
-                    ],
+                    children: List.generate(repeatCount * 2 - 1, (index) {
+                      if (index.isOdd) return const SizedBox(width: _gap);
+                      return Text(widget.text, maxLines: 1, style: style);
+                    }),
                   ),
                 ),
               );
@@ -423,4 +412,41 @@ class _MarqueePalette {
   final Color border;
   final Color text;
   final Color accent;
+}
+
+class _PulsingStatusDot extends StatefulWidget {
+  const _PulsingStatusDot();
+
+  @override
+  State<_PulsingStatusDot> createState() => _PulsingStatusDotState();
+}
+
+class _PulsingStatusDotState extends State<_PulsingStatusDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: Tween(begin: 0.55, end: 1.0).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+      ),
+      child: const Icon(Icons.circle, size: 10, color: Color(0xFF00C36D)),
+    );
+  }
 }
