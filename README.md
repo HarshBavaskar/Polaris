@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris_Logo_Side.PNG" height="250"/>
 
-| **Current Version** | `v0.7A: Authority Platform & UX Overhaul Update` |
+| **Current Version** | `v0.8: Operational Intelligence, Live Reliability, and ML Automation Release` |
 | --- | --- |
 
 </div>
@@ -29,106 +29,114 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## What’s New in Polaris v0.7A  
-### Major Authority Platform Release
+## What’s New in Polaris v0.8 
+### Operational Intelligence, Live Reliability, and ML Automation Release
+
+Polaris v0.8 introduces operational-grade ML automation, active learning, reliability upgrades, and deeper AI fusion logic. This release strengthens decision stability, training workflows, and real-time dashboard behavior.
 
 ---
 
-## Polaris v0.7A Dashboard UI
+## Polaris v0.8 Dashboard UI
 <div align ="center">
-<img src="misc/flutter_01.png"/>
+<img src="misc/Polaris Dashboard Demo.gif"/>
 </div>
 
 ---
 
-## Production-Grade Authority Dashboard
-- Migrated to a Flutter-based multi-page command center UI:
-  - Overview  
-  - Live Risk Map  
-  - Alerts  
-  - Trends  
-  - Citizen Verification
-  - Authority Controls  
+## ML Automation & Active Learning
+
+- Added full **ML Admin Controls** inside Settings:
+  - Train Now
+  - Auto-training toggle
+  - Threshold selection
+  - Live ML job status
+
+- Implemented one-click backend ML pipeline:
+  - Dataset build
+  - CNN retraining
+  - LSTM retraining
+  - Hot reload without manual restart
+
+- Added auto-training trigger based on feedback volume threshold
+- Introduced active learning pipeline:
+  - Uncertain sample queueing
+  - Feedback-aware biasing
+  - Labeled sample tracking
+  - Queue and stats endpoints
+
+- Hardened training pipeline:
+  - Sparse temporal data now returns `SUCCESS_WITH_WARNINGS`
+  - Prevents full job failure on partial datasets
+
+---
+
+## AI Decision Engine Upgrades
+
+- Implemented ensemble scoring:
+  - Rule-based risk
+  - CNN probability
+  - Temporal probability
+  - Trend / spike detection
+  - Feedback bias contribution
+
+- Upgraded confidence and fusion logic:
+  - Smoother decision transitions
+  - Reduced brittle risk jumps
+  - Improved stability under rapid environmental shifts
+
+- Fixed Trends chart issue:
+  - Aligned backend/UI risk keys
+  - Added support for `ensemble_score`
+
+---
+
+## Settings & Operational Controls
+
+- Added full **Settings tab** with:
+  - App versioning
+  - Backend health and stats
+  - Dark mode toggle
+  - Backend start/stop controls
+  - Terminal visibility toggle
+
+- Implemented Windows backend launcher improvements:
+  - Hidden shell support
+  - Optional visible terminal
+  - Improved stop workflow behavior
+
+---
+
+## Dashboard Reliability & UX Refinement
+
+- Improved Overview screen:
+  - Compact important stats
+  - Map-summary-based live risk counts
+  - Corrected auto-refresh behavior
+
+- Improved Map screen:
+  - Continuous reflection of latest decision risk
+  - Fallback marker support
+
+- Added severity-aware marquee in top bar:
+  - Color-coded by alert level
+  - Filters only active alerts
+
+- Implemented startup loader flow
+- Refined animations and surface transitions:
+  - Attention pulses
+  - Smoother non-flicker updates
+
+- Added safer automatic polling across:
+  - Overview
   - Settings
-- Fully responsive layouts (desktop + mobile, overflow-safe)
-- Custom Polaris branding with system-wide auto refresh
-- Rebuilt navigation shell with dynamic top bar (live UTC clock + system status)
+  - Citizen Verification
+  - Trends
+  - Alerts
+  - Map
 
 ---
 
-## Live Situational Awareness
-- Embedded live camera feed directly in Overview
-- Real-time automatic refresh (no manual reload required)
-- Immediate visual context for decision-makers
-
----
-
-## Decision Analytics & Trends
-- Fully functional Trends page
-- Live backend-driven charts:
-  - Risk score evolution  
-  - Confidence trends  
-  - Alert severity distribution  
-- Automatic polling for real-time updates
-
----
-
-## Real-Time Alerts & Push Notifications
-- Reliable alert synchronization across all dashboard views
-- Side push notifications for incoming alerts
-- Alert history fully aligned with backend state
-- Cooldown logic to prevent alert spam
-
----
-
-## Hardened Authority Controls
-- Stable manual override controls:
-  - Risk level  
-  - Alert severity  
-  - Clear override option  
-- Override history with full audit trail
-- Instant system-wide override propagation
-- Clear distinction between `AUTOMATED` and `MANUAL_OVERRIDE`
-
----
-
-## Advanced Geospatial Intelligence
-- Live cloudburst risk heatmap
-- Historical incident overlays
-- Manual safe-zone creation and visualization
-- Auto-focus and pulse highlighting of highest-risk regions
-- Backend groundwork for automatic safe-zone detection
-- Fixed map risk point color logic
-
----
-
-## Citizen Reporting & Verification
-- Introduced `CitizenReport` model with JSON serialization
-- API-integrated citizen report review workflow
-- Citizen Verification screen with:
-  - Pending report management  
-  - Approve / reject actions  
-  - Image preview support  
-
----
-
-## UX and Visual Overhaul
-- Rebuilt global theme system with cohesive color architecture
-- Modernized cards, inputs, chips, and buttons
-- Responsive layout shell (desktop side panel + mobile drawer/bottom nav)
-- Added visual shaders and enhanced UI assets
-- Added Dark Mode Toggle
-
----
-
-## Backend Stability & Integration
-- Fixed inconsistent API responses and empty payload issues
-- Unified decision → alert → UI propagation pipeline
-- Strengthened backend-alert-dashboard contracts
-- Full Swagger UI compatibility (no Postman dependency)
-- Improved real-time messaging reliability
-
-Polaris v0.7A establishes a fully operational, authority-ready early warning command platform with hardened controls, real-time intelligence, and production-grade UX.
+Polaris v0.8 strengthens operational intelligence, improves ML autonomy, enhances reliability under live conditions, and moves the system closer to continuous-learning deployment.
 
 ---
 
@@ -181,6 +189,27 @@ MongoDB + Dashboard & Map APIs
 - Citizen-uploaded images
 - Water-level reports (Ankle / Knee / Waist)
 - Human inputs influence risk but do not bypass safety logic
+
+### Ensemble Risk Engine (v0.8)
+- *Combines:*
+- Rule-based safety logic
+- CNN spatial probability
+- LSTM temporal probability
+- Trend / spike detection
+- Feedback bias weighting
+- Stability smoothing prevents brittle decision jumps
+- Produces ensemble_score for consistent UI alignment
+
+### Active Learning & ML Automation
+- Uncertain sample queueing
+- Feedback-aware retraining bias
+- Auto-training triggered by feedback threshold
+- *One-click ML pipeline:*
+- Dataset build
+- CNN retrain
+- LSTM retrain
+- Hot reload
+- Sparse temporal datasets return SUCCESS_WITH_WARNINGS (no full failure)
 
 ### Dashboard & Visualization
 - Production-grade command-center dashboard
@@ -251,28 +280,60 @@ Collections:
 ## Dashboard & System APIs
 
 ### Dashboard APIs
-- `/dashboard/risk-timeseries`
-- `/dashboard/confidence-timeseries`
-- `/dashboard/current-status`
-- `/alerts/latest`
-- `/alerts/history`
-- `/map/live-risk`
-- `/map/safe-zones`
-- `/map/historical-events`
+
+- `GET /dashboard/current-status` – Live authoritative system state (risk, ensemble score, mode, confidence)
+- `GET /dashboard/risk-timeseries` – Risk + ensemble score evolution
+- `GET /dashboard/confidence-timeseries` – Confidence trend data
+- `GET /dashboard/system-stats` – Backend health, ML status, version info
+- `GET /alerts/latest` – Latest active alerts
+- `GET /alerts/history` – Historical alerts
+- `GET /map/live-risk` – Current geospatial risk layer
+- `GET /map/safe-zones` – Manual & automated safe zones
+- `GET /map/historical-events` – Past incidents overlay
+- `GET /citizen/pending` – Pending citizen reports
+- `GET /citizen/history` – Reviewed citizen reports
+
+---
+
+### ML & Active Learning APIs (v0.8)
+
+- `POST /ml/train` – Trigger one-click ML pipeline  
+- `GET  /ml/status` – Current ML job status  
+- `POST /ml/auto-toggle` – Enable/disable auto-training  
+- `GET  /ml/auto-config` – Auto-training threshold configuration  
+- `GET  /ml/uncertain-queue` – Active learning queue statistics  
+- `GET  /ml/training-history` – Past ML job summaries  
+
+Pipeline includes:
+- Dataset build  
+- CNN retraining  
+- LSTM retraining  
+- Hot reload of inference engine  
+
+---
 
 ### Core System APIs
-- `GET  /decision/latest` – Authoritative system decision  
-- `POST /alert/dispatch` – Dispatch alert payload  
-- `POST /input/camera` – Camera image input  
-- `POST /override/set` – Authority override  
-- `POST /override/clear` – Clear override  
 
-Compatible with:
+- `GET  /decision/latest` – Authoritative final decision (ensemble-aware)  
+- `POST /input/camera` – Camera image input  
+- `POST /alert/dispatch` – Dispatch alert payload  
+- `POST /override/set` – Set authority override  
+- `POST /override/clear` – Clear authority override  
+- `POST /feedback/submit` – Submit authority feedback  
+- `GET  /health` – Backend health check  
+- `POST /backend/start` – Backend start trigger (Windows launcher integration)  
+- `POST /backend/stop` – Controlled backend shutdown  
+
+---
+
+### Compatible With
+
+- Flutter (Web)
 - React
 - Grafana
 - Power BI
-- Postman
-
+- Swagger UI
+- Postman (optional, not required for automated operation)
 ---
 
 ## Notification & Alert Routing
