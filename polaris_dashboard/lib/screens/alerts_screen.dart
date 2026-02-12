@@ -1,10 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
 import '../core/api_service.dart';
-import '../core/global_reload.dart';
+import '../core/refresh_config.dart';
 import '../core/models/alert_event.dart';
 import '../core/theme_utils.dart';
 
@@ -19,13 +18,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
   List<AlertEvent> alerts = [];
   bool loading = true;
   Timer? refreshTimer;
+  bool _isRefreshing = false;
   String selectedSeverity = 'ALL';
 
   @override
   void initState() {
     super.initState();
     loadAlerts();
-    refreshTimer = Timer.periodic(const Duration(seconds: 10), (_) => loadAlerts());
+    refreshTimer = Timer.periodic(RefreshConfig.alertsPoll, (_) => loadAlerts());
   }
 
   @override
@@ -35,6 +35,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 
   Future<void> loadAlerts() async {
+    if (_isRefreshing) return;
+    _isRefreshing = true;
     try {
       final data = await ApiService.fetchAlertHistory();
       data.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -46,13 +48,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => loading = false);
+    } finally {
+      _isRefreshing = false;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    context.watch<GlobalReload>();
-
     if (loading) {
       return const Center(child: CircularProgressIndicator());
     }

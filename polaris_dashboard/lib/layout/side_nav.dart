@@ -19,6 +19,7 @@ class SideNav extends StatelessWidget {
     _NavItem('Trends', Icons.stacked_line_chart_rounded),
     _NavItem('Citizen Verify', Icons.fact_check_rounded),
     _NavItem('Authority', Icons.admin_panel_settings_rounded),
+    _NavItem('Settings', Icons.settings_rounded),
   ];
 
   @override
@@ -79,48 +80,26 @@ class SideNav extends StatelessWidget {
   }
 
   Widget _brandHeader(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: colorScheme.surfaceContainerHigh,
+        color: isDark ? const Color.fromARGB(255, 8, 8, 8) : const Color(0xFFF2F7FF),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.outlineVariant),
+        border: Border.all(
+          color: isDark ? const Color(0x66525252) : const Color(0x3390A4BF),
+          width: 0.5,
+        ),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              'assets/Polaris.png',
-              width: 42,
-              height: 42,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Polaris',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  'Command Center',
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium
-                      ?.copyWith(color: colorScheme.onSurfaceVariant),
-                ),
-              ],
-            ),
-          ),
-        ],
+      child: SizedBox(
+        width: double.infinity,
+        height: 70,
+        child: Image.asset(
+          'assets/Polaris_Logo_Side.PNG',
+          fit: BoxFit.fitWidth,
+          isAntiAlias: true,
+          filterQuality: .high,
+        ),
       ),
     );
   }

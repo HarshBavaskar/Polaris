@@ -57,6 +57,9 @@ dev_dependencies:
 flutter:
   assets:
     - assets/Polaris.png
+    - assets/Polaris_Logo.png
+    - assets/Polaris_Logo_Side.PNG
+  
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
