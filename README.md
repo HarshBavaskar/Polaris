@@ -34,8 +34,12 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 
 ---
 
-## Dashboard UI
-<img src="misc/flutter_01.png" height="250"/>
+## Polaris v0.7A Dashboard UI
+<div align ="center">
+<img src="misc/flutter_01.png"/>
+</div>
+
+---
 
 ## Production-Grade Authority Dashboard
 - Migrated to a Flutter-based multi-page command center UI:
@@ -124,7 +128,7 @@ The result is a **trustworthy, explainable, and deployable** disaster-support sy
 - Full Swagger UI compatibility (no Postman dependency)
 - Improved real-time messaging reliability
 
-Polaris v0.7 establishes a fully operational, authority-ready early warning command platform with hardened controls, real-time intelligence, and production-grade UX.
+Polaris v0.7A establishes a fully operational, authority-ready early warning command platform with hardened controls, real-time intelligence, and production-grade UX.
 
 ---
 
