@@ -1,8 +1,9 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, HTTPException
 import os
 import shutil
 from datetime import datetime
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 
 from dotenv import load_dotenv
@@ -42,19 +43,25 @@ from app.routes.admin_ml import router as admin_ml_router
 
 from app.notifications.valkey_pub import publish_decision
 from app.notifications.deliver import deliver
+from app.notifications.fcm_push import send_push_fcm_to_targets
+from app.notifications.alert_engine import build_alert_payload
 
 
 
 
 
 
-load_dotenv()
-
-app = FastAPI(title="Polaris Detection Server")
+# Always resolve .env from repo root so FCM variables load regardless of cwd.
+REPO_ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(REPO_ROOT / ".env")
 from app.routes.map import router as map_router
-from app.database import ensure_safezone_indexes, ensure_active_learning_indexes
+from app.database import (
+    ensure_safezone_indexes,
+    ensure_active_learning_indexes,
+    ensure_fcm_token_indexes,
+)
 from app.routes.safezones import router as safezones_router
-from app.database import safe_zones_collection
+from app.database import safe_zones_collection, fcm_tokens_collection
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import historical_events_collection
 from app.routes.alerts import router as alerts_router
@@ -72,6 +79,7 @@ async def lifespan(app: FastAPI):
     # Startup logic
     ensure_safezone_indexes()
     ensure_active_learning_indexes()
+    ensure_fcm_token_indexes()
     yield
     # Shutdown logic (optional, none needed now)
 
@@ -115,6 +123,187 @@ def backend_health():
         "up": True,
         "service": "polaris-backend",
         "timestamp": datetime.now()
+    }
+
+
+ALERT_DEDUP_SECONDS = int(os.getenv("ALERT_DEDUP_SECONDS", "180"))
+
+
+def _parse_csv(raw_value: str) -> list[str]:
+    if not raw_value:
+        return []
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _mask_token(value: str) -> str:
+    if len(value) <= 10:
+        return value
+    return f"{value[:6]}...{value[-4:]}"
+
+
+def _resolve_env_path(value: str) -> str:
+    expanded = os.path.expanduser(value)
+    if os.path.isabs(expanded):
+        return expanded
+    return str((REPO_ROOT / expanded).resolve())
+
+
+def _get_fcm_debug_config() -> dict:
+    project_id = (os.getenv("FCM_PROJECT_ID") or "").strip()
+    service_account_raw = (os.getenv("FCM_SERVICE_ACCOUNT_FILE") or "").strip()
+    service_account_path = _resolve_env_path(service_account_raw) if service_account_raw else ""
+    service_account_exists = bool(service_account_path and os.path.exists(service_account_path))
+    device_tokens = _parse_csv(os.getenv("FCM_DEVICE_TOKENS", ""))
+    topic = (os.getenv("FCM_TOPIC") or "").strip()
+    registered_tokens_preview = []
+    registered_tokens_count = 0
+    registered_tokens_error = None
+    try:
+        registered_tokens = list(
+            fcm_tokens_collection.find(
+                {"active": True},
+                {"_id": 0, "token": 1},
+            ).sort("updated_at", -1).limit(3)
+        )
+        registered_tokens_preview = [
+            _mask_token((doc.get("token") or "").strip())
+            for doc in registered_tokens
+            if (doc.get("token") or "").strip()
+        ]
+        registered_tokens_count = fcm_tokens_collection.count_documents({"active": True})
+    except Exception as exc:
+        registered_tokens_error = str(exc)
+
+    issues = []
+    if not project_id:
+        issues.append("Missing FCM_PROJECT_ID")
+    if not service_account_raw:
+        issues.append("Missing FCM_SERVICE_ACCOUNT_FILE")
+    elif not service_account_exists:
+        issues.append(f"Service account file not found: {service_account_path}")
+    if not device_tokens and not topic and registered_tokens_count == 0:
+        issues.append(
+            "No targets configured (set FCM_DEVICE_TOKENS / FCM_TOPIC or register app token)"
+        )
+
+    return {
+        "provider": "fcm",
+        "ready": len(issues) == 0,
+        "issues": issues,
+        "project_id": project_id or None,
+        "service_account_file": service_account_path or None,
+        "service_account_file_exists": service_account_exists,
+        "device_tokens_count": len(device_tokens),
+        "device_tokens_preview": [_mask_token(token) for token in device_tokens[:3]],
+        "registered_tokens_count": registered_tokens_count,
+        "registered_tokens_preview": registered_tokens_preview,
+        "registered_tokens_error": registered_tokens_error,
+        "topic": topic or None,
+        "dedup_seconds": ALERT_DEDUP_SECONDS,
+    }
+
+
+def _is_recent_duplicate_alert(payload: dict) -> bool:
+    if ALERT_DEDUP_SECONDS <= 0:
+        return False
+
+    severity = (payload.get("severity") or "").strip().upper()
+    message = (payload.get("message") or "").strip()
+    if not severity or not message:
+        return False
+
+    latest = alerts_collection.find_one(
+        {"severity": severity, "message": message},
+        sort=[("timestamp", -1)],
+        projection={"timestamp": 1},
+    )
+    if not latest:
+        return False
+
+    ts = latest.get("timestamp")
+    if not isinstance(ts, datetime):
+        return False
+
+    age_seconds = (datetime.now() - ts).total_seconds()
+    return age_seconds <= ALERT_DEDUP_SECONDS
+
+
+def _dispatch_alert_payload(payload: dict, source: str = "API_DISPATCH") -> dict:
+    severity = (payload.get("severity") or "").strip().upper()
+    channel = (payload.get("channel") or "").strip().upper()
+    message = (payload.get("message") or "").strip()
+
+    if not severity or not channel or not message:
+        return {
+            "status": "failed",
+            "channel": channel or payload.get("channel"),
+            "severity": severity or payload.get("severity"),
+            "delivery": {
+                "ok": False,
+                "error": "Missing required fields: severity, channel, message",
+            },
+        }
+
+    normalized_payload = {
+        "severity": severity,
+        "channel": channel,
+        "message": message,
+        "title": payload.get("title"),
+    }
+
+    if _is_recent_duplicate_alert(normalized_payload):
+        duplicate_doc = {
+            "channel": channel,
+            "severity": severity,
+            "message": message,
+            "timestamp": datetime.now(),
+            "status": "duplicate_ignored",
+            "source": source,
+            "delivery": {
+                "ok": True,
+                "provider": "fcm",
+                "note": f"Duplicate ignored within {ALERT_DEDUP_SECONDS}s window",
+            },
+        }
+        alerts_collection.insert_one(duplicate_doc)
+        return {
+            "status": "duplicate_ignored",
+            "channel": channel,
+            "severity": severity,
+            "delivery": {
+                "ok": True,
+                "provider": "fcm",
+                "note": f"Duplicate ignored within {ALERT_DEDUP_SECONDS}s window",
+            },
+        }
+
+    alert_doc = {
+        "channel": channel,
+        "severity": severity,
+        "message": message,
+        "timestamp": datetime.now(),
+        "status": "queued",
+        "source": source,
+    }
+
+    # store first
+    result = alerts_collection.insert_one(alert_doc)
+
+    # deliver
+    delivery_result = deliver(normalized_payload)
+
+    # update status
+    new_status = "sent" if delivery_result.get("ok") else "failed"
+    alerts_collection.update_one(
+        {"_id": result.inserted_id},
+        {"$set": {"status": new_status, "delivery": delivery_result}}
+    )
+
+    return {
+        "status": new_status,
+        "channel": channel,
+        "severity": severity,
+        "delivery": delivery_result
     }
 
 
@@ -312,6 +501,12 @@ async def receive_camera_image(image: UploadFile = File(...)):
     prediction_doc["final_decision"] = final_decision
     prediction_result = predictions_collection.insert_one(prediction_doc)
 
+    # Auto-dispatch alerts directly from the decision pipeline.
+    # This keeps notifications working even if the external router process is not running.
+    auto_alert_payload = build_alert_payload(final_decision)
+    if auto_alert_payload:
+        _dispatch_alert_payload(auto_alert_payload, source="AUTO_PIPELINE")
+
     if should_queue_for_active_learning(
         confidence=confidence,
         ensemble_score=ensemble_score,
@@ -333,26 +528,6 @@ async def receive_camera_image(image: UploadFile = File(...)):
             pass
 
     return final_decision
-
-    # 6. Return response
-    return {
-    "message": "Image processed & stored",
-    "filename": filename,
-    "features": features,
-    "risk_score": risk_score,
-    "ai_level": ai_level,          # rule-based
-    "ai_ml_level": ai_ml_level,    # CNN-based
-    "ai_probability": ai_probability,
-    "risk_level": final_level,
-    "confidence": confidence,
-    "recent_risks": recent_risks,
-    "temporal_probability": temporal_prob,
-    "temporal_level": temporal_level,
-    "estimated_time_to_cloudburst": eta,
-    "eta_confidence": eta_confidence,
-    "alert_severity": alert_severity,
-    "authority_justification": authority_justification
-    }
 
 @app.get("/decision/latest")
 def get_latest_decision():
@@ -386,32 +561,113 @@ def get_latest_decision():
 
 @app.post("/alert/dispatch")
 def dispatch_alert(payload: dict):
-    alert_doc = {
-        "channel": payload.get("channel"),
-        "severity": payload.get("severity"),
-        "message": payload.get("message"),
-        "timestamp": datetime.now(),
-        "status": "queued"
+    source = (payload.get("source") or "API_DISPATCH").strip()
+    return _dispatch_alert_payload(payload, source=source)
+
+
+@app.post("/alert/test-token")
+def test_alert_token(payload: dict):
+    """
+    Sends a test FCM notification to one explicit token.
+    Does not use FCM_DEVICE_TOKENS / FCM_TOPIC from .env.
+    """
+    token = (payload.get("token") or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Missing required field: token")
+
+    test_payload = {
+        "title": payload.get("title") or "Polaris Test Alert",
+        "message": payload.get("message") or "This is a direct token test notification.",
+        "severity": (payload.get("severity") or "ADVISORY").upper(),
+        "channel": (payload.get("channel") or "APP_NOTIFICATION").upper(),
     }
 
-    # store first
-    result = alerts_collection.insert_one(alert_doc)
+    delivery_result = send_push_fcm_to_targets(
+        test_payload,
+        device_tokens=[token],
+        topic=None,
+    )
+    status = "sent" if delivery_result.get("ok") else "failed"
 
-    # deliver (FCM push happens here)
-    delivery_result = deliver(payload)
+    return {
+        "status": status,
+        "delivery": delivery_result,
+        "payload": test_payload,
+    }
 
-    # update status
-    new_status = "sent" if delivery_result.get("ok") else "failed"
-    alerts_collection.update_one(
-        {"_id": result.inserted_id},
-        {"$set": {"status": new_status, "delivery": delivery_result}}
+
+@app.post("/alert/register-token")
+def register_alert_token(payload: dict):
+    token = (payload.get("token") or "").strip()
+    if len(token) < 20:
+        raise HTTPException(status_code=400, detail="Invalid or missing token")
+
+    platform = (payload.get("platform") or "unknown").strip().lower()
+    source = (payload.get("source") or "app_startup").strip()
+    user_agent = (payload.get("user_agent") or "").strip()
+    now = datetime.now()
+
+    fcm_tokens_collection.update_one(
+        {"token": token},
+        {
+            "$set": {
+                "token": token,
+                "active": True,
+                "platform": platform,
+                "source": source,
+                "user_agent": user_agent,
+                "updated_at": now,
+            },
+            "$setOnInsert": {"created_at": now},
+        },
+        upsert=True,
     )
 
     return {
-        "status": new_status,
-        "channel": payload.get("channel"),
-        "severity": payload.get("severity"),
-        "delivery": delivery_result
+        "status": "registered",
+        "token": _mask_token(token),
+        "platform": platform,
+        "source": source,
+    }
+
+
+@app.post("/alert/unregister-token")
+def unregister_alert_token(payload: dict):
+    token = (payload.get("token") or "").strip()
+    if len(token) < 20:
+        raise HTTPException(status_code=400, detail="Invalid or missing token")
+
+    result = fcm_tokens_collection.update_one(
+        {"token": token},
+        {"$set": {"active": False, "updated_at": datetime.now()}},
+    )
+
+    return {
+        "status": "unregistered" if result.matched_count else "not_found",
+        "token": _mask_token(token),
+    }
+
+
+@app.get("/alert/debug-status")
+def get_alert_debug_status():
+    latest_alert = None
+    db_error = None
+    try:
+        latest_alert = alerts_collection.find_one(
+            {},
+            sort=[("timestamp", -1)],
+            projection={"_id": 0},
+        )
+    except Exception as exc:
+        db_error = str(exc)
+
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(),
+        "fcm": _get_fcm_debug_config(),
+        "last_alert": latest_alert,
+        "last_delivery": (latest_alert or {}).get("delivery"),
+        "db_error": db_error,
     }
 
 @app.get("/alerts/latest")

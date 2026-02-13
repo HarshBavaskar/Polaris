@@ -41,8 +41,7 @@ $ErrorActionPreference = "SilentlyContinue"
 $repoRoot = "D:\Polaris"
 $runtimeDir = Join-Path $repoRoot "app\runtime"
 $pidFiles = @(
-  Join-Path $runtimeDir "backend_pid.txt",
-  Join-Path $runtimeDir "router_pid.txt"
+  Join-Path $runtimeDir "backend_pid.txt"
 )
 
 foreach ($pidFile in $pidFiles) {
@@ -58,8 +57,7 @@ foreach ($pidFile in $pidFiles) {
 
 $targets = @(
   'uvicorn app.main:app',
-  '-m uvicorn app.main:app',
-  'app.notifications.valkey_router'
+  '-m uvicorn app.main:app'
 )
 
 foreach ($target in $targets) {

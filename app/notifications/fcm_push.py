@@ -1,16 +1,32 @@
 import os
 from typing import Dict, List
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
 
 
 FCM_SCOPE = ["https://www.googleapis.com/auth/firebase.messaging"]
+REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(REPO_ROOT / ".env")
 
 
 def _parse_csv(raw_value: str) -> List[str]:
     if not raw_value:
         return []
     return [item.strip() for item in raw_value.split(",") if item.strip()]
+
+
+def _merge_unique_tokens(*token_groups: List[str]) -> List[str]:
+    merged: List[str] = []
+    seen = set()
+    for group in token_groups:
+        for token in group:
+            if not token or token in seen:
+                continue
+            seen.add(token)
+            merged.append(token)
+    return merged
 
 
 def _mask_token(value: str) -> str:
@@ -36,17 +52,24 @@ def _get_access_token(service_account_file: str):
         return None, f"Failed to load FCM service account: {exc}"
 
 
-def send_push_fcm(payload: Dict) -> Dict:
+def send_push_fcm_to_targets(
+    payload: Dict,
+    device_tokens: List[str] | None = None,
+    topic: str | None = None,
+) -> Dict:
     """
     Sends push notifications through Firebase Cloud Messaging HTTP v1 API.
     Targets:
-    - FCM_DEVICE_TOKENS (comma-separated)
-    - FCM_TOPIC (optional, used if set)
+    - device_tokens (explicit list)
+    - topic (explicit topic)
     """
     project_id = (os.getenv("FCM_PROJECT_ID") or "").strip()
     service_account_file = (os.getenv("FCM_SERVICE_ACCOUNT_FILE") or "").strip()
-    device_tokens = _parse_csv(os.getenv("FCM_DEVICE_TOKENS", ""))
-    topic = (os.getenv("FCM_TOPIC") or "").strip()
+    service_account_file = os.path.expanduser(service_account_file)
+    if service_account_file and not os.path.isabs(service_account_file):
+        service_account_file = str((REPO_ROOT / service_account_file).resolve())
+    resolved_tokens = [item.strip() for item in (device_tokens or []) if item and item.strip()]
+    resolved_topic = (topic or "").strip()
 
     if not project_id:
         return {
@@ -69,11 +92,11 @@ def send_push_fcm(payload: Dict) -> Dict:
             "error": f"FCM service account file not found: {service_account_file}",
         }
 
-    if not device_tokens and not topic:
+    if not resolved_tokens and not resolved_topic:
         return {
             "ok": False,
             "provider": "fcm",
-            "error": "Configure at least one target: FCM_DEVICE_TOKENS or FCM_TOPIC",
+            "error": "No FCM targets provided (device token or topic required)",
         }
 
     access_token, token_error = _get_access_token(service_account_file)
@@ -97,9 +120,9 @@ def send_push_fcm(payload: Dict) -> Dict:
         "Content-Type": "application/json; charset=UTF-8",
     }
 
-    targets = [{"kind": "token", "value": token} for token in device_tokens]
-    if topic:
-        targets.append({"kind": "topic", "value": topic})
+    targets = [{"kind": "token", "value": token} for token in resolved_tokens]
+    if resolved_topic:
+        targets.append({"kind": "topic", "value": resolved_topic})
 
     results = []
 
@@ -152,3 +175,44 @@ def send_push_fcm(payload: Dict) -> Dict:
         "targets": len(results),
         "results": results,
     }
+
+
+def send_push_fcm(payload: Dict) -> Dict:
+    """
+    Sends push notifications through Firebase Cloud Messaging HTTP v1 API.
+    Targets from .env:
+    - FCM_DEVICE_TOKENS (comma-separated)
+    - FCM_TOPIC (optional)
+    """
+    env_tokens = _parse_csv(os.getenv("FCM_DEVICE_TOKENS", ""))
+    topic = (os.getenv("FCM_TOPIC") or "").strip()
+    db_tokens: List[str] = []
+    db_tokens_error = None
+    try:
+        from app.database import fcm_tokens_collection
+
+        db_tokens = [
+            (doc.get("token") or "").strip()
+            for doc in fcm_tokens_collection.find(
+                {"active": True},
+                {"_id": 0, "token": 1},
+            ).limit(1000)
+            if (doc.get("token") or "").strip()
+        ]
+    except Exception as exc:
+        db_tokens_error = str(exc)
+
+    device_tokens = _merge_unique_tokens(env_tokens, db_tokens)
+    result = send_push_fcm_to_targets(
+        payload,
+        device_tokens=device_tokens,
+        topic=topic,
+    )
+    result["token_sources"] = {
+        "env_count": len(env_tokens),
+        "registered_count": len(db_tokens),
+        "merged_count": len(device_tokens),
+    }
+    if db_tokens_error:
+        result["token_sources"]["registered_error"] = db_tokens_error
+    return result

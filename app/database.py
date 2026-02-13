@@ -12,6 +12,7 @@ predictions_collection = db["predictions"]
 citizen_reports_collection = db["citizen_reports"]
 feedback_collection = db["feedback"]
 alerts_collection = db["alerts"]
+fcm_tokens_collection = db["fcm_tokens"]
 safe_zones_collection = db["safe_zones"]
 historical_events_collection = db["historical_events"]
 overrides_collection = db["overrides"]
@@ -35,4 +36,14 @@ def ensure_active_learning_indexes():
     active_learning_collection.create_index(
         [("prediction_id", 1)],
         unique=True
+    )
+
+
+def ensure_fcm_token_indexes():
+    fcm_tokens_collection.create_index(
+        [("token", 1)],
+        unique=True
+    )
+    fcm_tokens_collection.create_index(
+        [("active", 1), ("updated_at", -1)]
     )
