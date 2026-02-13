@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
@@ -9,6 +12,7 @@ import '../core/api.dart';
 import '../core/backend_launcher.dart';
 import '../core/refresh_config.dart';
 import '../core/theme_controller.dart';
+import '../firebase_options.dart';
 import '../widgets/animated_reveal.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -33,6 +37,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _autoTrainingThreshold = 50;
   String? _error;
   String? _mlError;
+  bool _fetchingWebFcmToken = false;
   Map<String, dynamic>? _stats;
   Map<String, dynamic>? _mlStatus;
 
@@ -381,6 +386,92 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _showWebFcmTokenDialog() async {
+    if (_fetchingWebFcmToken) return;
+
+    if (!kIsWeb) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Web FCM token is available only in the web build.'),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _fetchingWebFcmToken = true);
+
+    String? token;
+    String? error;
+    try {
+      final vapidKey = DefaultFirebaseOptions.webVapidKey.trim();
+      if (vapidKey.isEmpty || vapidKey.startsWith('REPLACE_')) {
+        error =
+            'Set webVapidKey in firebase_options.dart before requesting token.';
+      } else {
+        final messaging = FirebaseMessaging.instance;
+        await messaging.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        token = await messaging.getToken(vapidKey: vapidKey);
+        if (token == null || token.isEmpty) {
+          error =
+              'Token not available yet. Refresh and allow notifications in browser settings.';
+        }
+      }
+    } catch (e) {
+      error = 'Failed to fetch token: $e';
+    } finally {
+      if (mounted) {
+        setState(() => _fetchingWebFcmToken = false);
+      }
+    }
+
+    if (!mounted) return;
+
+    if (error != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), behavior: SnackBarBehavior.floating),
+      );
+      return;
+    }
+
+    final tokenValue = token!;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Web FCM Token'),
+          content: SelectableText(tokenValue),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: tokenValue));
+                if (!dialogContext.mounted) return;
+                Navigator.of(dialogContext).pop();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('FCM token copied'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded),
+              label: const Text('Copy'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -477,6 +568,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: themeController.isDarkMode,
                       onChanged: themeController.setDarkMode,
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonalIcon(
+                        onPressed: _fetchingWebFcmToken
+                            ? null
+                            : _showWebFcmTokenDialog,
+                        icon: _fetchingWebFcmToken
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.notifications_active_rounded),
+                        label: Text(
+                          _fetchingWebFcmToken
+                              ? 'Fetching Web FCM Token...'
+                              : 'Show/Copy Web FCM Token',
+                        ),
+                      ),
                     ),
                   ],
                 ),
