@@ -209,8 +209,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (_mlActionLoading ||
         _startingBackend ||
         _stoppingBackend ||
-        !_backendHealthy)
+        !_backendHealthy) {
       return;
+    }
     setState(() => _mlActionLoading = true);
     try {
       final response = await http.post(
