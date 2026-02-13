@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 import os
 import shutil
+import threading
 from datetime import datetime
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -80,8 +81,27 @@ async def lifespan(app: FastAPI):
     ensure_safezone_indexes()
     ensure_active_learning_indexes()
     ensure_fcm_token_indexes()
+    retry_stop_event = None
+    retry_thread = None
+    if ALERT_RETRY_ENABLED:
+        retry_stop_event = threading.Event()
+        retry_thread = threading.Thread(
+            target=_alert_retry_worker,
+            args=(retry_stop_event,),
+            daemon=True,
+            name="alert-retry-worker",
+        )
+        retry_thread.start()
+    app.state.alert_retry_stop_event = retry_stop_event
+    app.state.alert_retry_thread = retry_thread
     yield
-    # Shutdown logic (optional, none needed now)
+    # Shutdown logic
+    stop_event = getattr(app.state, "alert_retry_stop_event", None)
+    thread = getattr(app.state, "alert_retry_thread", None)
+    if stop_event is not None:
+        stop_event.set()
+    if thread is not None and thread.is_alive():
+        thread.join(timeout=2)
 
 
 
@@ -127,6 +147,10 @@ def backend_health():
 
 
 ALERT_DEDUP_SECONDS = int(os.getenv("ALERT_DEDUP_SECONDS", "180"))
+ALERT_RETRY_ENABLED = (os.getenv("ALERT_RETRY_ENABLED", "1").strip() == "1")
+ALERT_RETRY_INTERVAL_SECONDS = max(5, int(os.getenv("ALERT_RETRY_INTERVAL_SECONDS", "30")))
+ALERT_RETRY_MAX_ATTEMPTS = max(1, int(os.getenv("ALERT_RETRY_MAX_ATTEMPTS", "3")))
+ALERT_RETRY_BATCH_SIZE = max(1, int(os.getenv("ALERT_RETRY_BATCH_SIZE", "20")))
 
 
 def _parse_csv(raw_value: str) -> list[str]:
@@ -200,7 +224,56 @@ def _get_fcm_debug_config() -> dict:
         "registered_tokens_error": registered_tokens_error,
         "topic": topic or None,
         "dedup_seconds": ALERT_DEDUP_SECONDS,
+        "retry_enabled": ALERT_RETRY_ENABLED,
+        "retry_interval_seconds": ALERT_RETRY_INTERVAL_SECONDS,
+        "retry_max_attempts": ALERT_RETRY_MAX_ATTEMPTS,
+        "retry_batch_size": ALERT_RETRY_BATCH_SIZE,
     }
+
+
+def _retry_failed_alerts_once() -> None:
+    if not ALERT_RETRY_ENABLED:
+        return
+
+    cursor = alerts_collection.find(
+        {
+            "status": "failed",
+            "retry_count": {"$lt": ALERT_RETRY_MAX_ATTEMPTS},
+        }
+    ).sort("timestamp", 1).limit(ALERT_RETRY_BATCH_SIZE)
+
+    for alert in cursor:
+        payload = {
+            "severity": alert.get("severity"),
+            "channel": alert.get("channel"),
+            "message": alert.get("message"),
+            "title": alert.get("title"),
+        }
+
+        delivery_result = deliver(payload)
+        retry_count = int(alert.get("retry_count", 0)) + 1
+
+        update_doc = {
+            "retry_count": retry_count,
+            "last_retry_at": datetime.now(),
+            "delivery": delivery_result,
+        }
+        if delivery_result.get("ok"):
+            update_doc["status"] = "sent"
+
+        alerts_collection.update_one(
+            {"_id": alert["_id"]},
+            {"$set": update_doc}
+        )
+
+
+def _alert_retry_worker(stop_event: threading.Event) -> None:
+    while not stop_event.is_set():
+        try:
+            _retry_failed_alerts_once()
+        except Exception:
+            pass
+        stop_event.wait(ALERT_RETRY_INTERVAL_SECONDS)
 
 
 def _is_recent_duplicate_alert(payload: dict) -> bool:
@@ -281,9 +354,11 @@ def _dispatch_alert_payload(payload: dict, source: str = "API_DISPATCH") -> dict
         "channel": channel,
         "severity": severity,
         "message": message,
+        "title": normalized_payload.get("title"),
         "timestamp": datetime.now(),
         "status": "queued",
         "source": source,
+        "retry_count": 0,
     }
 
     # store first
