@@ -235,8 +235,9 @@ class _TrendsScreenState extends State<TrendsScreen> {
                 showTitles: true,
                 getTitlesWidget: (value, meta) {
                   final index = value.toInt();
-                  if (index < 0 || index >= entries.length)
+                  if (index < 0 || index >= entries.length) {
                     return const SizedBox.shrink();
+                  }
                   return Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
