@@ -43,9 +43,19 @@ class ApiService {
 
 
 // Fetch alert history from the backend API
-  static Future<List<AlertEvent>> fetchAlertHistory() async {
+  static Future<List<AlertEvent>> fetchAlertHistory({
+    int limit = 200,
+    String? severity,
+  }) async {
+  final params = <String, String>{
+    "limit": limit.toString(),
+  };
+  if (severity != null && severity.trim().isNotEmpty) {
+    params["severity"] = severity.trim().toUpperCase();
+  }
+
   final response = await http.get(
-    Uri.parse("${ApiConfig.baseUrl}/alerts/history"),
+    Uri.parse("${ApiConfig.baseUrl}/alerts/history").replace(queryParameters: params),
   );
 
   if (response.statusCode != 200) {
@@ -223,7 +233,6 @@ static Future<void> reviewCitizenReport({
   }
 }
 }
-
 
 
 

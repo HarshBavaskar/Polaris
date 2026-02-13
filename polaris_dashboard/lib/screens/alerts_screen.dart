@@ -16,6 +16,16 @@ class AlertsScreen extends StatefulWidget {
 }
 
 class _AlertsScreenState extends State<AlertsScreen> {
+  static const List<String> _severityOrder = [
+    'ALL',
+    'EMERGENCY',
+    'ALERT',
+    'WARNING',
+    'WATCH',
+    'ADVISORY',
+    'INFO',
+  ];
+
   List<AlertEvent> alerts = [];
   bool loading = true;
   Timer? refreshTimer;
@@ -39,7 +49,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
     if (_isRefreshing) return;
     _isRefreshing = true;
     try {
-      final data = await ApiService.fetchAlertHistory();
+      final data = await ApiService.fetchAlertHistory(
+        limit: selectedSeverity == 'ALL' ? 200 : 500,
+        severity: selectedSeverity == 'ALL' ? null : selectedSeverity,
+      );
       data.sort((a, b) => b.timestamp.compareTo(a.timestamp));
       if (!mounted) return;
       setState(() {
@@ -61,13 +74,20 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
 
     final severities = <String>{
-      'ALL',
-      ...alerts.map((a) => a.severity),
+      ..._severityOrder,
+      ...alerts.map((a) => a.severity.toUpperCase()),
     }.toList();
 
-    final filtered = selectedSeverity == 'ALL'
-        ? alerts
-        : alerts.where((a) => a.severity == selectedSeverity).toList();
+    severities.sort((a, b) {
+      final ai = _severityOrder.indexOf(a);
+      final bi = _severityOrder.indexOf(b);
+      if (ai != -1 && bi != -1) return ai.compareTo(bi);
+      if (ai != -1) return -1;
+      if (bi != -1) return 1;
+      return a.compareTo(b);
+    });
+
+    final filtered = alerts;
 
     return RefreshIndicator(
       onRefresh: loadAlerts,
@@ -98,7 +118,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
                     (s) => ChoiceChip(
                       label: Text(s),
                       selected: selectedSeverity == s,
-                      onSelected: (_) => setState(() => selectedSeverity = s),
+                      onSelected: (_) async {
+                        if (selectedSeverity == s) return;
+                        setState(() {
+                          selectedSeverity = s;
+                          loading = true;
+                        });
+                        await loadAlerts();
+                      },
                     ),
                   )
                   .toList(),

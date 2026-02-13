@@ -342,6 +342,26 @@ Pipeline includes:
 - Runs continuously once the system is started
 - Manual override always supersedes AI decisions
 
+### Phone Alert Setup (Dispatch Endpoint)
+
+`POST /alert/dispatch` now delivers through **Firebase Cloud Messaging (FCM) only**:
+- `APP_NOTIFICATION`
+- `PUSH_NOTIFICATION`
+- `PUSH_SMS`
+- `SMS_SIREN`
+- `ALL_CHANNELS`
+
+Required environment variables:
+- `FCM_PROJECT_ID`
+- `FCM_SERVICE_ACCOUNT_FILE` (absolute path to Firebase service account JSON)
+- `FCM_DEVICE_TOKENS` (optional, comma-separated FCM registration tokens)
+- `FCM_TOPIC` (optional, topic name; default `polaris-alerts`)
+
+Flutter app integration:
+- Use `firebase_messaging` in the Flutter client.
+- Subscribe the app to the configured topic (for example `polaris-alerts`) or register device tokens.
+- Foreground handling can use Flutter local notifications if desired; backend delivery still stays FCM-only.
+
 ### Alert Severity Levels
 - **INFO** – No alert
 - **ADVISORY** – Stay alert
@@ -471,7 +491,7 @@ Polaris/
 - ✅ Trends & analytics available
 - ✅ Continuous data collection & learning
 - ✅ Automated alert routing (Valkey)
-- 🔄 SMS delivery integration in progress
+- ✅ FCM-based phone notifications integrated
 
 
 ---
@@ -503,5 +523,3 @@ It is intended to **assist disaster response** with faster, hyperlocal insights.
 ---
 
 > *Polaris aims to detect danger early — when response still matters.*
-
-

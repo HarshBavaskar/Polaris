@@ -397,7 +397,7 @@ def dispatch_alert(payload: dict):
     # store first
     result = alerts_collection.insert_one(alert_doc)
 
-    # deliver (OneSignal push happens here)
+    # deliver (FCM push happens here)
     delivery_result = deliver(payload)
 
     # update status
