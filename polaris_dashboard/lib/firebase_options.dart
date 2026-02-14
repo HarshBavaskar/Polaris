@@ -3,15 +3,15 @@ import 'package:firebase_core/firebase_core.dart';
 /// Replace these values with your Web App config from Firebase Console:
 /// Project Settings -> General -> Your apps -> Web app -> SDK setup and config.
 class DefaultFirebaseOptions {
-  static const String webVapidKey = 'BCYLUowN62wSqlvcVlRzGBFWT28Ecb21oeATW9r-jVDEJR0Pv_7J8zkijcFF8LusUBcyhm1pgqSpSY_K0xTrMqQ';
+  static const String webVapidKey = 'BEg3dVrH02ZfGnexjcxtrM5N6oqenBKRQzNt9UJiDF1E3biYxFA9dF0kOpFCf7-Y5Uyssbr9UxH9JziAVtHBYro';
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBxZNGH-5ydNV6meQ8mmXTjVynxC0NbZFU',
-    appId: '1:294412034649:web:2a23b3fe1a3c5621cc0748',
-    messagingSenderId: '294412034649',
-    projectId: 'polaris-2965e',
-    authDomain: 'polaris-2965e.firebaseapp.com',
-    storageBucket: 'polaris-2965e.appspot.com',
-    measurementId: 'G-J0Z6WPBF7D',
+    apiKey: 'AIzaSyBZSEFEj4NWVWXs9yQLDmZVtukJe7IpNCk',
+    appId: '1:406400285630:web:627241d55cf7b1df3297ef',
+    messagingSenderId: '406400285630',
+    projectId: 'polaris-60539',
+    authDomain: 'polaris-60539.firebaseapp.com',
+    storageBucket: 'polaris-60539.firebasestorage.app',
+    measurementId: 'G-LRKEZSZFL3',
   );
 }

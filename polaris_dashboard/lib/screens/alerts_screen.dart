@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api_service.dart';
@@ -73,6 +74,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final severities = <String>{
       ..._severityOrder,
       ...alerts.map((a) => a.severity.toUpperCase()),
@@ -89,20 +92,31 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     final filtered = alerts;
 
+    final compact = MediaQuery.sizeOf(context).width < 900 || isAndroidUi;
+
     return RefreshIndicator(
       onRefresh: loadAlerts,
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(compact ? 12 : 24),
         children: [
-          Text(
-            'Alerts Feed',
+        Text(
+          'Alerts Feed',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w800,
                 ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            '${filtered.length} alerts visible',
+        const SizedBox(height: 6),
+        Text(
+          compact
+              ? 'Focused incident list'
+              : 'Focused incident list with severity filters',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${filtered.length} alerts visible',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -110,26 +124,50 @@ class _AlertsScreenState extends State<AlertsScreen> {
           const SizedBox(height: 14),
           AnimatedReveal(
             delay: const Duration(milliseconds: 40),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: severities
-                  .map(
-                    (s) => ChoiceChip(
-                      label: Text(s),
-                      selected: selectedSeverity == s,
-                      onSelected: (_) async {
-                        if (selectedSeverity == s) return;
-                        setState(() {
-                          selectedSeverity = s;
-                          loading = true;
-                        });
-                        await loadAlerts();
-                      },
+            child: compact
+                ? DropdownButtonFormField<String>(
+                    initialValue: selectedSeverity,
+                    decoration: const InputDecoration(
+                      labelText: 'Severity Filter',
+                      border: OutlineInputBorder(),
                     ),
+                    items: severities
+                        .map(
+                          (s) => DropdownMenuItem<String>(
+                            value: s,
+                            child: Text(s),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) async {
+                      if (value == null || value == selectedSeverity) return;
+                      setState(() {
+                        selectedSeverity = value;
+                        loading = true;
+                      });
+                      await loadAlerts();
+                    },
                   )
-                  .toList(),
-            ),
+                : Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: severities
+                        .map(
+                          (s) => ChoiceChip(
+                            label: Text(s),
+                            selected: selectedSeverity == s,
+                            onSelected: (_) async {
+                              if (selectedSeverity == s) return;
+                              setState(() {
+                                selectedSeverity = s;
+                                loading = true;
+                              });
+                              await loadAlerts();
+                            },
+                          ),
+                        )
+                        .toList(),
+                  ),
           ),
           const SizedBox(height: 18),
           if (filtered.isEmpty)
@@ -150,7 +188,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               filtered.length,
               (index) => AnimatedReveal(
                 delay: Duration(milliseconds: 90 + (index * 40)),
-                child: _alertCard(filtered[index]),
+                child: _alertCard(filtered[index], compact: compact),
               ),
             ),
         ],
@@ -158,49 +196,72 @@ class _AlertsScreenState extends State<AlertsScreen> {
     );
   }
 
-  Widget _alertCard(AlertEvent alert) {
+  Widget _alertCard(AlertEvent alert, {required bool compact}) {
     final color = severityColor(alert.severity);
+    final ts = alert.timestamp.toLocal();
+    final timestamp =
+        '${ts.year.toString().padLeft(4, '0')}-${ts.month.toString().padLeft(2, '0')}-${ts.day.toString().padLeft(2, '0')} '
+        '${ts.hour.toString().padLeft(2, '0')}:${ts.minute.toString().padLeft(2, '0')}';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Row(
+        padding: EdgeInsets.all(compact ? 12 : 14),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: 12,
-              height: 12,
-              margin: const EdgeInsets.only(top: 5),
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        alert.severity,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          color: color,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Chip(
-                        label: Text(alert.channel),
-                        visualDensity: VisualDensity.compact,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                    ],
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(999),
                   ),
-                  const SizedBox(height: 6),
-                  Text(alert.message),
-                  const SizedBox(height: 8),
+                  child: Text(
+                    alert.severity,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: color,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Text(
+                  timestamp,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              alert.message,
+              maxLines: compact ? 3 : null,
+              overflow: compact ? TextOverflow.ellipsis : null,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Channel: ${alert.channel}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            if (!compact) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.circle, size: 8, color: color),
+                  const SizedBox(width: 6),
                   Text(
-                    alert.timestamp.toLocal().toString(),
+                    'Severity: ${alert.severity}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -208,7 +269,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   ),
                 ],
               ),
-            ),
+            ],
           ],
         ),
       ),

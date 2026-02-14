@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../core/api.dart';
 import '../core/api_service.dart';
 import '../core/models/safe_zone.dart';
 
@@ -34,7 +36,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   final List<String> riskLevels = ['SAFE', 'WATCH', 'WARNING', 'IMMINENT'];
   final List<String> severities = ['INFO', 'ADVISORY', 'ALERT', 'EMERGENCY'];
 
-  final String baseUrl = 'http://localhost:8000';
+  final String baseUrl = ApiConfig.baseUrl;
 
   @override
   void initState() {
@@ -182,14 +184,23 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final isCompact = MediaQuery.sizeOf(context).width < 1024;
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final isCompact = MediaQuery.sizeOf(context).width < 1024 || isAndroidUi;
 
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isCompact ? 12 : 24),
       children: [
         Text(
           'Authority Control Panel',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Override controls and manual safety management',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
         const SizedBox(height: 12),
         if (isOverrideActive)
@@ -361,9 +372,12 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
                   ?.copyWith(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
-                Expanded(
+                SizedBox(
+                  width: 260,
                   child: TextField(
                     controller: safeZoneLatController,
                     keyboardType: const TextInputType.numberWithOptions(
@@ -373,8 +387,8 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
                     decoration: const InputDecoration(labelText: 'Latitude'),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
+                SizedBox(
+                  width: 260,
                   child: TextField(
                     controller: safeZoneLngController,
                     keyboardType: const TextInputType.numberWithOptions(

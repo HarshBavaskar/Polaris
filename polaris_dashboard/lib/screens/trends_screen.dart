@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/api.dart';
 import '../core/refresh_config.dart';
 import '../widgets/animated_reveal.dart';
 
@@ -24,8 +26,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
   Map<String, int> severityCounts = {};
 
   bool loading = true;
-
-  final String baseUrl = 'http://localhost:8000';
+  final String baseUrl = ApiConfig.baseUrl;
 
   @override
   void initState() {
@@ -106,8 +107,16 @@ class _TrendsScreenState extends State<TrendsScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final isCompact = MediaQuery.sizeOf(context).width < 980;
+    final compactUi = isCompact || isAndroidUi;
+    final latestRisk = riskSeries.isEmpty ? '--' : riskSeries.last.toStringAsFixed(2);
+    final latestConfidence =
+        confidenceSeries.isEmpty ? '--' : confidenceSeries.last.toStringAsFixed(2);
+    final totalAlerts = severityCounts.values.fold<int>(0, (a, b) => a + b).toString();
     return ListView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(compactUi ? 12 : 24),
       children: [
         Text(
           'System Trends',
@@ -115,38 +124,114 @@ class _TrendsScreenState extends State<TrendsScreen> {
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
-        const SizedBox(height: 20),
-        AnimatedReveal(
-          delay: const Duration(milliseconds: 40),
-          child: _ChartCard(
-            title: 'Risk Score Trend',
-            subtitle: 'Latest risk progression',
-            child: _lineChart(riskSeries, const Color(0xFFE53E3E)),
-          ),
+        const SizedBox(height: 4),
+        Text(
+          compactUi
+              ? 'One chart at a time for clear monitoring'
+              : 'Risk, confidence and alert distribution trends',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
         ),
-        const SizedBox(height: 14),
-        AnimatedReveal(
-          delay: const Duration(milliseconds: 90),
-          child: _ChartCard(
-            title: 'Confidence Trend',
-            subtitle: 'Model confidence over time',
-            child: _lineChart(confidenceSeries, const Color(0xFF3182CE)),
+        const SizedBox(height: 16),
+        if (compactUi)
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _miniStat(context, 'Risk', latestRisk),
+              _miniStat(context, 'Confidence', latestConfidence),
+              _miniStat(context, 'Alerts', totalAlerts),
+            ],
           ),
-        ),
-        const SizedBox(height: 14),
-        AnimatedReveal(
-          delay: const Duration(milliseconds: 140),
-          child: _ChartCard(
-            title: 'Alert Severity Distribution',
-            subtitle: 'Total dispatch count by severity',
-            child: _barChart(),
+        if (compactUi) const SizedBox(height: 10),
+        if (compactUi) ...[
+          AnimatedReveal(
+            delay: const Duration(milliseconds: 40),
+            child: _compactSlidingTabs(),
           ),
-        ),
+        ] else ...[
+          AnimatedReveal(
+            delay: const Duration(milliseconds: 40),
+            child: _ChartCard(
+              title: 'Risk Score Trend',
+              subtitle: 'Latest risk progression',
+              child: _lineChart(riskSeries, const Color(0xFFE53E3E)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          AnimatedReveal(
+            delay: const Duration(milliseconds: 90),
+            child: _ChartCard(
+              title: 'Confidence Trend',
+              subtitle: 'Model confidence over time',
+              child: _lineChart(confidenceSeries, const Color(0xFF3182CE)),
+            ),
+          ),
+          const SizedBox(height: 14),
+          AnimatedReveal(
+            delay: const Duration(milliseconds: 140),
+            child: _ChartCard(
+              title: 'Alert Severity Distribution',
+              subtitle: 'Total dispatch count by severity',
+              child: _barChart(),
+            ),
+          ),
+        ],
       ],
     );
   }
 
-  Widget _lineChart(List<double> data, Color color) {
+  Widget _compactSlidingTabs() {
+    return DefaultTabController(
+      length: 3,
+      child: Column(
+        children: [
+          TabBar(
+            isScrollable: false,
+            tabs: const [
+              Tab(text: 'Risk'),
+              Tab(text: 'Confidence'),
+              Tab(text: 'Alerts'),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 290,
+            child: TabBarView(
+              children: [
+                _ChartCard(
+                  title: 'Risk Score Trend',
+                  subtitle: 'Latest risk progression',
+                  child: _lineChart(
+                    riskSeries,
+                    const Color(0xFFE53E3E),
+                    compact: true,
+                  ),
+                ),
+                _ChartCard(
+                  title: 'Confidence Trend',
+                  subtitle: 'Model confidence over time',
+                  child: _lineChart(
+                    confidenceSeries,
+                    const Color(0xFF3182CE),
+                    compact: true,
+                  ),
+                ),
+                _ChartCard(
+                  title: 'Alert Severity Distribution',
+                  subtitle: 'Total dispatch count by severity',
+                  child: _barChart(compact: true),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _lineChart(List<double> data, Color color, {bool compact = false}) {
     if (data.isEmpty) {
       return const SizedBox(
         height: 180,
@@ -163,16 +248,22 @@ class _TrendsScreenState extends State<TrendsScreen> {
     final maxY = data.reduce((a, b) => a > b ? a : b);
 
     return SizedBox(
-      height: 220,
+      height: compact ? 190 : 220,
       child: LineChart(
         LineChartData(
           minY: (minY - 0.05).clamp(0, 1).toDouble(),
           maxY: (maxY + 0.05).clamp(0, 1).toDouble(),
-          gridData: FlGridData(show: true, drawVerticalLine: false),
+          gridData: FlGridData(
+            show: !compact,
+            drawVerticalLine: false,
+          ),
           borderData: FlBorderData(show: false),
           titlesData: FlTitlesData(
             leftTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: true, reservedSize: 34),
+              sideTitles: SideTitles(
+                showTitles: !compact,
+                reservedSize: 34,
+              ),
             ),
             rightTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
@@ -188,12 +279,12 @@ class _TrendsScreenState extends State<TrendsScreen> {
             LineChartBarData(
               spots: spots,
               isCurved: true,
-              barWidth: 3,
+              barWidth: compact ? 2.5 : 3,
               color: color,
-              dotData: const FlDotData(show: false),
+              dotData: FlDotData(show: !compact && data.length < 18),
               belowBarData: BarAreaData(
                 show: true,
-                color: color.withValues(alpha: 0.15),
+                color: color.withValues(alpha: compact ? 0.12 : 0.15),
               ),
             ),
           ],
@@ -202,7 +293,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
     );
   }
 
-  Widget _barChart() {
+  Widget _barChart({bool compact = false}) {
     if (severityCounts.isEmpty) {
       return const SizedBox(
         height: 180,
@@ -214,10 +305,13 @@ class _TrendsScreenState extends State<TrendsScreen> {
       ..sort((a, b) => b.value.compareTo(a.value));
 
     return SizedBox(
-      height: 220,
+      height: compact ? 190 : 220,
       child: BarChart(
         BarChartData(
-          gridData: FlGridData(show: true, drawVerticalLine: false),
+          gridData: FlGridData(
+            show: !compact,
+            drawVerticalLine: false,
+          ),
           borderData: FlBorderData(show: false),
           barTouchData: BarTouchData(enabled: true),
           titlesData: FlTitlesData(
@@ -228,7 +322,10 @@ class _TrendsScreenState extends State<TrendsScreen> {
               sideTitles: SideTitles(showTitles: false),
             ),
             leftTitles: AxisTitles(
-              sideTitles: SideTitles(showTitles: true, reservedSize: 34),
+              sideTitles: SideTitles(
+                showTitles: !compact,
+                reservedSize: 34,
+              ),
             ),
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
@@ -242,7 +339,7 @@ class _TrendsScreenState extends State<TrendsScreen> {
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
                       entries[index].key,
-                      style: const TextStyle(fontSize: 11),
+                      style: TextStyle(fontSize: compact ? 10 : 11),
                     ),
                   );
                 },
@@ -256,13 +353,44 @@ class _TrendsScreenState extends State<TrendsScreen> {
                 BarChartRodData(
                   toY: entries[i].value.toDouble(),
                   color: const Color(0xFF0C6E90),
-                  width: 18,
+                  width: compact ? 14 : 18,
                   borderRadius: BorderRadius.circular(6),
                 ),
               ],
             );
           }),
         ),
+      ),
+    );
+  }
+
+  Widget _miniStat(BuildContext context, String label, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colorScheme.outlineVariant),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            '$label: ',
+            style: TextStyle(
+              color: colorScheme.onSurfaceVariant,
+              fontSize: 12,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }

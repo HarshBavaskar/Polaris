@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "406400285630",
+    "project_id": "polaris-60539",
+    "storage_bucket": "polaris-60539.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:406400285630:android:84b0e18ee91666233297ef",
+        "android_client_info": {
+          "package_name": "com.example.polaris_dashboard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC5oqV6DIYYydOK42CQqr4cZo2MXkTFFWw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

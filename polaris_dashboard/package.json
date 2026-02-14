@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "android": "^0.0.8",
     "firebase": "^12.9.0"
   }
 }

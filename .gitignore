@@ -25,11 +25,13 @@ out/
 .env
 .env.local
 .env.*.local
+*.env
 
 # Logs
 logs/
 *.log
 npm-debug.log*
+logs_*.txt
 
 # OS
 Thumbs.db
@@ -41,3 +43,10 @@ coverage/
 
 # Temporary files
 *.tmp
+
+# Firebase / credentials
+*firebase-adminsdk*.json
+service-account*.json
+
+# Runtime / local state
+app/runtime/
