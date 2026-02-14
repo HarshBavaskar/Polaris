@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/api.dart';
 import '../core/api_service.dart';
 import '../core/models/alert_event.dart';
 import '../core/models/citizen_report.dart';
@@ -24,6 +26,7 @@ class _OverviewScreenState extends State<OverviewScreen> {
   Timer? _decisionTimer;
   bool _isFetchingDecision = false;
   bool _isFetchingOverview = false;
+  bool _showCameraOnAndroid = false;
 
   String _frameUrl = '';
   Map<String, dynamic>? decision;
@@ -32,8 +35,8 @@ class _OverviewScreenState extends State<OverviewScreen> {
   List<AlertEvent> _alertHistory = const [];
   List<CitizenReport> _pendingReports = const [];
 
-  final String baseUrl = 'http://localhost:8000';
-  final String cameraEndpoint = 'http://localhost:8000/camera/latest-frame';
+  final String baseUrl = ApiConfig.baseUrl;
+  final String cameraEndpoint = '${ApiConfig.baseUrl}/camera/latest-frame';
 
   @override
   void initState() {
@@ -187,7 +190,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final width = MediaQuery.sizeOf(context).width;
-    final isCompact = width < 1080;
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final isCompact = width < 1080 || isAndroidUi;
 
     final activeSafeZones = _safeZones.where((z) => z.active).length;
     final riskPointsFromMapSummary = _mapSummaryRiskPoints.length;
@@ -225,6 +230,9 @@ class _OverviewScreenState extends State<OverviewScreen> {
         icon: Icons.schedule_rounded,
       ),
     ];
+    final visibleDecisionStats = isAndroidUi
+        ? decisionStats.take(3).toList()
+        : decisionStats;
 
     final importantStats = <_OverviewStatData>[
       _OverviewStatData(
@@ -258,49 +266,109 @@ class _OverviewScreenState extends State<OverviewScreen> {
         icon: Icons.health_and_safety_rounded,
       ),
     ];
+    final visibleImportantStats = isAndroidUi
+        ? importantStats.take(4).toList()
+        : importantStats;
 
     return RefreshIndicator(
       onRefresh: _refreshAll,
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(isCompact ? 12 : 24),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: AnimatedReveal(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          if (isCompact)
+            AnimatedReveal(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Authority Overview',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Live status, alerts and readiness at a glance',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: FilledButton.icon(
+                      onPressed: _refreshAll,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Refresh'),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: AnimatedReveal(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Authority Overview',
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Live status, alerts and readiness at a glance',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _refreshAll,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh'),
+                ),
+              ],
+            ),
+          const SizedBox(height: 20),
+          if (isCompact) ...[
+            if (!isAndroidUi || _showCameraOnAndroid) ...[
+              AnimatedReveal(
+                delay: const Duration(milliseconds: 40),
+                child: _cameraCard(context),
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (isAndroidUi)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () {
+                    setState(() => _showCameraOnAndroid = !_showCameraOnAndroid);
+                  },
+                  icon: Icon(
+                    _showCameraOnAndroid
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                  ),
+                  label: Text(
+                    _showCameraOnAndroid ? 'Hide Camera Feed' : 'Show Camera Feed',
                   ),
                 ),
               ),
-              FilledButton.icon(
-                onPressed: _refreshAll,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          if (isCompact) ...[
-            AnimatedReveal(
-              delay: const Duration(milliseconds: 40),
-              child: _cameraCard(context),
-            ),
-            const SizedBox(height: 16),
-            ...List.generate(decisionStats.length, (index) {
+            ...List.generate(visibleDecisionStats.length, (index) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: AnimatedReveal(
                   delay: Duration(milliseconds: 80 + (index * 55)),
-                  child: _MetricCard(data: decisionStats[index]),
+                  child: _MetricCard(data: visibleDecisionStats[index]),
                 ),
               );
             }),
@@ -336,12 +404,15 @@ class _OverviewScreenState extends State<OverviewScreen> {
           AnimatedReveal(
             delay: const Duration(milliseconds: 120),
             child: _ImportantStatsCard(
-              stats: importantStats,
+              stats: visibleImportantStats,
               columns: width >= 1280
                   ? 4
                   : width >= 980
                   ? 3
-                  : 2,
+                  : width >= 620
+                  ? 2
+                  : 1,
+              dense: isAndroidUi,
             ),
           ),
           const SizedBox(height: 6),
@@ -418,14 +489,20 @@ class _OverviewStatData {
 }
 
 class _ImportantStatsCard extends StatelessWidget {
-  const _ImportantStatsCard({required this.stats, required this.columns});
+  const _ImportantStatsCard({
+    required this.stats,
+    required this.columns,
+    this.dense = false,
+  });
 
   final List<_OverviewStatData> stats;
   final int columns;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final compact = MediaQuery.sizeOf(context).width < 700;
 
     return Card(
       child: Padding(
@@ -446,12 +523,14 @@ class _ImportantStatsCard extends StatelessWidget {
               itemCount: stats.length,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: columns,
-                childAspectRatio: 3.25,
+                mainAxisExtent: dense
+                    ? 72
+                    : (compact || columns == 1 ? 94 : 84),
                 crossAxisSpacing: 6,
                 mainAxisSpacing: 6,
               ),
               itemBuilder: (context, index) =>
-                  _OverviewStatTile(data: stats[index]),
+                  _OverviewStatTile(data: stats[index], dense: dense),
             ),
           ],
         ),
@@ -461,9 +540,10 @@ class _ImportantStatsCard extends StatelessWidget {
 }
 
 class _OverviewStatTile extends StatelessWidget {
-  const _OverviewStatTile({required this.data});
+  const _OverviewStatTile({required this.data, this.dense = false});
 
   final _OverviewStatData data;
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -473,15 +553,16 @@ class _OverviewStatTile extends StatelessWidget {
         color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(12),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 6 : 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(data.icon, size: 16, color: colorScheme.primary),
-          const SizedBox(width: 8),
+          Icon(data.icon, size: dense ? 14 : 16, color: colorScheme.primary),
+          SizedBox(width: dense ? 6 : 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Text(
                   data.value,
@@ -497,14 +578,15 @@ class _OverviewStatTile extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                Text(
-                  data.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: colorScheme.onSurfaceVariant,
+                if (!dense)
+                  Text(
+                    data.subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

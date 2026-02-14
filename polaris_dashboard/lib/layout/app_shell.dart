@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../core/api.dart';
 import '../core/refresh_config.dart';
 import '../screens/alerts_screen.dart';
 import '../screens/authority_screen.dart';
@@ -54,15 +56,20 @@ class _AppShellState extends State<AppShell> {
   OverlayEntry? _toast;
   final _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  final String baseUrl = 'http://localhost:8000';
+  final String baseUrl = ApiConfig.baseUrl;
 
   @override
   void initState() {
     super.initState();
     _startAlertPolling();
-    _startupTimer = Timer(const Duration(milliseconds: 1700), () {
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    _startupTimer = Timer(
+      Duration(milliseconds: isAndroidUi ? 650 : 1700),
+      () {
       if (mounted) setState(() => _showStartupLoader = false);
-    });
+      },
+    );
   }
 
   @override
@@ -81,15 +88,27 @@ class _AppShellState extends State<AppShell> {
         final res = await http.get(Uri.parse('$baseUrl/alerts/latest'));
         if (res.statusCode != 200) return;
 
-        final data = jsonDecode(res.body);
-        if (data == null || data['id'] == null) return;
+        final decoded = jsonDecode(res.body);
+        final latest = decoded is List && decoded.isNotEmpty && decoded.first is Map
+            ? Map<String, dynamic>.from(decoded.first as Map)
+            : decoded is Map
+                ? Map<String, dynamic>.from(decoded)
+                : null;
+        if (latest == null) return;
 
-        final newId = data['id'].toString();
-        if (_lastAlertId == null || newId != _lastAlertId) {
+        final newId = latest['_id']?.toString() ??
+            latest['id']?.toString() ??
+            '${latest['timestamp'] ?? ''}:${latest['message'] ?? ''}';
+        if (_lastAlertId == null) {
+          _lastAlertId = newId;
+          return;
+        }
+
+        if (newId != _lastAlertId) {
           _lastAlertId = newId;
           _showToast(
-            message: data['message']?.toString() ?? 'New alert received',
-            severity: data['severity']?.toString() ?? 'INFO',
+            message: latest['message']?.toString() ?? 'New alert received',
+            severity: latest['severity']?.toString() ?? 'INFO',
           );
         }
       } catch (_) {
@@ -100,6 +119,32 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _showToast({required String message, required String severity}) {
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    if (isAndroidUi) {
+      final color = switch (severity) {
+        'EMERGENCY' => const Color(0xFFC53030),
+        'ALERT' => const Color(0xFFDD6B20),
+        'ADVISORY' => const Color(0xFFB7791F),
+        _ => Theme.of(context).colorScheme.primary,
+      };
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: color,
+            content: Text(
+              message,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      return;
+    }
+
     _removeToast();
 
     final overlay = Overlay.of(context, rootOverlay: true);
@@ -112,43 +157,48 @@ class _AppShellState extends State<AppShell> {
     };
 
     _toast = OverlayEntry(
-      builder: (_) => Positioned(
-        right: 20,
-        top: 80,
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: 360,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: color.withValues(alpha: 0.97),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.warning_amber_rounded, color: Colors.white),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    message,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
+      builder: (context) {
+        final width = MediaQuery.sizeOf(context).width;
+        final compact = width < 640;
+        return Positioned(
+          right: compact ? 12 : 20,
+          left: compact ? 12 : null,
+          top: compact ? 66 : 80,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: compact ? null : 360,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: color.withValues(alpha: 0.97),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
 
     overlay.insert(_toast!);
@@ -169,6 +219,9 @@ class _AppShellState extends State<AppShell> {
     }
 
     final isCompact = MediaQuery.sizeOf(context).width < 980;
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final showBottomNav = isCompact && !isAndroidUi;
     return Scaffold(
       key: _scaffoldKey,
       drawer: isCompact
@@ -202,32 +255,45 @@ class _AppShellState extends State<AppShell> {
                       onMenuTap: isCompact ? () => _scaffoldKey.currentState?.openDrawer() : null,
                     ),
                     Expanded(
-                      child: AnimatedSwitcher(
-                        duration: RefreshConfig.screenSwitchAnimation,
-                        switchInCurve: Curves.easeOutCubic,
-                        switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) {
-                          final slide = Tween<Offset>(
-                            begin: const Offset(0.02, 0),
-                            end: Offset.zero,
-                          ).animate(CurvedAnimation(
-                            parent: animation,
-                            curve: Curves.easeOutCubic,
-                          ));
-                          return FadeTransition(
-                            opacity: animation,
-                            child: SlideTransition(position: slide, child: child),
-                          );
-                        },
-                        child: Padding(
-                          key: ValueKey(selectedIndex),
-                          padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: ColoredBox(
-                              color: Theme.of(context).colorScheme.surface,
-                              child: screens[selectedIndex],
-                            ),
+                      child: Padding(
+                        key: ValueKey('content-$selectedIndex'),
+                        padding: isCompact
+                            ? const EdgeInsets.fromLTRB(8, 8, 8, 8)
+                            : const EdgeInsets.fromLTRB(8, 8, 16, 16),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(isCompact ? 16 : 24),
+                          child: ColoredBox(
+                            color: Theme.of(context).colorScheme.surface,
+                            child: isAndroidUi
+                                ? IndexedStack(
+                                    index: selectedIndex,
+                                    children: screens,
+                                  )
+                                : AnimatedSwitcher(
+                                    duration: RefreshConfig.screenSwitchAnimation,
+                                    switchInCurve: Curves.easeOutCubic,
+                                    switchOutCurve: Curves.easeInCubic,
+                                    transitionBuilder: (child, animation) {
+                                      final slide = Tween<Offset>(
+                                        begin: const Offset(0.02, 0),
+                                        end: Offset.zero,
+                                      ).animate(CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutCubic,
+                                      ));
+                                      return FadeTransition(
+                                        opacity: animation,
+                                        child: SlideTransition(
+                                          position: slide,
+                                          child: child,
+                                        ),
+                                      );
+                                    },
+                                    child: KeyedSubtree(
+                                      key: ValueKey(selectedIndex),
+                                      child: screens[selectedIndex],
+                                    ),
+                                  ),
                           ),
                         ),
                       ),
@@ -239,7 +305,7 @@ class _AppShellState extends State<AppShell> {
           ),
         ),
       ),
-      bottomNavigationBar: isCompact
+      bottomNavigationBar: showBottomNav
           ? NavigationBar(
               selectedIndex: selectedIndex,
               onDestinationSelected: (value) => setState(() => selectedIndex = value),

@@ -1,6 +1,7 @@
 import os
 from typing import Dict, List
 from pathlib import Path
+from datetime import datetime
 
 import requests
 from dotenv import load_dotenv
@@ -50,6 +51,42 @@ def _get_access_token(service_account_file: str):
         return credentials.token, None
     except Exception as exc:
         return None, f"Failed to load FCM service account: {exc}"
+
+
+def _is_permanent_token_failure(status_code: int | None, resp_text: str) -> bool:
+    text = (resp_text or "").upper()
+    if status_code in {400, 403, 404, 410}:
+        if (
+            "SENDER_ID_MISMATCH" in text
+            or "UNREGISTERED" in text
+            or "INVALID_ARGUMENT" in text
+            or "NOTREGISTERED" in text
+            or "REGISTRATION TOKEN IS NOT A VALID FCM REGISTRATION TOKEN" in text
+            or "REQUESTED ENTITY WAS NOT FOUND" in text
+        ):
+            return True
+    return False
+
+
+def _deactivate_stale_tokens(tokens: List[str], reason: str) -> int:
+    if not tokens:
+        return 0
+    try:
+        from app.database import fcm_tokens_collection
+
+        result = fcm_tokens_collection.update_many(
+            {"token": {"$in": tokens}},
+            {
+                "$set": {
+                    "active": False,
+                    "updated_at": datetime.now(),
+                    "deactivated_reason": reason,
+                }
+            },
+        )
+        return int(result.modified_count or 0)
+    except Exception:
+        return 0
 
 
 def send_push_fcm_to_targets(
@@ -125,6 +162,8 @@ def send_push_fcm_to_targets(
         targets.append({"kind": "topic", "value": resolved_topic})
 
     results = []
+    stale_tokens: List[str] = []
+    success_count = 0
 
     for target in targets:
         message_target = {"token": target["value"]} if target["kind"] == "token" else {"topic": target["value"]}
@@ -142,6 +181,7 @@ def send_push_fcm_to_targets(
             response = requests.post(endpoint, json=body, headers=headers, timeout=15)
             if 200 <= response.status_code < 300:
                 resp_json = response.json()
+                success_count += 1
                 results.append(
                     {
                         "target": f"{target['kind']}:{_mask_token(target['value'])}",
@@ -151,6 +191,10 @@ def send_push_fcm_to_targets(
                     }
                 )
             else:
+                if target["kind"] == "token" and _is_permanent_token_failure(
+                    response.status_code, response.text
+                ):
+                    stale_tokens.append(target["value"])
                 results.append(
                     {
                         "target": f"{target['kind']}:{_mask_token(target['value'])}",
@@ -168,11 +212,17 @@ def send_push_fcm_to_targets(
                 }
             )
 
-    overall_ok = all(item.get("ok") for item in results) if results else False
+    overall_ok = success_count > 0
+    deactivated_count = _deactivate_stale_tokens(
+        stale_tokens, reason="fcm_permanent_delivery_failure"
+    )
     return {
         "ok": overall_ok,
         "provider": "fcm",
         "targets": len(results),
+        "delivered_count": success_count,
+        "failed_count": len(results) - success_count,
+        "deactivated_tokens_count": deactivated_count,
         "results": results,
     }
 
@@ -185,6 +235,7 @@ def send_push_fcm(payload: Dict) -> Dict:
     - FCM_TOPIC (optional)
     """
     env_tokens = _parse_csv(os.getenv("FCM_DEVICE_TOKENS", ""))
+    include_env_tokens = (os.getenv("FCM_INCLUDE_ENV_TOKENS", "0").strip() == "1")
     topic = (os.getenv("FCM_TOPIC") or "").strip()
     db_tokens: List[str] = []
     db_tokens_error = None
@@ -202,7 +253,10 @@ def send_push_fcm(payload: Dict) -> Dict:
     except Exception as exc:
         db_tokens_error = str(exc)
 
-    device_tokens = _merge_unique_tokens(env_tokens, db_tokens)
+    token_groups = [db_tokens]
+    if include_env_tokens or not db_tokens:
+        token_groups.insert(0, env_tokens)
+    device_tokens = _merge_unique_tokens(*token_groups)
     result = send_push_fcm_to_targets(
         payload,
         device_tokens=device_tokens,
@@ -210,6 +264,7 @@ def send_push_fcm(payload: Dict) -> Dict:
     )
     result["token_sources"] = {
         "env_count": len(env_tokens),
+        "env_included": include_env_tokens or not db_tokens,
         "registered_count": len(db_tokens),
         "merged_count": len(device_tokens),
     }

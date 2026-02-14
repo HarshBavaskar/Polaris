@@ -474,6 +474,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final compact = MediaQuery.sizeOf(context).width < 900 || isAndroidUi;
     final colorScheme = Theme.of(context).colorScheme;
     final themeController = context.watch<ThemeController>();
 
@@ -488,7 +491,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return RefreshIndicator(
       onRefresh: _refreshAllSettingsData,
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(compact ? 12 : 24),
         children: [
           Text(
             'Settings',
@@ -496,7 +499,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
               context,
             ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 4),
+          Text(
+            'System controls, training operations and backend diagnostics',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 16),
           AnimatedReveal(
             delay: const Duration(milliseconds: 40),
             child: Card(
@@ -613,10 +623,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
+                    if (compact)
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
                             mlRunning
                                 ? 'Training in progress: $mlStep'
                                 : 'Last job: $mlLastStatus',
@@ -624,27 +635,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               color: colorScheme.onSurfaceVariant,
                             ),
                           ),
-                        ),
-                        FilledButton.icon(
-                          onPressed:
-                              (_mlActionLoading ||
-                                  mlRunning ||
-                                  !_backendHealthy)
-                              ? null
-                              : _startMlTraining,
-                          icon: _mlActionLoading
-                              ? const SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.model_training_rounded),
-                          label: const Text('Train Now'),
-                        ),
-                      ],
-                    ),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed:
+                                (_mlActionLoading ||
+                                    mlRunning ||
+                                    !_backendHealthy)
+                                ? null
+                                : _startMlTraining,
+                            icon: _mlActionLoading
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.model_training_rounded),
+                            label: const Text('Train Now'),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mlRunning
+                                  ? 'Training in progress: $mlStep'
+                                  : 'Last job: $mlLastStatus',
+                              style: TextStyle(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                          FilledButton.icon(
+                            onPressed:
+                                (_mlActionLoading ||
+                                    mlRunning ||
+                                    !_backendHealthy)
+                                ? null
+                                : _startMlTraining,
+                            icon: _mlActionLoading
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.model_training_rounded),
+                            label: const Text('Train Now'),
+                          ),
+                        ],
+                      ),
                     const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
@@ -661,13 +705,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               threshold: _autoTrainingThreshold,
                             ),
                     ),
-                    Row(
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Text(
                           'Threshold',
                           style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const SizedBox(width: 12),
                         DropdownButton<int>(
                           value: _autoTrainingThreshold,
                           items: const [20, 50, 100, 200]
@@ -824,18 +870,23 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: List.generate(items.length, (index) {
-        return SizedBox(
-          width: 245,
-          child: AnimatedReveal(
-            delay: Duration(milliseconds: 140 + (index * 35)),
-            child: _StatCard(item: items[index]),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxTileWidth = constraints.maxWidth < 560 ? constraints.maxWidth : 245.0;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: List.generate(items.length, (index) {
+            return SizedBox(
+              width: maxTileWidth,
+              child: AnimatedReveal(
+                delay: Duration(milliseconds: 140 + (index * 35)),
+                child: _StatCard(item: items[index]),
+              ),
+            );
+          }),
         );
-      }),
+      },
     );
   }
 }

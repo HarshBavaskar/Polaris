@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../core/api_service.dart';
@@ -89,27 +90,64 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final compact = MediaQuery.sizeOf(context).width < 900 || isAndroidUi;
+
     return RefreshIndicator(
       onRefresh: _loadPending,
       child: ListView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(compact ? 12 : 24),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
+          if (compact)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   'Citizen Verification',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-              FilledButton.icon(
-                onPressed: _loadPending,
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh'),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  'Review pending field reports and approve or reject quickly',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: _loadPending,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh'),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Citizen Verification',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _loadPending,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh'),
+                ),
+              ],
+            ),
+          const SizedBox(height: 4),
+          Text(
+            'Review pending field reports and approve or reject quickly',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -179,7 +217,9 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
               _photoPreview(report),
             ],
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 FilledButton.icon(
                   onPressed: isProcessing
@@ -194,7 +234,6 @@ class _CitizenVerificationScreenState extends State<CitizenVerificationScreen> {
                       : const Icon(Icons.check_circle_rounded),
                   label: const Text('Approve'),
                 ),
-                const SizedBox(width: 8),
                 FilledButton.tonalIcon(
                   onPressed: isProcessing
                       ? null
