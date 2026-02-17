@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
@@ -32,12 +33,20 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   bool _hasAutoCentered = false;
   bool _isLoading = false;
   bool _manualOverrideActive = false;
+  bool _layersCollapsed = false;
+  bool _summaryCollapsed = false;
 
   Timer? refreshTimer;
 
   @override
   void initState() {
     super.initState();
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    if (isAndroidUi) {
+      _layersCollapsed = true;
+      _summaryCollapsed = true;
+    }
     loadAll();
     refreshTimer = Timer.periodic(RefreshConfig.mapPoll, (_) => loadAll());
   }
@@ -148,6 +157,11 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final compact = width < 920 || isAndroidUi;
+
     return Stack(
       children: [
         Positioned.fill(
@@ -212,79 +226,72 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
           ),
         ),
         Positioned(
-          top: 16,
-          left: 16,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Layers',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+          top: compact ? 12 : 16,
+          left: compact ? 12 : 16,
+          child: _overlayPanel(
+            context: context,
+            title: 'Layers',
+            compact: compact,
+            collapsed: _layersCollapsed,
+            onToggle: () => setState(() => _layersCollapsed = !_layersCollapsed),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: compact ? 170 : 220,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('Safe Zones'),
+                    value: showSafeZones,
+                    onChanged: (v) => setState(() => showSafeZones = v),
                   ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: 220,
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: const Text('Safe Zones'),
-                      value: showSafeZones,
-                      onChanged: (v) => setState(() => showSafeZones = v),
-                    ),
+                ),
+                SizedBox(
+                  width: compact ? 170 : 220,
+                  child: SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    title: const Text('Historical Incidents'),
+                    value: showIncidents,
+                    onChanged: (v) => setState(() => showIncidents = v),
                   ),
-                  SizedBox(
-                    width: 220,
-                    child: SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      dense: true,
-                      title: const Text('Historical Incidents'),
-                      value: showIncidents,
-                      onChanged: (v) => setState(() => showIncidents = v),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
         Positioned(
-          right: 16,
-          top: 16,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Map Summary',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+          right: compact ? null : 16,
+          left: compact ? 12 : null,
+          top: compact ? null : 16,
+          bottom: compact ? 12 : null,
+          child: _overlayPanel(
+            context: context,
+            title: 'Map Summary',
+            compact: compact,
+            collapsed: _summaryCollapsed,
+            onToggle: () =>
+                setState(() => _summaryCollapsed = !_summaryCollapsed),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Risk points: ${riskPoints.length}'),
+                Text(
+                  'Safe zones: ${safeZones.where((e) => e.active).length}',
+                ),
+                Text('Incidents: ${incidents.length}'),
+                if (_manualOverrideActive) ...[
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Manual override active',
+                    style: TextStyle(
+                      color: Color(0xFFC53030),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text('Risk points: ${riskPoints.length}'),
-                  Text(
-                    'Safe zones: ${safeZones.where((e) => e.active).length}',
-                  ),
-                  Text('Incidents: ${incidents.length}'),
-                  if (_manualOverrideActive) ...[
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Manual override active',
-                      style: TextStyle(
-                        color: Color(0xFFC53030),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -300,6 +307,60 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _overlayPanel({
+    required BuildContext context,
+    required String title,
+    required bool compact,
+    required bool collapsed,
+    required VoidCallback onToggle,
+    required Widget child,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Material(
+      color: colorScheme.surface.withValues(alpha: 0.82),
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: EdgeInsets.all(compact ? 10 : 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  onPressed: onToggle,
+                  icon: Icon(
+                    collapsed
+                        ? Icons.unfold_more_rounded
+                        : Icons.unfold_less_rounded,
+                    size: 18,
+                  ),
+                  tooltip: collapsed ? 'Expand' : 'Collapse',
+                ),
+              ],
+            ),
+            if (!collapsed) ...[
+              const SizedBox(height: 4),
+              child,
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

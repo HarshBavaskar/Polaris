@@ -10,3 +10,5 @@ pymongo
 torch
 torchvision
 python-dotenv
+requests
+google-auth

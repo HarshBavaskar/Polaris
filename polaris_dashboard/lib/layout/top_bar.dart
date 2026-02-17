@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -220,7 +221,61 @@ class _TopBarState extends State<TopBar> {
 
   @override
   Widget build(BuildContext context) {
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final compactUi = widget.isCompact || isAndroidUi;
     final colorScheme = Theme.of(context).colorScheme;
+
+    if (compactUi) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: widget.onMenuTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: SizedBox(
+              height: 72,
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: widget.onMenuTap,
+                    tooltip: 'Open menu',
+                    icon: const Icon(Icons.menu_rounded),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: SizedBox(
+                        height: double.infinity,
+                        child: Image.asset(
+                          'assets/Polaris_Logo_Side.PNG',
+                          fit: BoxFit.fitHeight,
+                          alignment: Alignment.center,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     final palette = _paletteForTone(
       _marqueeTone,
       Theme.of(context).brightness == Brightness.dark,
@@ -236,14 +291,6 @@ class _TopBarState extends State<TopBar> {
       ),
       child: Row(
         children: [
-          if (widget.isCompact) ...[
-            IconButton(
-              onPressed: widget.onMenuTap,
-              icon: const Icon(Icons.menu_rounded),
-              tooltip: 'Open navigation',
-            ),
-            const SizedBox(width: 6),
-          ],
           Expanded(
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 320),
@@ -273,12 +320,11 @@ class _TopBarState extends State<TopBar> {
             ),
           ),
           const SizedBox(width: 10),
-          if (!widget.isCompact)
-            Chip(
-              avatar: const _PulsingStatusDot(),
-              label: const Text('System online'),
-              visualDensity: VisualDensity.compact,
-            ),
+          Chip(
+            avatar: const _PulsingStatusDot(),
+            label: const Text('System online'),
+            visualDensity: VisualDensity.compact,
+          ),
           const SizedBox(width: 10),
           Text(
             '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}:${_now.second.toString().padLeft(2, '0')} Local',

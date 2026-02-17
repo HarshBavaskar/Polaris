@@ -13,5 +13,10 @@ def publish_decision(decision: dict) -> None:
     """
     Publish the final decision JSON to Valkey Pub/Sub.
     """
-    client = get_client()
-    client.publish(CHANNEL, json.dumps(decision))
+    try:
+        client = get_client()
+        client.publish(CHANNEL, json.dumps(decision))
+    except Exception:
+        # Valkey is optional for the current auto-dispatch flow.
+        # If unavailable, do not block camera processing/alerts.
+        return

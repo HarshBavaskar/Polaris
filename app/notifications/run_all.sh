@@ -6,27 +6,25 @@ echo "🚀 Starting Polaris system..."
 cd ~/Desktop/Polaris || exit 1
 source .venv/bin/activate
 
-# Check Docker is running
-if ! docker info >/dev/null 2>&1; then
-  echo "❌ Docker daemon not running. Open Docker Desktop and try again."
-  exit 1
-fi
-
-# Start Valkey (create if missing)
-if docker ps -a --format '{{.Names}}' | grep -q '^polaris-valkey$'; then
-  if docker ps --format '{{.Names}}' | grep -q '^polaris-valkey$'; then
-    echo "✅ Valkey already running."
+# Valkey is optional now (auto alert dispatch runs directly in app.main).
+if docker info >/dev/null 2>&1; then
+  if docker ps -a --format '{{.Names}}' | grep -q '^polaris-valkey$'; then
+    if docker ps --format '{{.Names}}' | grep -q '^polaris-valkey$'; then
+      echo "✅ Valkey already running (optional)."
+    else
+      echo "🔄 Starting Valkey (optional)..."
+      docker start polaris-valkey >/dev/null 2>&1 || true
+    fi
   else
-    echo "🔄 Starting Valkey..."
-    docker start polaris-valkey
+    echo "🔄 Creating + starting Valkey (optional)..."
+    docker run -d \
+      --name polaris-valkey \
+      --platform linux/arm64 \
+      -p 6379:6379 \
+      valkey/valkey:latest >/dev/null 2>&1 || true
   fi
 else
-  echo "🔄 Creating + starting Valkey..."
-  docker run -d \
-    --name polaris-valkey \
-    --platform linux/arm64 \
-    -p 6379:6379 \
-    valkey/valkey:latest
+  echo "⚠️ Docker/Valkey not running. Continuing (optional dependency)."
 fi
 
 # Free port 8000 if in use
@@ -36,7 +34,10 @@ if lsof -ti :8000 >/dev/null 2>&1; then
 fi
 
 echo "🧠 Starting FastAPI backend..."
-uvicorn app.main:app --reload > logs_backend.txt 2>&1 &
-
-echo "📡 Starting Valkey router..."
-python3 -m app.notifications.valkey_router
+uvicorn_args=("app.main:app")
+if [[ "${POLARIS_UVICORN_RELOAD:-0}" == "1" ]]; then
+  echo "ℹ️ POLARIS_UVICORN_RELOAD=1 -> starting with --reload"
+  uvicorn_args+=("--reload")
+fi
+uvicorn "${uvicorn_args[@]}" > logs_backend.txt 2>&1 &
+echo "✅ Backend started. Auto alert dispatch is handled inside app.main."
