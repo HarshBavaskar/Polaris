@@ -44,3 +44,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android local machine/user files
+/android/local.properties
+/android/key.properties
+
+# Generated plugin registrant
+/android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java

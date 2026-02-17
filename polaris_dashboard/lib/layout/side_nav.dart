@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class SideNav extends StatelessWidget {
   const SideNav({
@@ -24,19 +25,22 @@ class SideNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     if (compact) {
       return SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+          padding: EdgeInsets.fromLTRB(12, isAndroidUi ? 8 : 12, 12, 20),
           children: [
             _brandHeader(context),
-            const SizedBox(height: 20),
+            SizedBox(height: isAndroidUi ? 12 : 20),
             ...List.generate(_items.length, (index) {
               return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 6),
                 child: _NavTile(
                   item: _items[index],
                   selected: index == selectedIndex,
+                  dense: isAndroidUi,
                   onTap: () => onSelect(index),
                 ),
               );
@@ -68,6 +72,7 @@ class SideNav extends StatelessWidget {
                   child: _NavTile(
                     item: _items[index],
                     selected: selectedIndex == index,
+                    dense: false,
                     onTap: () => onSelect(index),
                   ),
                 );
@@ -93,7 +98,7 @@ class SideNav extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        height: 70,
+        height: 62,
         child: Image.asset(
           'assets/Polaris_Logo_Side.PNG',
           fit: BoxFit.fitWidth,
@@ -109,11 +114,13 @@ class _NavTile extends StatelessWidget {
   const _NavTile({
     required this.item,
     required this.selected,
+    required this.dense,
     required this.onTap,
   });
 
   final _NavItem item;
   final bool selected;
+  final bool dense;
   final VoidCallback onTap;
 
   @override
@@ -139,7 +146,10 @@ class _NavTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              padding: EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: dense ? 9 : 11,
+              ),
               child: Row(
                 children: [
                   AnimatedScale(
@@ -150,11 +160,12 @@ class _NavTile extends StatelessWidget {
                       color: selected ? colorScheme.primary : colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: dense ? 8 : 10),
                   Text(
                     item.title,
                     style: TextStyle(
                       fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: dense ? 13 : null,
                       color: selected ? colorScheme.primary : colorScheme.onSurface,
                     ),
                   ),

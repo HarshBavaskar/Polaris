@@ -1,6 +1,5 @@
 from fastapi import APIRouter
 from app.database import alerts_collection
-from datetime import datetime
 
 router = APIRouter(prefix="/alerts", tags=["Alerts"])
 
@@ -25,14 +24,21 @@ def get_latest_alert():
 
 
 @router.get("/history")
-def get_alert_history(limit: int = 50):
+def get_alert_history(limit: int = 50, severity: str | None = None):
     """
-    Returns alert history (latest first)
+    Returns alert history (latest first).
+    Optional severity filter.
     """
+    query = {}
+    if severity:
+        query["severity"] = severity.strip().upper()
+
+    # Keep the endpoint safe for UI usage
+    limit = max(1, min(limit, 1000))
 
     alerts = list(
         alerts_collection.find(
-            {},
+            query,
             {"_id": 0}
         )
         .sort("timestamp", -1)
