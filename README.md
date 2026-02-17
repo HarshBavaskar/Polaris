@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris_Logo_Side.PNG" height="250"/>
 
-| **Current Version** | `v0.8: Operational Intelligence, Live Reliability, and ML Automation Release` |
+| **Current Version** | `v0.9: Stable Notifications, Web Push Stabilization, and Android Dashboard Revamp` |
 | --- | --- |
 
 </div>
@@ -16,434 +16,241 @@
 
 ## Overview
 
-**Polaris** is a research-grade early warning and decision system designed to detect **cloudburst-like conditions before severe impact occurs**.  
-Unlike traditional threshold-based systems, Polaris uses a **layered intelligence approach** that fuses:
+**Polaris** is a research-grade early warning and decision platform designed to detect cloudburst-like risk before severe impact.
+It combines:
 
-- Visual understanding of the sky  
-- Temporal pattern learning  
-- Citizen-ground reports  
-- Rule-based safety logic  
-- Authority override controls  
+- vision features from camera inputs
+- temporal escalation modeling
+- citizen-ground reports
+- rule-based safety checks
+- authority override controls
 
-The result is a **trustworthy, explainable, and deployable** disaster-support system.
-
----
-
-## What’s New in Polaris v0.8 
-### Operational Intelligence, Live Reliability, and ML Automation Release
-
-Polaris v0.8 introduces operational-grade ML automation, active learning, reliability upgrades, and deeper AI fusion logic. This release strengthens decision stability, training workflows, and real-time dashboard behavior.
+The result is a safety-first, explainable system built for operational decision support.
 
 ---
 
-## Polaris v0.8 Dashboard UI
-<div align ="center">
-<img src="misc/Polaris Dashboard Demo.gif"/>
+## Latest Branch Updates (v0.9)
+
+The README now reflects the latest commit series on this branch:
+
+| Commit | Summary |
+| --- | --- |
+| `f5702c8` | Notification reliability upgrades, web push stabilization, Android UI/branding revamp |
+| `a80a954` | Failed-alert retry worker and retry configuration support |
+| `542a153` | Firebase Cloud Messaging (web + app), service worker and token flow integration |
+| `eb5de51` | Firebase hosting configuration and deployment workflow scaffolding |
+| `13251b8` | Removed Firebase service account JSON from version control |
+
+### v0.9 Highlights
+
+#### Notification Reliability
+
+- FCM delivery now treats dispatch as success when at least one target succeeds.
+- Permanent token failures are auto-deactivated in token storage.
+- Delivery responses include `delivered_count`, `failed_count`, and `deactivated_tokens_count`.
+- Dedup logic suppresses repeated alerts within `ALERT_DEDUP_SECONDS`.
+- Failed alerts can be retried automatically by a background worker (`ALERT_RETRY_*` settings).
+
+#### Web Push Stabilization
+
+- Service worker readiness is enforced before requesting web FCM tokens.
+- Web foreground duplicate popups are avoided by design.
+- Service worker logic avoids duplicate manual notifications for notification payloads.
+- Token registration diagnostics were improved for non-2xx backend responses.
+
+#### Android Dashboard Revamp
+
+- Compact navigation flow was refined for smoother mobile operations.
+- Screen switching now uses `IndexedStack` for state-preserving transitions.
+- Polaris branding/icons were refreshed for Android launcher and app shell.
+- Foreground local notifications are enabled through `flutter_local_notifications`.
+
+#### Deployment and Tooling
+
+- Firebase hosting config files were added (`firebase.json`, `.firebaserc`, workflows).
+- Notification-path verification and phone-proxy tooling were introduced for reliability testing.
+
+---
+
+## Dashboard UI
+
+<div align="center">
+  <img src="misc/Polaris Dashboard Demo.gif"/>
 </div>
-
----
-
-## ML Automation & Active Learning
-
-- Added full **ML Admin Controls** inside Settings:
-  - Train Now
-  - Auto-training toggle
-  - Threshold selection
-  - Live ML job status
-
-- Implemented one-click backend ML pipeline:
-  - Dataset build
-  - CNN retraining
-  - LSTM retraining
-  - Hot reload without manual restart
-
-- Added auto-training trigger based on feedback volume threshold
-- Introduced active learning pipeline:
-  - Uncertain sample queueing
-  - Feedback-aware biasing
-  - Labeled sample tracking
-  - Queue and stats endpoints
-
-- Hardened training pipeline:
-  - Sparse temporal data now returns `SUCCESS_WITH_WARNINGS`
-  - Prevents full job failure on partial datasets
-
----
-
-## AI Decision Engine Upgrades
-
-- Implemented ensemble scoring:
-  - Rule-based risk
-  - CNN probability
-  - Temporal probability
-  - Trend / spike detection
-  - Feedback bias contribution
-
-- Upgraded confidence and fusion logic:
-  - Smoother decision transitions
-  - Reduced brittle risk jumps
-  - Improved stability under rapid environmental shifts
-
-- Fixed Trends chart issue:
-  - Aligned backend/UI risk keys
-  - Added support for `ensemble_score`
-
----
-
-## Settings & Operational Controls
-
-- Added full **Settings tab** with:
-  - App versioning
-  - Backend health and stats
-  - Dark mode toggle
-  - Backend start/stop controls
-  - Terminal visibility toggle
-
-- Implemented Windows backend launcher improvements:
-  - Hidden shell support
-  - Optional visible terminal
-  - Improved stop workflow behavior
-
----
-
-## Dashboard Reliability & UX Refinement
-
-- Improved Overview screen:
-  - Compact important stats
-  - Map-summary-based live risk counts
-  - Corrected auto-refresh behavior
-
-- Improved Map screen:
-  - Continuous reflection of latest decision risk
-  - Fallback marker support
-
-- Added severity-aware marquee in top bar:
-  - Color-coded by alert level
-  - Filters only active alerts
-
-- Implemented startup loader flow
-- Refined animations and surface transitions:
-  - Attention pulses
-  - Smoother non-flicker updates
-
-- Added safer automatic polling across:
-  - Overview
-  - Settings
-  - Citizen Verification
-  - Trends
-  - Alerts
-  - Map
-
----
-
-Polaris v0.8 strengthens operational intelligence, improves ML autonomy, enhances reliability under live conditions, and moves the system closer to continuous-learning deployment.
 
 ---
 
 ## System Architecture
 
-```
+```text
 Camera / Images
-↓
-Image Feature Extraction
-(Brightness • Entropy • Edges)
-↓
-Rule-Based Risk Logic
-↓
-Time-Series Spike Detection
-↓
-CNN (Spatial AI)
-↓
-LSTM (Temporal AI)
-↓
-Citizen Input Fusion
-↓
-Safe Decision Fusion
-(Never Downgrade)
-↓
-Final Decision Authority
-(AI OR Manual Override)
-↓
-Decision Publication (Valkey)
-↓
-Automated Alert Routing
-↓
-MongoDB + Dashboard & Map APIs
+  -> Image Feature Extraction (brightness, entropy, edges)
+  -> Rule-Based Risk Logic
+  -> Time-Series Spike Detection
+  -> CNN (spatial model)
+  -> LSTM (temporal model)
+  -> Citizen Input Fusion
+  -> Safety-First Final Decision (with authority override support)
+  -> Auto Alert Dispatch (FCM)
+  -> MongoDB + Dashboard / Map APIs
 ```
 
 ---
 
 ## Key Capabilities
 
-### Vision-Based Detection
-- Camera-based sky monitoring (currently laptop camera)
-- CNN learns cloud and storm visual patterns
-- Works even before rainfall begins
+### Vision and Temporal Intelligence
 
-### Temporal Intelligence
-- LSTM model learns **how conditions evolve**
-- Detects **rapid escalation**, not isolated frames
-- Significantly reduces false positives
+- CNN-based visual pattern detection for high-risk sky conditions
+- LSTM-based temporal escalation detection
+- Ensemble scoring with rule + CNN + temporal + trend + feedback signals
 
-### Citizen Intelligence
-- Citizen-uploaded images
-- Water-level reports (Ankle / Knee / Waist)
-- Human inputs influence risk but do not bypass safety logic
+### Human-in-the-Loop Controls
 
-### Ensemble Risk Engine (v0.8)
-- *Combines:*
-- Rule-based safety logic
-- CNN spatial probability
-- LSTM temporal probability
-- Trend / spike detection
-- Feedback bias weighting
-- Stability smoothing prevents brittle decision jumps
-- Produces ensemble_score for consistent UI alignment
+- authority override with auditable metadata
+- citizen image and water-level inputs
+- authority feedback ingestion for model improvement
 
-### Active Learning & ML Automation
-- Uncertain sample queueing
-- Feedback-aware retraining bias
-- Auto-training triggered by feedback threshold
-- *One-click ML pipeline:*
-- Dataset build
-- CNN retrain
-- LSTM retrain
-- Hot reload
-- Sparse temporal datasets return SUCCESS_WITH_WARNINGS (no full failure)
+### Active Learning and ML Admin Controls
 
-### Dashboard & Visualization
-- Production-grade command-center dashboard
-- Global auto-refresh (no manual reload)
-- Manual override dominance clearly indicated
-- Interactive map with:
-  - Live risk heatmap
-  - Historical cloudburst incidents
-  - Safe zones with confidence
-- Designed for authority decision-making
+- uncertain sample queue and labeling-aware loop
+- admin retrain-and-reload pipeline
+- auto-training configuration controls
 
-### Authority Control (v0.4+)
-- Manual authority override with global precedence
-- Override applies instantly system-wide
-- Fully auditable (author, reason, timestamp)
+### Dashboard and Map Experience
 
-### Explainable Decisions
-Every prediction includes:
-- Risk score
-- Risk level
-- Confidence score
-- AI probability (CNN)
-- Temporal probability (LSTM)
-- ETA, ETA confidence
-- Decision mode (AUTOMATED / MANUAL_OVERRIDE)
+- live status, risk, confidence, and ETA trends
+- map overlays for live risk, safe zones, and historical events
+- mobile-friendly UI updates for compact Android usage
 
 ---
 
-## Authority Feedback Loop
+## Notification and Alert Routing (v0.9)
 
-- Alerts can be marked as:
-  - TRUE_POSITIVE
-  - FALSE_POSITIVE
-  - LATE_DETECTION
-- Feedback stored for **future retraining and evaluation**
+- Alert dispatch is handled through **Firebase Cloud Messaging (FCM)** only.
+- Auto-dispatch is triggered directly from the decision pipeline in `app/main.py`.
+- Valkey publication remains available for compatibility workflows.
+- Manual override remains authoritative over automated decisions.
 
----
+### Supported Dispatch Channels
 
-## AI Models Used
-
-### Spatial AI (CNN)
-- Architecture: **MobileNetV2**
-- Task: Identify high-risk cloud patterns
-- Output: Probability of high-risk frame
-
-### Temporal AI (LSTM)
-- Input: Sequences of numeric features
-- Learns escalation trends across time
-- Core component for early warning
-
-> ⚠️ Rule-based logic is **never removed** and always acts as a safety fallback.
-
----
-
-## Data Storage (MongoDB)
-
-Collections:
-- `alerts` – alert metadata  
-- `images` – image metadata  
-- `predictions` – risk, confidence, AI outputs  
-- `citizen_reports` – public inputs  
-- `feedback` – authority verification  
-- `overrides` – manual authority decisions  
-- `safe_zones` – automated & manual safe zones  
-
----
-
-## Dashboard & System APIs
-
-### Dashboard APIs
-
-- `GET /dashboard/current-status` – Live authoritative system state (risk, ensemble score, mode, confidence)
-- `GET /dashboard/risk-timeseries` – Risk + ensemble score evolution
-- `GET /dashboard/confidence-timeseries` – Confidence trend data
-- `GET /dashboard/system-stats` – Backend health, ML status, version info
-- `GET /alerts/latest` – Latest active alerts
-- `GET /alerts/history` – Historical alerts
-- `GET /map/live-risk` – Current geospatial risk layer
-- `GET /map/safe-zones` – Manual & automated safe zones
-- `GET /map/historical-events` – Past incidents overlay
-- `GET /citizen/pending` – Pending citizen reports
-- `GET /citizen/history` – Reviewed citizen reports
-
----
-
-### ML & Active Learning APIs (v0.8)
-
-- `POST /ml/train` – Trigger one-click ML pipeline  
-- `GET  /ml/status` – Current ML job status  
-- `POST /ml/auto-toggle` – Enable/disable auto-training  
-- `GET  /ml/auto-config` – Auto-training threshold configuration  
-- `GET  /ml/uncertain-queue` – Active learning queue statistics  
-- `GET  /ml/training-history` – Past ML job summaries  
-
-Pipeline includes:
-- Dataset build  
-- CNN retraining  
-- LSTM retraining  
-- Hot reload of inference engine  
-
----
-
-### Core System APIs
-
-- `GET  /decision/latest` – Authoritative final decision (ensemble-aware)  
-- `POST /input/camera` – Camera image input  
-- `POST /alert/dispatch` – Dispatch alert payload  
-- `POST /override/set` – Set authority override  
-- `POST /override/clear` – Clear authority override  
-- `POST /feedback/submit` – Submit authority feedback  
-- `GET  /health` – Backend health check  
-- `POST /backend/start` – Backend start trigger (Windows launcher integration)  
-- `POST /backend/stop` – Controlled backend shutdown  
-
----
-
-### Compatible With
-
-- Flutter (Web)
-- React
-- Grafana
-- Power BI
-- Swagger UI
-- Postman (optional, not required for automated operation)
----
-
-## Notification & Alert Routing
-
-- Triggered by final decisions published via Valkey
-- Runs continuously once the system is started
-- Manual override always supersedes AI decisions
-
-### Phone Alert Setup (Dispatch Endpoint)
-
-`POST /alert/dispatch` now delivers through **Firebase Cloud Messaging (FCM) only**:
 - `APP_NOTIFICATION`
 - `PUSH_NOTIFICATION`
 - `PUSH_SMS`
 - `SMS_SIREN`
 - `ALL_CHANNELS`
 
-Required environment variables:
+### Required Environment Variables
+
 - `FCM_PROJECT_ID`
-- `FCM_SERVICE_ACCOUNT_FILE` (absolute path to Firebase service account JSON)
-- `FCM_DEVICE_TOKENS` (optional, comma-separated FCM registration tokens)
-- `FCM_TOPIC` (optional, topic name; default `polaris-alerts`)
+- `FCM_SERVICE_ACCOUNT_FILE` (absolute or repo-relative path to Firebase Admin SDK JSON)
 
-Flutter app integration:
-- Use `firebase_messaging` in the Flutter client.
-- Subscribe the app to the configured topic (for example `polaris-alerts`) or register device tokens.
-- Foreground handling can use Flutter local notifications if desired; backend delivery still stays FCM-only.
+### Optional Target and Merge Variables
 
-### Alert Severity Levels
-- **INFO** – No alert
-- **ADVISORY** – Stay alert
-- **ALERT** – Prepare and restrict movement
-- **EMERGENCY** – Immediate action required
+- `FCM_DEVICE_TOKENS` (comma-separated direct tokens)
+- `FCM_TOPIC` (topic target such as `polaris-alerts`)
+- `FCM_INCLUDE_ENV_TOKENS` (`1` to include `.env` tokens even when DB tokens exist)
+
+### Reliability Controls
+
+- `ALERT_DEDUP_SECONDS` (duplicate suppression window; code default `180`)
+- `ALERT_RETRY_ENABLED` (default `1`)
+- `ALERT_RETRY_INTERVAL_SECONDS` (default `30`)
+- `ALERT_RETRY_MAX_ATTEMPTS` (default `3`)
+- `ALERT_RETRY_BATCH_SIZE` (default `20`)
+
+### Token and Debug Endpoints
+
+- `POST /alert/register-token`
+- `POST /alert/unregister-token`
+- `POST /alert/test-token`
+- `GET /alert/debug-status`
 
 ---
 
-## Postman Integration
+## API Snapshot
 
-- Used strictly for API testing and validation
-- Helpful during development and debugging
-- Not required for normal automated system operation
+### Core Inference and Alerting
+
+- `POST /input/camera`
+- `GET /decision/latest`
+- `POST /alert/dispatch`
+- `GET /backend/health`
+- `POST /backend/start`
+
+### Dashboard and Visualization
+
+- `GET /dashboard/current-status`
+- `GET /dashboard/risk-timeseries`
+- `GET /dashboard/confidence-timeseries`
+- `GET /dashboard/eta-timeseries`
+- `GET /alerts/latest`
+- `GET /alerts/history`
+- `GET /map/live-risk`
+- `GET /map/safe-zones`
+- `GET /map/historical-events`
+- `GET /predictions/history`
+
+### Citizen and Authority Flows
+
+- `POST /input/citizen/image`
+- `POST /input/citizen/water-level`
+- `GET /input/citizen/pending`
+- `POST /input/citizen/review`
+- `POST /override/set`
+- `POST /override/clear`
+- `GET /override/history`
+- `GET /override/active`
+- `POST /authority/feedback/`
+- `GET /authority/feedback/active-learning/queue`
+- `GET /authority/feedback/active-learning/stats`
+
+### ML Admin
+
+- `POST /admin/ml/retrain-and-reload`
+- `GET /admin/ml/status`
+- `GET /admin/ml/auto-config`
+- `POST /admin/ml/auto-config`
+
+---
+
+## Quick Start (Local)
+
+### Backend
+
+```bash
+python -m venv .venv
+# activate venv for your shell
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+### Flutter Dashboard
+
+```bash
+cd polaris_dashboard
+flutter pub get
+flutter run -d chrome --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
+```
 
 ---
 
 ## Project Structure
 
-```
+```text
 Polaris/
-├── app/
-│   ├── main.py
-│   ├── database.py
-│   ├── lifespan.py
-│   ├── routes/
-│   │   ├── override.py
-│   │   ├── dashboard.py
-|   |   ├── camera.py
-│   │   ├── map.py
-│   │   ├── alerts.py
-│   │   ├── decision.py
-│   │   └── feedback.py
-│   ├── utils/
-│   │   ├── final_decision.py
-│   │   ├── alert_severity.py
-│   │   ├── eta_logic.py
-│   │   ├── eta_confidence.py
-│   │   ├── safezone_detector.py
-│   │   ├── escalation_rules.py
-│   │   └── confidence_logic.py
-│   ├── ai/
-│   │   ├── infer.py
-│   │   ├── temporal_infer.py
-│   │   ├── train_cnn.py
-│   │   └── train_lstm.py
-│   ├── notifications/
-│   │   ├── thresholds.py
-│   │   ├── alert_engine.py
-│   │   ├── router_client.py
-│   │   ├── valkey_pub.py
-│   │   ├── valkey_router.py
-│   │   ├── deliver.py
-│   │   └── run_all.sh
-│   └── models/
-│       ├── prediction.py
-│       ├── override.py
-│       └── safezone.py
-├── polaris-dashboard/
-│   ├── lib/
-│   │   ├── core/
-│   │   │   ├── api_service.dart
-│   │   │   ├── global_reload.dart
-│   │   │   └── models/
-│   │   ├── layout/
-│   │   │   ├── app_shell.dart
-│   │   │   ├── side_nav.dart
-│   │   │   └── top_bar.dart
-│   │   ├── screens/
-│   │   │   ├── overview_screen.dart
-│   │   │   ├── map_screen.dart
-│   │   │   ├── alerts_screen.dart
-│   │   │   ├── trends_screen.dart
-│   │   │   └── authority_screen.dart
-│   │   └── main.dart
-│   ├── assets/
-│   │   └── polaris_logo.png
-│   └── pubspec.yaml
-├── polaris_dataset/
-├── camera_client.py
-├── CHANGELOG.md
-└── README.md
-
+  app/
+    main.py
+    database.py
+    routes/
+    notifications/
+    utils/
+    ai/
+  polaris_dashboard/
+  polaris_dataset/
+  firebase.json
+  public/
+  README.md
 ```
 
 ---
@@ -451,75 +258,58 @@ Polaris/
 ## Technology Stack
 
 | Layer | Technology |
-|------|-----------|
+| --- | --- |
 | Backend | FastAPI |
 | AI / ML | PyTorch, TorchVision |
 | Computer Vision | OpenCV |
 | Temporal Learning | LSTM |
 | Database | MongoDB |
-| Messaging | Valkey (Pub/Sub) |
-| Frontend | Flutter (Web) |
+| Messaging | FCM, optional Valkey Pub/Sub |
+| Frontend | Flutter (Web + Android) |
 | Mapping | OpenStreetMap |
-| Deployment | Cloud-ready |
+| Deployment | Firebase Hosting scaffold + cloud-ready backend |
 
 ---
 
 ## Team
 
 <a href="https://github.com/HarshBavaskar/Polaris/graphs/contributors">
-<img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
-</a>  
+  <img src="https://contrib.rocks/image?repo=HarshBavaskar/Polaris" />
+</a>
 
-##
-
-- **Detection, AI & Dashboard System** – *Harsh Bavaskar*  
-  (CNN, LSTM, decision fusion, safe zones, dashboard, geospatial intelligence)
-
-- **Warning & Notification System** – *Anisa D'souza*  
-  (Valkey routing, alert logic, notification pipeline, SMS integration)
+- **Detection, AI and Dashboard System** - *Harsh Bavaskar*
+- **Warning and Notification System** - *Anisa D'souza*
 
 ---
 
 ## Project Status
-
-- ✅ Detection pipeline complete
-- ✅ CNN + LSTM integrated
-- ✅ Citizen & authority feedback loop
-- ✅ Final decision authority implemented
-- ✅ Manual override system live
-- ✅ Live dashboard & geospatial intelligence operational
-- ✅ Trends & analytics available
-- ✅ Continuous data collection & learning
-- ✅ Automated alert routing (Valkey)
-- ✅ FCM-based phone notifications integrated
-
+[PHASE 1 COMPLETED]
+- [x] Detection pipeline complete
+- [x] CNN + LSTM integrated
+- [x] Citizen and authority feedback loop
+- [x] Manual override system live
+- [x] Live dashboard and geospatial intelligence operational
+- [x] FCM-based web/mobile notifications integrated
+- [x] Alert dedup + retry reliability controls implemented
 
 ---
 
 ## Future Roadmap
 
-- Automated safe-zone verification & confidence decay
-- Hyperlocal sensor fusion
-- Multi-camera zone mapping
-- Mobile apps for citizens & field authorities
-- Pilot deployments with local authorities
+- automated safe-zone verification and confidence decay
+- hyperlocal sensor fusion
+- multi-camera zone mapping
+- mobile apps for citizens and field authorities
+- pilot deployments with local authorities
 
 ---
 
 ## Disclaimer
 
 Polaris is an **early warning support system** and does not replace official meteorological agencies.  
-It is intended to **assist disaster response** with faster, hyperlocal insights.
+It is intended to assist disaster response with faster, hyperlocal insights.
 
 ---
 
-## What Makes Polaris Different
+> *Polaris aims to detect danger early, when response still matters.*
 
-- Not a black-box AI
-- Human-in-the-loop by design
-- Time-aware, not frame-based
-- Built for **trust, safety, and real-world deployment**
-
----
-
-> *Polaris aims to detect danger early — when response still matters.*
