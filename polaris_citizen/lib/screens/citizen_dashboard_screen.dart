@@ -52,43 +52,66 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 
   void _openMyReportsTab() => setState(() => _selectedIndex = 4);
 
+  void _openFromDrawer(int index) {
+    setState(() => _selectedIndex = index);
+    Navigator.of(context).pop();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(_titles[_selectedIndex])),
       body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _selectedIndex,
-        onDestinationSelected: (int index) {
-          setState(() => _selectedIndex = index);
-        },
-        destinations: const <NavigationDestination>[
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard_rounded),
-            label: 'Dashboard',
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: <Widget>[
+              const ListTile(
+                title: Text(
+                  'Citizen Menu',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                ),
+                subtitle: Text('Navigation'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                key: const Key('drawer-nav-dashboard'),
+                leading: const Icon(Icons.dashboard_outlined),
+                title: const Text('Dashboard'),
+                selected: _selectedIndex == 0,
+                onTap: () => _openFromDrawer(0),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-alerts'),
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Alerts'),
+                selected: _selectedIndex == 1,
+                onTap: () => _openFromDrawer(1),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-report'),
+                leading: const Icon(Icons.flood_outlined),
+                title: const Text('Report Flooding'),
+                selected: _selectedIndex == 2,
+                onTap: () => _openFromDrawer(2),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-safezones'),
+                leading: const Icon(Icons.map_outlined),
+                title: const Text('Safe Zones'),
+                selected: _selectedIndex == 3,
+                onTap: () => _openFromDrawer(3),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-myreports'),
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: const Text('My Reports'),
+                selected: _selectedIndex == 4,
+                onTap: () => _openFromDrawer(4),
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications_active_rounded),
-            label: 'Alerts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.flood_outlined),
-            selectedIcon: Icon(Icons.flood_rounded),
-            label: 'Report',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map_rounded),
-            label: 'Safe Zones',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'My Reports',
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -425,13 +448,13 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 const SizedBox(height: 8),
                 _HelplineTile(
                   key: const Key('helpline-1077'),
-                  label: '$_selectedArea District Disaster Control Room',
+                  label: '$_selectedArea Emergency Support',
                   number: '1077',
                   onCall: () => _callHelpline('1077'),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tip: Save your $_selectedArea municipal disaster control contacts for faster response.',
+                  'Tip: Save your $_selectedArea emergency contacts for faster response.',
                   style: TextStyle(fontSize: 12),
                 ),
               ],
