@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../features/report/report_flood_screen.dart';
 import '../features/safe_zones/safe_zones_api.dart';
@@ -84,10 +86,21 @@ class _DashboardHomeTab extends StatefulWidget {
 }
 
 class _DashboardHomeTabState extends State<_DashboardHomeTab> {
+  static const List<String> _priorityAreas = <String>[
+    'Mumbai',
+    'Thane',
+    'Navi Mumbai',
+    'Palghar',
+  ];
+
   late final SafeZonesApi _safeZonesApi;
   bool _loadingSummary = true;
   String? _summaryError;
   int? _activeSafeZoneCount;
+  String _selectedArea = _priorityAreas.first;
+  bool _locating = false;
+  Position? _livePosition;
+  String? _locationError;
 
   @override
   void initState() {
@@ -125,6 +138,70 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
         SnackBar(content: Text('Could not place call to $number')),
       );
     }
+  }
+
+  Future<void> _fetchLiveLocation() async {
+    setState(() {
+      _locating = true;
+      _locationError = null;
+    });
+
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        setState(() => _locationError = 'Location service is disabled.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        setState(() => _locationError = 'Location permission denied.');
+        return;
+      }
+
+      final Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      if (!mounted) return;
+      setState(() => _livePosition = position);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _locationError = 'Unable to fetch live location.');
+    } finally {
+      if (mounted) {
+        setState(() => _locating = false);
+      }
+    }
+  }
+
+  Future<void> _copyLocationForHelp() async {
+    final Position? p = _livePosition;
+    if (p == null) return;
+
+    final String message =
+        'Emergency help needed. Current location: '
+        'https://maps.google.com/?q=${p.latitude},${p.longitude}';
+    await Clipboard.setData(ClipboardData(text: message));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Location copied for sharing.')),
+    );
+  }
+
+  Future<void> _openLocationInMap() async {
+    final Position? p = _livePosition;
+    if (p == null) return;
+    final Uri uri = Uri.parse(
+      'https://maps.google.com/?q=${p.latitude},${p.longitude}',
+    );
+    await launchUrl(uri);
   }
 
   @override
@@ -266,8 +343,25 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'For Mumbai/Thane and nearby areas, call these first. For district-specific control rooms, follow local authority advisories.',
+                const Text('Select your area for district-wise guidance:'),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  key: const Key('helpline-area-dropdown'),
+                  initialValue: _selectedArea,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Area',
+                  ),
+                  items: _priorityAreas.map((String area) {
+                    return DropdownMenuItem<String>(
+                      value: area,
+                      child: Text(area),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    if (value == null) return;
+                    setState(() => _selectedArea = value);
+                  },
                 ),
                 const SizedBox(height: 12),
                 _HelplineTile(
@@ -293,15 +387,79 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 const SizedBox(height: 8),
                 _HelplineTile(
                   key: const Key('helpline-1077'),
-                  label: 'District Disaster Control Room',
+                  label: '$_selectedArea District Disaster Control Room',
                   number: '1077',
                   onCall: () => _callHelpline('1077'),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Tip: Save local Mumbai/Thane municipal disaster control numbers in your contacts for faster response.',
+                Text(
+                  'Tip: Save your $_selectedArea municipal disaster control contacts for faster response.',
                   style: TextStyle(fontSize: 12),
                 ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Live Location for Help',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Use this only when needed to quickly share your exact location with responders or family.',
+                ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  key: const Key('dashboard-fetch-location'),
+                  onPressed: _locating ? null : _fetchLiveLocation,
+                  icon: _locating
+                      ? const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.my_location),
+                  label: Text(
+                    _locating ? 'Fetching location...' : 'Get Live Location',
+                  ),
+                ),
+                if (_locationError != null) ...<Widget>[
+                  const SizedBox(height: 8),
+                  Text(_locationError!),
+                ],
+                if (_livePosition != null) ...<Widget>[
+                  const SizedBox(height: 10),
+                  Text(
+                    'Lat ${_livePosition!.latitude.toStringAsFixed(6)}, '
+                    'Lng ${_livePosition!.longitude.toStringAsFixed(6)}',
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        key: const Key('dashboard-copy-location'),
+                        onPressed: _copyLocationForHelp,
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy Help Message'),
+                      ),
+                      OutlinedButton.icon(
+                        key: const Key('dashboard-open-maps'),
+                        onPressed: _openLocationInMap,
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text('Open in Maps'),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
