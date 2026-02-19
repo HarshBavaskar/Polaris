@@ -2,6 +2,8 @@
 .dart_tool/
 build/
 pubspec.lock
+.flutter-plugins
+.flutter-plugins-dependencies
 
 # IDE
 .idea/
@@ -17,5 +19,6 @@ ios/Runner/GeneratedPluginRegistrant.m
 linux/flutter/generated_plugin_registrant.cc
 linux/flutter/generated_plugin_registrant.h
 linux/flutter/generated_plugins.cmake
+linux/flutter/ephemeral/
 macos/Flutter/GeneratedPluginRegistrant.swift
 macos/Flutter/ephemeral/
