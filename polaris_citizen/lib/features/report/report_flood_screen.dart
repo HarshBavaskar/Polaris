@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../safe_zones/safe_zone.dart';
+import '../safe_zones/safe_zones_api.dart';
 import 'report_api.dart';
 
 class ReportFloodScreen extends StatefulWidget {
   final CitizenReportApi? api;
   final ImagePicker? imagePicker;
+  final SafeZonesApi? safeZonesApi;
 
-  const ReportFloodScreen({super.key, this.api, this.imagePicker});
+  const ReportFloodScreen({
+    super.key,
+    this.api,
+    this.imagePicker,
+    this.safeZonesApi,
+  });
 
   @override
   State<ReportFloodScreen> createState() => _ReportFloodScreenState();
@@ -22,8 +30,14 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   ];
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
+  late final SafeZonesApi _safeZonesApi;
 
   String _selectedLevel = 'MEDIUM';
+  List<SafeZone> _safeZoneOptions = <SafeZone>[];
+  String? _selectedZoneId;
+  bool _useCustomZoneId = false;
+  bool _loadingZones = true;
+  String? _zoneLoadError;
   XFile? _selectedImage;
   bool _sendingLevel = false;
   bool _sendingPhoto = false;
@@ -33,6 +47,8 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     super.initState();
     _api = widget.api ?? HttpCitizenReportApi();
     _picker = widget.imagePicker ?? ImagePicker();
+    _safeZonesApi = widget.safeZonesApi ?? HttpSafeZonesApi();
+    _loadZoneOptions();
   }
 
   @override
@@ -47,11 +63,59 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _normalizedZoneId() => _zoneIdController.text.trim();
+  String _normalizedZoneId() {
+    if (_safeZoneOptions.isNotEmpty && !_useCustomZoneId) {
+      return (_selectedZoneId ?? '').trim();
+    }
+    return _zoneIdController.text.trim();
+  }
+
+  String _zoneIdForOption(SafeZone zone) {
+    final String direct = zone.zoneId.trim();
+    if (direct.isNotEmpty) return direct;
+    return 'LAT${zone.lat.toStringAsFixed(4)}_LNG${zone.lng.toStringAsFixed(4)}';
+  }
+
+  Future<void> _loadZoneOptions() async {
+    setState(() {
+      _loadingZones = true;
+      _zoneLoadError = null;
+    });
+
+    try {
+      final List<SafeZone> zones = await _safeZonesApi.fetchSafeZones();
+      if (!mounted) return;
+
+      final List<SafeZone> valid = zones
+          .where((SafeZone z) => z.active)
+          .toList();
+      String? nextSelection = _selectedZoneId;
+      if (valid.isNotEmpty) {
+        final List<String> ids = valid.map(_zoneIdForOption).toList();
+        if (nextSelection == null || !ids.contains(nextSelection)) {
+          nextSelection = ids.first;
+        }
+      } else {
+        nextSelection = null;
+      }
+
+      setState(() {
+        _safeZoneOptions = valid;
+        _selectedZoneId = nextSelection;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _zoneLoadError = 'Could not load zone suggestions.');
+    } finally {
+      if (mounted) {
+        setState(() => _loadingZones = false);
+      }
+    }
+  }
 
   bool _validateZoneId() {
     if (_normalizedZoneId().isEmpty) {
-      _showMessage('Please enter your zone ID.');
+      _showMessage('Please select a zone or enter a custom zone ID.');
       return false;
     }
     return true;
@@ -122,14 +186,99 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              key: const Key('zone-id-input'),
-              controller: _zoneIdController,
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                labelText: 'Zone ID',
-                hintText: 'Example: ZN-101',
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    const Text(
+                      'Location Zone',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      key: const Key('zone-refresh-button'),
+                      onPressed: _loadingZones ? null : _loadZoneOptions,
+                      icon: const Icon(Icons.refresh),
+                      tooltip: 'Refresh zones',
+                    ),
+                  ],
+                ),
+                if (_loadingZones) ...<Widget>[
+                  const SizedBox(height: 8),
+                  const Row(
+                    children: <Widget>[
+                      SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Loading nearby zone suggestions...'),
+                    ],
+                  ),
+                ] else ...<Widget>[
+                  if (_zoneLoadError != null) ...<Widget>[
+                    Text(_zoneLoadError!),
+                    const SizedBox(height: 8),
+                  ],
+                  if (_safeZoneOptions.isNotEmpty) ...<Widget>[
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Suggested Zone ID',
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          key: const Key('zone-id-dropdown'),
+                          isExpanded: true,
+                          value: _selectedZoneId,
+                          items: _safeZoneOptions.map((SafeZone zone) {
+                            final String zoneId = _zoneIdForOption(zone);
+                            return DropdownMenuItem<String>(
+                              value: zoneId,
+                              child: Text(zoneId),
+                            );
+                          }).toList(),
+                          onChanged: _useCustomZoneId
+                              ? null
+                              : (String? value) {
+                                  setState(() => _selectedZoneId = value);
+                                },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ] else ...<Widget>[
+                    const Text(
+                      'No suggested zone IDs available right now. Use custom zone ID.',
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  CheckboxListTile(
+                    key: const Key('zone-custom-toggle'),
+                    value: _useCustomZoneId || _safeZoneOptions.isEmpty,
+                    onChanged: _safeZoneOptions.isEmpty
+                        ? null
+                        : (bool? value) {
+                            setState(() => _useCustomZoneId = value ?? false);
+                          },
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    title: const Text('Use custom zone ID'),
+                  ),
+                  if (_useCustomZoneId || _safeZoneOptions.isEmpty)
+                    TextField(
+                      key: const Key('zone-id-input'),
+                      controller: _zoneIdController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Custom Zone ID',
+                        hintText: 'Example: WARD-12 or STREET-03',
+                      ),
+                    ),
+                ],
+              ],
             ),
           ),
         ),
