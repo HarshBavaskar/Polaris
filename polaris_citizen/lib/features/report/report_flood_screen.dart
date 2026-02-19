@@ -1,4 +1,6 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../safe_zones/safe_zone.dart';
 import '../safe_zones/safe_zones_api.dart';
@@ -22,11 +24,21 @@ class ReportFloodScreen extends StatefulWidget {
 
 class _ReportFloodScreenState extends State<ReportFloodScreen> {
   final TextEditingController _zoneIdController = TextEditingController();
+  final TextEditingController _localityController = TextEditingController();
+  final TextEditingController _pincodeController = TextEditingController();
   static const List<String> _levels = <String>[
     'LOW',
     'MEDIUM',
     'HIGH',
     'SEVERE',
+  ];
+  static const List<String> _cities = <String>[
+    'Mumbai',
+    'Thane',
+    'Navi Mumbai',
+    'Kalyan-Dombivli',
+    'Mira-Bhayandar',
+    'Palghar',
   ];
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
@@ -35,12 +47,14 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   String _selectedLevel = 'MEDIUM';
   List<SafeZone> _safeZoneOptions = <SafeZone>[];
   String? _selectedZoneId;
-  bool _useCustomZoneId = false;
+  String _zoneMode = 'SUGGESTED';
+  String _selectedCity = _cities.first;
   bool _loadingZones = true;
   String? _zoneLoadError;
   XFile? _selectedImage;
   bool _sendingLevel = false;
   bool _sendingPhoto = false;
+  bool _findingNearest = false;
 
   @override
   void initState() {
@@ -54,6 +68,8 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   @override
   void dispose() {
     _zoneIdController.dispose();
+    _localityController.dispose();
+    _pincodeController.dispose();
     super.dispose();
   }
 
@@ -64,8 +80,23 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   String _normalizedZoneId() {
-    if (_safeZoneOptions.isNotEmpty && !_useCustomZoneId) {
+    if (_zoneMode == 'SUGGESTED') {
       return (_selectedZoneId ?? '').trim();
+    }
+    if (_zoneMode == 'AREA_PINCODE') {
+      final String city = _selectedCity.trim().toUpperCase().replaceAll(
+        ' ',
+        '_',
+      );
+      final String locality = _localityController.text
+          .trim()
+          .toUpperCase()
+          .replaceAll(RegExp(r'\s+'), '_');
+      final String pincode = _pincodeController.text.trim();
+      if (locality.isNotEmpty) {
+        return '$city-$locality-$pincode';
+      }
+      return '$city-$pincode';
     }
     return _zoneIdController.text.trim();
   }
@@ -97,6 +128,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
         }
       } else {
         nextSelection = null;
+        if (_zoneMode == 'SUGGESTED') {
+          _zoneMode = 'AREA_PINCODE';
+        }
       }
 
       setState(() {
@@ -114,11 +148,114 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   bool _validateZoneId() {
-    if (_normalizedZoneId().isEmpty) {
+    if (_zoneMode == 'SUGGESTED' && (_selectedZoneId ?? '').trim().isEmpty) {
+      _showMessage(
+        'No suggested zone available. Switch to Area/Pincode or Custom.',
+      );
+      return false;
+    }
+
+    if (_zoneMode == 'AREA_PINCODE') {
+      final String pin = _pincodeController.text.trim();
+      if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
+        _showMessage('Please enter a valid 6-digit pincode.');
+        return false;
+      }
+    }
+
+    if (_zoneMode == 'CUSTOM' && _zoneIdController.text.trim().isEmpty) {
       _showMessage('Please select a zone or enter a custom zone ID.');
       return false;
     }
     return true;
+  }
+
+  double _distanceMeters({
+    required double lat1,
+    required double lng1,
+    required double lat2,
+    required double lng2,
+  }) {
+    const double earthRadius = 6371000;
+    final double dLat = _toRad(lat2 - lat1);
+    final double dLng = _toRad(lng2 - lng1);
+    final double a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(_toRad(lat1)) *
+            math.cos(_toRad(lat2)) *
+            math.sin(dLng / 2) *
+            math.sin(dLng / 2);
+    final double c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return earthRadius * c;
+  }
+
+  double _toRad(double value) => value * (math.pi / 180);
+
+  Future<void> _useGpsNearestZone() async {
+    if (_safeZoneOptions.isEmpty) {
+      _showMessage('No active safe zones available for nearest lookup.');
+      return;
+    }
+
+    setState(() => _findingNearest = true);
+    try {
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _showMessage('Location service is disabled on this device.');
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied ||
+          permission == LocationPermission.deniedForever) {
+        _showMessage('Location permission denied.');
+        return;
+      }
+
+      final Position pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      );
+
+      SafeZone nearest = _safeZoneOptions.first;
+      double bestDistance = _distanceMeters(
+        lat1: pos.latitude,
+        lng1: pos.longitude,
+        lat2: nearest.lat,
+        lng2: nearest.lng,
+      );
+
+      for (final SafeZone zone in _safeZoneOptions.skip(1)) {
+        final double d = _distanceMeters(
+          lat1: pos.latitude,
+          lng1: pos.longitude,
+          lat2: zone.lat,
+          lng2: zone.lng,
+        );
+        if (d < bestDistance) {
+          bestDistance = d;
+          nearest = zone;
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _selectedZoneId = _zoneIdForOption(nearest);
+        _zoneMode = 'SUGGESTED';
+      });
+      _showMessage(
+        'Nearest safe zone selected: ${_selectedZoneId!} (${bestDistance.toStringAsFixed(0)} m)',
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showMessage('Unable to determine current location.');
+    } finally {
+      if (mounted) setState(() => _findingNearest = false);
+    }
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -222,6 +359,34 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     Text(_zoneLoadError!),
                     const SizedBox(height: 8),
                   ],
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      ChoiceChip(
+                        key: const Key('zone-mode-suggested'),
+                        label: const Text('Suggested Safe Zone'),
+                        selected: _zoneMode == 'SUGGESTED',
+                        onSelected: _safeZoneOptions.isEmpty
+                            ? null
+                            : (_) => setState(() => _zoneMode = 'SUGGESTED'),
+                      ),
+                      ChoiceChip(
+                        key: const Key('zone-mode-area-pincode'),
+                        label: const Text('Area + Pincode'),
+                        selected: _zoneMode == 'AREA_PINCODE',
+                        onSelected: (_) =>
+                            setState(() => _zoneMode = 'AREA_PINCODE'),
+                      ),
+                      ChoiceChip(
+                        key: const Key('zone-mode-custom'),
+                        label: const Text('Custom ID'),
+                        selected: _zoneMode == 'CUSTOM',
+                        onSelected: (_) => setState(() => _zoneMode = 'CUSTOM'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   if (_safeZoneOptions.isNotEmpty) ...<Widget>[
                     InputDecorator(
                       decoration: const InputDecoration(
@@ -240,12 +405,29 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                               child: Text(zoneId),
                             );
                           }).toList(),
-                          onChanged: _useCustomZoneId
+                          onChanged: _zoneMode != 'SUGGESTED'
                               ? null
                               : (String? value) {
                                   setState(() => _selectedZoneId = value);
                                 },
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      key: const Key('zone-gps-nearest'),
+                      onPressed: _findingNearest ? null : _useGpsNearestZone,
+                      icon: _findingNearest
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location),
+                      label: Text(
+                        _findingNearest
+                            ? 'Finding nearest safe zone...'
+                            : 'Use GPS Nearest Safe Zone',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -255,21 +437,54 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     ),
                     const SizedBox(height: 8),
                   ],
-                  CheckboxListTile(
-                    key: const Key('zone-custom-toggle'),
-                    value: _useCustomZoneId || _safeZoneOptions.isEmpty,
-                    onChanged: _safeZoneOptions.isEmpty
-                        ? null
-                        : (bool? value) {
-                            setState(() => _useCustomZoneId = value ?? false);
-                          },
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
-                    title: const Text('Use custom zone ID'),
-                  ),
-                  if (_useCustomZoneId || _safeZoneOptions.isEmpty)
+                  if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
+                    DropdownButtonFormField<String>(
+                      key: const Key('area-city-dropdown'),
+                      initialValue: _selectedCity,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'City / District',
+                      ),
+                      items: _cities.map((String city) {
+                        return DropdownMenuItem<String>(
+                          value: city,
+                          child: Text(city),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        if (value == null) return;
+                        setState(() => _selectedCity = value);
+                      },
+                    ),
+                    const SizedBox(height: 8),
                     TextField(
-                      key: const Key('zone-id-input'),
+                      key: const Key('area-locality-input'),
+                      controller: _localityController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Area / Locality (optional)',
+                        hintText: 'Example: Thane West',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('area-pincode-input'),
+                      controller: _pincodeController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Pincode',
+                        hintText: '6-digit pincode',
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Generated zone ID: ${_normalizedZoneId().isEmpty ? '--' : _normalizedZoneId()}',
+                    ),
+                  ],
+                  if (_zoneMode == 'CUSTOM')
+                    TextField(
+                      key: const Key('custom-zone-id-input'),
                       controller: _zoneIdController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
