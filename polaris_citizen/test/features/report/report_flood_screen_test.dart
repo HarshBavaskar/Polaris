@@ -6,6 +6,7 @@ import 'package:polaris_citizen/features/report/report_flood_screen.dart';
 import 'package:polaris_citizen/features/report/report_offline_queue.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
+import 'package:polaris_citizen/features/safe_zones/safe_zones_cache.dart';
 
 class _FakeCitizenReportApi implements CitizenReportApi {
   String? lastZoneId;
@@ -45,6 +46,13 @@ class _FakeSafeZonesApi implements SafeZonesApi {
   Future<List<SafeZone>> fetchSafeZones() async => zones;
 }
 
+class _ThrowingSafeZonesApi implements SafeZonesApi {
+  @override
+  Future<List<SafeZone>> fetchSafeZones() async {
+    throw Exception('network');
+  }
+}
+
 class _MemoryOfflineQueue implements ReportOfflineQueue {
   final List<PendingWaterLevelReport> reports = <PendingWaterLevelReport>[];
 
@@ -66,18 +74,32 @@ class _MemoryOfflineQueue implements ReportOfflineQueue {
   }
 }
 
+class _MemorySafeZonesCache implements SafeZonesCache {
+  List<SafeZone> zones = <SafeZone>[];
+
+  @override
+  Future<List<SafeZone>> loadZones() async => List<SafeZone>.from(zones);
+
+  @override
+  Future<void> saveZones(List<SafeZone> next) async {
+    zones = List<SafeZone>.from(next);
+  }
+}
+
 void main() {
   Widget buildTestWidget({
     required CitizenReportApi api,
     required SafeZonesApi safeZonesApi,
     ReportOfflineQueue? offlineQueue,
+    SafeZonesCache? safeZonesCache,
   }) {
     return MaterialApp(
       home: Scaffold(
         body: ReportFloodScreen(
           api: api,
           safeZonesApi: safeZonesApi,
-          offlineQueue: offlineQueue,
+          offlineQueue: offlineQueue ?? _MemoryOfflineQueue(),
+          safeZonesCache: safeZonesCache ?? _MemorySafeZonesCache(),
         ),
       ),
     );
@@ -103,6 +125,7 @@ void main() {
         buildTestWidget(
           api: api,
           safeZonesApi: _FakeSafeZonesApi(<SafeZone>[]),
+          safeZonesCache: _MemorySafeZonesCache(),
         ),
       );
       await tester.pumpAndSettle();
@@ -136,7 +159,13 @@ void main() {
       ),
     ]);
 
-    await tester.pumpWidget(buildTestWidget(api: api, safeZonesApi: zonesApi));
+    await tester.pumpWidget(
+      buildTestWidget(
+        api: api,
+        safeZonesApi: zonesApi,
+        safeZonesCache: _MemorySafeZonesCache(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tapSubmitLevel(tester);
@@ -163,7 +192,11 @@ void main() {
       ]);
 
       await tester.pumpWidget(
-        buildTestWidget(api: api, safeZonesApi: zonesApi),
+        buildTestWidget(
+          api: api,
+          safeZonesApi: zonesApi,
+          safeZonesCache: _MemorySafeZonesCache(),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -197,7 +230,13 @@ void main() {
       ),
     ]);
 
-    await tester.pumpWidget(buildTestWidget(api: api, safeZonesApi: zonesApi));
+    await tester.pumpWidget(
+      buildTestWidget(
+        api: api,
+        safeZonesApi: zonesApi,
+        safeZonesCache: _MemorySafeZonesCache(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('zone-mode-area-pincode')));
@@ -234,7 +273,13 @@ void main() {
       ),
     ]);
 
-    await tester.pumpWidget(buildTestWidget(api: api, safeZonesApi: zonesApi));
+    await tester.pumpWidget(
+      buildTestWidget(
+        api: api,
+        safeZonesApi: zonesApi,
+        safeZonesCache: _MemorySafeZonesCache(),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('zone-mode-area-pincode')));
@@ -265,9 +310,7 @@ void main() {
     );
     expect(localityField.controller?.text, '');
 
-    await tester.tap(find.byKey(const Key('area-suggestion-dropdown')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Clear selection and enter manually').last);
+    await tester.tap(find.byKey(const Key('area-clear-selection-button')));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -304,6 +347,7 @@ void main() {
         api: api,
         safeZonesApi: zonesApi,
         offlineQueue: offlineQueue,
+        safeZonesCache: _MemorySafeZonesCache(),
       ),
     );
     await tester.pumpAndSettle();
@@ -318,5 +362,35 @@ void main() {
 
     expect(offlineQueue.reports, isEmpty);
     expect(api.submitWaterLevelCalls, 2);
+  });
+
+  testWidgets('uses cached suggested zones when API is offline', (
+    WidgetTester tester,
+  ) async {
+    final _FakeCitizenReportApi api = _FakeCitizenReportApi();
+    final SafeZonesApi zonesApi = _ThrowingSafeZonesApi();
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache()
+      ..zones = <SafeZone>[
+        SafeZone(
+          zoneId: 'SZ-CACHED-1',
+          lat: 19.1,
+          lng: 72.9,
+          radius: 300,
+          confidence: 'HIGH',
+          active: true,
+          source: 'CACHE',
+        ),
+      ];
+
+    await tester.pumpWidget(
+      buildTestWidget(api: api, safeZonesApi: zonesApi, safeZonesCache: cache),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Offline mode: showing last saved safe zone suggestions.'),
+      findsOneWidget,
+    );
+    expect(find.text('SZ-CACHED-1'), findsOneWidget);
   });
 }

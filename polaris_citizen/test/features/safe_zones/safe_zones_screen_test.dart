@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
+import 'package:polaris_citizen/features/safe_zones/safe_zones_cache.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_screen.dart';
 
 class _FakeSafeZonesApi implements SafeZonesApi {
@@ -17,19 +18,37 @@ class _FakeSafeZonesApi implements SafeZonesApi {
 Widget _buildScreen(
   SafeZonesApi api, {
   UserLocationProvider? locationProvider,
+  SafeZonesCache? cache,
 }) {
   return MaterialApp(
     home: Scaffold(
-      body: SafeZonesScreen(api: api, userLocationProvider: locationProvider),
+      body: SafeZonesScreen(
+        api: api,
+        userLocationProvider: locationProvider,
+        cache: cache,
+      ),
     ),
   );
+}
+
+class _MemorySafeZonesCache implements SafeZonesCache {
+  List<SafeZone> zones = <SafeZone>[];
+
+  @override
+  Future<List<SafeZone>> loadZones() async => List<SafeZone>.from(zones);
+
+  @override
+  Future<void> saveZones(List<SafeZone> next) async {
+    zones = List<SafeZone>.from(next);
+  }
 }
 
 void main() {
   testWidgets('shows empty-state message', (WidgetTester tester) async {
     final SafeZonesApi api = _FakeSafeZonesApi(() async => <SafeZone>[]);
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache();
 
-    await tester.pumpWidget(_buildScreen(api));
+    await tester.pumpWidget(_buildScreen(api, cache: cache));
     await tester.pumpAndSettle();
 
     expect(
@@ -42,8 +61,9 @@ void main() {
     final SafeZonesApi api = _FakeSafeZonesApi(() async {
       throw Exception('network');
     });
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache();
 
-    await tester.pumpWidget(_buildScreen(api));
+    await tester.pumpWidget(_buildScreen(api, cache: cache));
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load safe zones.'), findsOneWidget);
@@ -69,8 +89,9 @@ void main() {
         ),
       ];
     });
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache();
 
-    await tester.pumpWidget(_buildScreen(api));
+    await tester.pumpWidget(_buildScreen(api, cache: cache));
     await tester.pumpAndSettle();
 
     expect(find.text('Active safe zones: 1'), findsOneWidget);
@@ -96,6 +117,7 @@ void main() {
         ),
       ];
     });
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache();
 
     Future<Position> fakeLocation() async {
       return Position(
@@ -112,7 +134,9 @@ void main() {
       );
     }
 
-    await tester.pumpWidget(_buildScreen(api, locationProvider: fakeLocation));
+    await tester.pumpWidget(
+      _buildScreen(api, locationProvider: fakeLocation, cache: cache),
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('safe-zones-location-btn')));
@@ -120,5 +144,34 @@ void main() {
 
     expect(find.textContaining('Distance now shown'), findsOneWidget);
     expect(find.byKey(const Key('safe-zone-distance-label')), findsOneWidget);
+  });
+
+  testWidgets('falls back to cached zones when API fails', (
+    WidgetTester tester,
+  ) async {
+    final SafeZonesApi api = _FakeSafeZonesApi(() async {
+      throw Exception('network');
+    });
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache()
+      ..zones = <SafeZone>[
+        SafeZone(
+          zoneId: 'SZ-CACHED',
+          lat: 19.0,
+          lng: 72.8,
+          radius: 300,
+          confidence: 'HIGH',
+          active: true,
+          source: 'CACHE',
+        ),
+      ];
+
+    await tester.pumpWidget(_buildScreen(api, cache: cache));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Offline mode: showing last saved safe zones.'),
+      findsOneWidget,
+    );
+    expect(find.text('SZ-CACHED'), findsOneWidget);
   });
 }

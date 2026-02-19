@@ -5,14 +5,21 @@ import 'package:latlong2/latlong.dart';
 import '../../core/locations/priority_area_anchors.dart';
 import 'safe_zone.dart';
 import 'safe_zones_api.dart';
+import 'safe_zones_cache.dart';
 
 typedef UserLocationProvider = Future<Position> Function();
 
 class SafeZonesScreen extends StatefulWidget {
   final SafeZonesApi? api;
   final UserLocationProvider? userLocationProvider;
+  final SafeZonesCache? cache;
 
-  const SafeZonesScreen({super.key, this.api, this.userLocationProvider});
+  const SafeZonesScreen({
+    super.key,
+    this.api,
+    this.userLocationProvider,
+    this.cache,
+  });
 
   @override
   State<SafeZonesScreen> createState() => _SafeZonesScreenState();
@@ -21,9 +28,11 @@ class SafeZonesScreen extends StatefulWidget {
 class _SafeZonesScreenState extends State<SafeZonesScreen> {
   late final SafeZonesApi _api;
   late final UserLocationProvider _locationProvider;
+  late final SafeZonesCache _cache;
   bool _loading = true;
   String? _errorMessage;
   List<SafeZone> _zones = <SafeZone>[];
+  bool _usingCachedZones = false;
   Position? _userLocation;
   bool _loadingLocation = false;
   String? _locationError;
@@ -33,6 +42,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     super.initState();
     _api = widget.api ?? HttpSafeZonesApi();
     _locationProvider = widget.userLocationProvider ?? _defaultLocationProvider;
+    _cache = widget.cache ?? SharedPrefsSafeZonesCache();
     _loadSafeZones();
   }
 
@@ -78,15 +88,29 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     setState(() {
       _loading = true;
       _errorMessage = null;
+      _usingCachedZones = false;
     });
 
     try {
       final List<SafeZone> zones = await _api.fetchSafeZones();
+      await _cache.saveZones(zones);
       if (!mounted) return;
-      setState(() => _zones = zones);
+      setState(() {
+        _zones = zones;
+        _usingCachedZones = false;
+      });
     } catch (_) {
+      final List<SafeZone> cached = await _cache.loadZones();
       if (!mounted) return;
-      setState(() => _errorMessage = 'Failed to load safe zones.');
+      if (cached.isNotEmpty) {
+        setState(() {
+          _zones = cached;
+          _usingCachedZones = true;
+          _errorMessage = null;
+        });
+      } else {
+        setState(() => _errorMessage = 'Failed to load safe zones.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -204,6 +228,17 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
 
     return Column(
       children: <Widget>[
+        if (_usingCachedZones)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Offline mode: showing last saved safe zones.',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
           child: Row(
