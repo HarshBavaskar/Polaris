@@ -12,6 +12,7 @@ void main() {
   test('stores and reads pending water level reports', () async {
     final SharedPrefsReportOfflineQueue queue = SharedPrefsReportOfflineQueue();
     final PendingWaterLevelReport report = PendingWaterLevelReport(
+      clientReportId: 'wl-1',
       zoneId: 'MUMBAI-BANDRA-400050',
       level: 'HIGH',
       queuedAt: DateTime.utc(2026, 2, 19, 10, 30),
@@ -30,6 +31,7 @@ void main() {
     final SharedPrefsReportOfflineQueue queue = SharedPrefsReportOfflineQueue();
     await queue.enqueueWaterLevel(
       PendingWaterLevelReport(
+        clientReportId: 'wl-legacy',
         zoneId: 'Z1',
         level: 'LOW',
         queuedAt: DateTime.utc(2026, 2, 19),
@@ -38,6 +40,7 @@ void main() {
 
     await queue.replaceWaterLevels(<PendingWaterLevelReport>[
       PendingWaterLevelReport(
+        clientReportId: 'wl-2',
         zoneId: 'Z2',
         level: 'SEVERE',
         queuedAt: DateTime.utc(2026, 2, 19, 11),
