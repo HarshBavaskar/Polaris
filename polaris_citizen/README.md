@@ -1,4 +1,4 @@
-# Polaris Citizen (Phase 6)
+# Polaris Citizen (Phase 7)
 
 Small first slice of the citizen app in a separate folder.
 
@@ -26,6 +26,7 @@ Included now:
   - quick actions to open Report and Safe Zones tabs
   - live safe-zone count snapshot
   - reporting and safety guidance cards
+  - emergency helpline section with quick-call actions
 - mobile platform permissions:
   - Android `INTERNET`, `CAMERA`
   - iOS `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`
