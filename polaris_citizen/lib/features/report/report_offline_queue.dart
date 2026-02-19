@@ -2,17 +2,20 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PendingWaterLevelReport {
+  final String clientReportId;
   final String zoneId;
   final String level;
   final DateTime queuedAt;
 
   const PendingWaterLevelReport({
+    required this.clientReportId,
     required this.zoneId,
     required this.level,
     required this.queuedAt,
   });
 
   Map<String, dynamic> toJson() => <String, dynamic>{
+    'client_report_id': clientReportId,
     'zone_id': zoneId,
     'level': level,
     'queued_at': queuedAt.toUtc().toIso8601String(),
@@ -20,13 +23,18 @@ class PendingWaterLevelReport {
 
   static PendingWaterLevelReport? fromJson(dynamic value) {
     if (value is! Map<String, dynamic>) return null;
+    final String clientReportId =
+        value['client_report_id']?.toString().trim() ?? '';
     final String zoneId = value['zone_id']?.toString().trim() ?? '';
     final String level = value['level']?.toString().trim().toUpperCase() ?? '';
     final String queuedAtRaw = value['queued_at']?.toString() ?? '';
     if (zoneId.isEmpty || level.isEmpty || queuedAtRaw.isEmpty) return null;
     final DateTime? queuedAt = DateTime.tryParse(queuedAtRaw);
     if (queuedAt == null) return null;
+    final String fallbackId =
+        'legacy-${queuedAt.millisecondsSinceEpoch}-${zoneId.hashCode}';
     return PendingWaterLevelReport(
+      clientReportId: clientReportId.isEmpty ? fallbackId : clientReportId,
       zoneId: zoneId,
       level: level,
       queuedAt: queuedAt,

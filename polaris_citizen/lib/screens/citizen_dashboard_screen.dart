@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../features/alerts/alerts_screen.dart';
 import '../features/report/report_flood_screen.dart';
+import '../features/report/my_reports_screen.dart';
 import '../features/safe_zones/safe_zones_api.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
 
@@ -19,8 +21,10 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 
   static const List<String> _titles = <String>[
     'Citizen Dashboard',
+    'Alerts',
     'Report Flooding',
     'Safe Zones',
+    'My Reports',
   ];
 
   @override
@@ -28,17 +32,25 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     super.initState();
     _pages = <Widget>[
       _DashboardHomeTab(
+        onGoAlerts: _openAlertsTab,
         onGoReport: _openReportTab,
         onGoSafeZones: _openSafeZonesTab,
+        onGoMyReports: _openMyReportsTab,
       ),
+      const AlertsScreen(),
       const ReportFloodScreen(),
       const SafeZonesScreen(),
+      const MyReportsScreen(),
     ];
   }
 
-  void _openReportTab() => setState(() => _selectedIndex = 1);
+  void _openAlertsTab() => setState(() => _selectedIndex = 1);
 
-  void _openSafeZonesTab() => setState(() => _selectedIndex = 2);
+  void _openReportTab() => setState(() => _selectedIndex = 2);
+
+  void _openSafeZonesTab() => setState(() => _selectedIndex = 3);
+
+  void _openMyReportsTab() => setState(() => _selectedIndex = 4);
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +69,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
             label: 'Dashboard',
           ),
           NavigationDestination(
+            icon: Icon(Icons.notifications_outlined),
+            selectedIcon: Icon(Icons.notifications_active_rounded),
+            label: 'Alerts',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.flood_outlined),
             selectedIcon: Icon(Icons.flood_rounded),
             label: 'Report',
@@ -66,6 +83,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
             selectedIcon: Icon(Icons.map_rounded),
             label: 'Safe Zones',
           ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'My Reports',
+          ),
         ],
       ),
     );
@@ -73,12 +95,16 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 }
 
 class _DashboardHomeTab extends StatefulWidget {
+  final VoidCallback onGoAlerts;
   final VoidCallback onGoReport;
   final VoidCallback onGoSafeZones;
+  final VoidCallback onGoMyReports;
 
   const _DashboardHomeTab({
+    required this.onGoAlerts,
     required this.onGoReport,
     required this.onGoSafeZones,
+    required this.onGoMyReports,
   });
 
   @override
@@ -235,10 +261,22 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       label: const Text('Report Flooding Now'),
                     ),
                     OutlinedButton.icon(
+                      key: const Key('dashboard-go-alerts'),
+                      onPressed: widget.onGoAlerts,
+                      icon: const Icon(Icons.notifications_active_rounded),
+                      label: const Text('View Alerts'),
+                    ),
+                    OutlinedButton.icon(
                       key: const Key('dashboard-go-safezones'),
                       onPressed: widget.onGoSafeZones,
                       icon: const Icon(Icons.map),
                       label: const Text('Open Safe Zones Map'),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('dashboard-go-myreports'),
+                      onPressed: widget.onGoMyReports,
+                      icon: const Icon(Icons.receipt_long),
+                      label: const Text('My Report History'),
                     ),
                   ],
                 ),

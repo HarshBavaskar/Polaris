@@ -6,6 +6,7 @@ import '../safe_zones/safe_zone.dart';
 import '../safe_zones/safe_zones_api.dart';
 import '../safe_zones/safe_zones_cache.dart';
 import 'report_api.dart';
+import 'report_history.dart';
 import 'report_offline_queue.dart';
 
 class ReportFloodScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class ReportFloodScreen extends StatefulWidget {
   final SafeZonesApi? safeZonesApi;
   final SafeZonesCache? safeZonesCache;
   final ReportOfflineQueue? offlineQueue;
+  final CitizenReportHistoryStore? historyStore;
 
   const ReportFloodScreen({
     super.key,
@@ -22,6 +24,7 @@ class ReportFloodScreen extends StatefulWidget {
     this.safeZonesApi,
     this.safeZonesCache,
     this.offlineQueue,
+    this.historyStore,
   });
 
   @override
@@ -76,6 +79,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   late final SafeZonesApi _safeZonesApi;
   late final SafeZonesCache _safeZonesCache;
   late final ReportOfflineQueue _offlineQueue;
+  late final CitizenReportHistoryStore _historyStore;
 
   String _selectedLevel = 'MEDIUM';
   List<SafeZone> _safeZoneOptions = <SafeZone>[];
@@ -100,6 +104,8 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     _safeZonesApi = widget.safeZonesApi ?? HttpSafeZonesApi();
     _safeZonesCache = widget.safeZonesCache ?? SharedPrefsSafeZonesCache();
     _offlineQueue = widget.offlineQueue ?? SharedPrefsReportOfflineQueue();
+    _historyStore =
+        widget.historyStore ?? SharedPrefsCitizenReportHistoryStore();
     _loadZoneOptions();
     _refreshPendingCount();
     _syncPendingWaterLevels(showEmptyMessage: false);
@@ -151,6 +157,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     return _areaSuggestionsByCity[_selectedCity] ?? const <String>[];
   }
 
+  String _newReportId(String prefix) {
+    return '$prefix-${DateTime.now().microsecondsSinceEpoch}';
+  }
+
   Future<void> _refreshPendingCount() async {
     final List<PendingWaterLevelReport> pending = await _offlineQueue
         .pendingWaterLevels();
@@ -172,6 +182,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       }
 
       int synced = 0;
+      int failed = 0;
       final List<PendingWaterLevelReport> remaining =
           <PendingWaterLevelReport>[];
       for (final PendingWaterLevelReport report in pending) {
@@ -181,6 +192,18 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             level: report.level,
           );
           synced += 1;
+          await _historyStore.markStatus(
+            id: report.clientReportId,
+            status: CitizenReportStatus.synced,
+            note: 'Synced from offline queue',
+          );
+        } on CitizenReportHttpException {
+          failed += 1;
+          await _historyStore.markStatus(
+            id: report.clientReportId,
+            status: CitizenReportStatus.failed,
+            note: 'Sync failed: rejected by server',
+          );
         } catch (_) {
           remaining.add(report);
         }
@@ -189,7 +212,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       await _offlineQueue.replaceWaterLevels(remaining);
       await _refreshPendingCount();
       if (showEmptyMessage || synced > 0 || remaining.isNotEmpty) {
-        _showMessage('Synced $synced report(s). Pending: ${remaining.length}.');
+        _showMessage(
+          'Synced $synced report(s), failed $failed, pending ${remaining.length}.',
+        );
       }
     } finally {
       if (mounted) setState(() => _syncingPending = false);
@@ -394,22 +419,61 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     if (!_validateZoneId()) return;
     setState(() => _sendingLevel = true);
     final String zoneId = _normalizedZoneId();
+    final String reportId = _newReportId('wl');
+    final DateTime now = DateTime.now().toLocal();
     try {
       final String message = await _api.submitWaterLevel(
         zoneId: zoneId,
         level: _selectedLevel,
       );
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.waterLevel,
+          zoneId: zoneId,
+          level: _selectedLevel,
+          status: CitizenReportStatus.synced,
+          createdAt: now,
+          updatedAt: now,
+          note: 'Submitted successfully',
+        ),
+      );
       if (!mounted) return;
       _showMessage(message);
     } on CitizenReportHttpException {
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.waterLevel,
+          zoneId: zoneId,
+          level: _selectedLevel,
+          status: CitizenReportStatus.failed,
+          createdAt: now,
+          updatedAt: DateTime.now().toLocal(),
+          note: 'Submission failed at server',
+        ),
+      );
       if (!mounted) return;
       _showMessage('Failed to submit water level.');
     } catch (_) {
       await _offlineQueue.enqueueWaterLevel(
         PendingWaterLevelReport(
+          clientReportId: reportId,
           zoneId: zoneId,
           level: _selectedLevel,
           queuedAt: DateTime.now().toUtc(),
+        ),
+      );
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.waterLevel,
+          zoneId: zoneId,
+          level: _selectedLevel,
+          status: CitizenReportStatus.pendingOffline,
+          createdAt: now,
+          updatedAt: DateTime.now().toLocal(),
+          note: 'Saved offline, waiting for sync',
         ),
       );
       await _refreshPendingCount();
@@ -430,15 +494,40 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
 
     setState(() => _sendingPhoto = true);
+    final String zoneId = _normalizedZoneId();
+    final DateTime now = DateTime.now().toLocal();
+    final String reportId = _newReportId('photo');
     try {
       final String message = await _api.submitFloodPhoto(
-        zoneId: _normalizedZoneId(),
+        zoneId: zoneId,
         image: _selectedImage!,
+      );
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.floodPhoto,
+          zoneId: zoneId,
+          status: CitizenReportStatus.synced,
+          createdAt: now,
+          updatedAt: now,
+          note: 'Photo submitted successfully',
+        ),
       );
       if (!mounted) return;
       _showMessage(message);
       setState(() => _selectedImage = null);
     } catch (_) {
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.floodPhoto,
+          zoneId: zoneId,
+          status: CitizenReportStatus.failed,
+          createdAt: now,
+          updatedAt: DateTime.now().toLocal(),
+          note: 'Photo submission failed',
+        ),
+      );
       if (!mounted) return;
       _showMessage('Failed to submit flood photo.');
     } finally {

@@ -1,6 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:polaris_citizen/app.dart';
+import 'package:polaris_citizen/features/alerts/alerts_screen.dart';
+import 'package:polaris_citizen/features/report/my_reports_screen.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_screen.dart';
 
 void main() {
@@ -9,8 +11,10 @@ void main() {
 
     expect(find.text('Citizen Dashboard'), findsOneWidget);
     expect(find.text('Dashboard'), findsOneWidget);
+    expect(find.text('Alerts'), findsOneWidget);
     expect(find.text('Report'), findsOneWidget);
     expect(find.text('Safe Zones'), findsOneWidget);
+    expect(find.text('My Reports'), findsOneWidget);
     expect(find.text('Stay Alert. Report Flooding Fast.'), findsOneWidget);
 
     await tester.scrollUntilVisible(
@@ -18,7 +22,7 @@ void main() {
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Emergency Helplines'), findsOneWidget);
     expect(find.byKey(const Key('helpline-112')), findsOneWidget);
     expect(find.byKey(const Key('helpline-101')), findsOneWidget);
@@ -29,7 +33,7 @@ void main() {
       260,
       scrollable: find.byType(Scrollable).first,
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.byKey(const Key('dashboard-fetch-location')), findsOneWidget);
   });
 
@@ -37,11 +41,21 @@ void main() {
     await tester.pumpWidget(const CitizenApp());
 
     await tester.tap(find.text('Report'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Report Flooding'), findsOneWidget);
     expect(find.text('Location Zone'), findsOneWidget);
     expect(find.text('Flood Photo'), findsOneWidget);
+  });
+
+  testWidgets('navigates to alerts tab', (WidgetTester tester) async {
+    await tester.pumpWidget(const CitizenApp());
+
+    await tester.tap(find.text('Alerts'));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(AlertsScreen), findsOneWidget);
+    expect(find.text('Alerts'), findsWidgets);
   });
 
   testWidgets('dashboard quick action opens report tab', (
@@ -50,7 +64,7 @@ void main() {
     await tester.pumpWidget(const CitizenApp());
 
     await tester.tap(find.byKey(const Key('dashboard-go-report')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Report Flooding'), findsOneWidget);
     expect(find.text('Location Zone'), findsOneWidget);
@@ -62,9 +76,21 @@ void main() {
     await tester.pumpWidget(const CitizenApp());
 
     await tester.tap(find.byKey(const Key('dashboard-go-safezones')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.text('Safe Zones'), findsWidgets);
     expect(find.byType(SafeZonesScreen), findsOneWidget);
+  });
+
+  testWidgets('dashboard quick action opens my reports tab', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const CitizenApp());
+
+    await tester.tap(find.byKey(const Key('dashboard-go-myreports')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(MyReportsScreen), findsOneWidget);
+    expect(find.text('My Reports'), findsWidgets);
   });
 }

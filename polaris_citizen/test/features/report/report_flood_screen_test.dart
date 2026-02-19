@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:polaris_citizen/features/report/report_api.dart';
 import 'package:polaris_citizen/features/report/report_flood_screen.dart';
+import 'package:polaris_citizen/features/report/report_history.dart';
 import 'package:polaris_citizen/features/report/report_offline_queue.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
@@ -86,12 +87,49 @@ class _MemorySafeZonesCache implements SafeZonesCache {
   }
 }
 
+class _MemoryHistoryStore implements CitizenReportHistoryStore {
+  final List<CitizenReportRecord> records = <CitizenReportRecord>[];
+
+  @override
+  Future<List<CitizenReportRecord>> listReports() async {
+    return List<CitizenReportRecord>.from(records);
+  }
+
+  @override
+  Future<void> markStatus({
+    required String id,
+    required CitizenReportStatus status,
+    String? note,
+  }) async {
+    final int index = records.indexWhere((CitizenReportRecord r) => r.id == id);
+    if (index == -1) return;
+    records[index] = records[index].copyWith(
+      status: status,
+      note: note,
+      updatedAt: DateTime.now().toLocal(),
+    );
+  }
+
+  @override
+  Future<void> upsertRecord(CitizenReportRecord record) async {
+    final int index = records.indexWhere(
+      (CitizenReportRecord r) => r.id == record.id,
+    );
+    if (index == -1) {
+      records.add(record);
+      return;
+    }
+    records[index] = record;
+  }
+}
+
 void main() {
   Widget buildTestWidget({
     required CitizenReportApi api,
     required SafeZonesApi safeZonesApi,
     ReportOfflineQueue? offlineQueue,
     SafeZonesCache? safeZonesCache,
+    CitizenReportHistoryStore? historyStore,
   }) {
     return MaterialApp(
       home: Scaffold(
@@ -100,6 +138,7 @@ void main() {
           safeZonesApi: safeZonesApi,
           offlineQueue: offlineQueue ?? _MemoryOfflineQueue(),
           safeZonesCache: safeZonesCache ?? _MemorySafeZonesCache(),
+          historyStore: historyStore ?? _MemoryHistoryStore(),
         ),
       ),
     );
