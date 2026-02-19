@@ -1,4 +1,4 @@
-# Polaris Citizen (Phase 5)
+# Polaris Citizen (Phase 6)
 
 Small first slice of the citizen app in a separate folder.
 
@@ -15,7 +15,9 @@ Included now:
 - meaningful zone selection in report flow:
   - auto-load suggested zone IDs from active safe zones
   - dropdown select by default
+  - area + pincode mode (city/locality/pincode -> generated zone ID)
   - optional custom zone override when needed
+  - GPS-assisted nearest safe-zone selection
 - safe-zones API wiring:
   - `GET /map/safe-zones`
 - widget and unit tests for shell + report flow

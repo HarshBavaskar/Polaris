@@ -52,7 +52,11 @@ void main() {
 
   Future<void> tapSubmitLevel(WidgetTester tester) async {
     final Finder submitButton = find.byKey(const Key('submit-level-button'));
-    await tester.ensureVisible(submitButton);
+    await tester.scrollUntilVisible(
+      submitButton,
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pumpAndSettle();
     await tester.tap(submitButton);
     await tester.pumpAndSettle();
@@ -68,6 +72,9 @@ void main() {
           safeZonesApi: _FakeSafeZonesApi(<SafeZone>[]),
         ),
       );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('zone-mode-custom')));
       await tester.pumpAndSettle();
 
       await tapSubmitLevel(tester);
@@ -127,9 +134,12 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('zone-custom-toggle')));
+      await tester.tap(find.byKey(const Key('zone-mode-custom')));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('zone-id-input')), 'WARD-44');
+      await tester.enterText(
+        find.byKey(const Key('custom-zone-id-input')),
+        'WARD-44',
+      );
       await tapSubmitLevel(tester);
 
       expect(api.lastZoneId, 'WARD-44');
@@ -137,4 +147,41 @@ void main() {
       expect(find.text('Water level report received'), findsOneWidget);
     },
   );
+
+  testWidgets('submits water level with area + pincode generated zone id', (
+    WidgetTester tester,
+  ) async {
+    final _FakeCitizenReportApi api = _FakeCitizenReportApi();
+    final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
+      SafeZone(
+        zoneId: 'SZ-100',
+        lat: 19.076,
+        lng: 72.8777,
+        radius: 300,
+        confidence: 'HIGH',
+        active: true,
+        source: 'AUTO',
+      ),
+    ]);
+
+    await tester.pumpWidget(buildTestWidget(api: api, safeZonesApi: zonesApi));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('zone-mode-area-pincode')));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('area-locality-input')),
+      'Thane West',
+    );
+    await tester.enterText(
+      find.byKey(const Key('area-pincode-input')),
+      '400601',
+    );
+    await tapSubmitLevel(tester);
+
+    expect(api.lastZoneId, 'MUMBAI-THANE_WEST-400601');
+    expect(api.lastLevel, 'MEDIUM');
+    expect(find.text('Water level report received'), findsOneWidget);
+  });
 }
