@@ -21,8 +21,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Report Flooding'), findsOneWidget);
+    expect(find.text('Location Zone'), findsOneWidget);
     expect(find.text('Flood Photo'), findsOneWidget);
-    expect(find.text('Flooding Level'), findsOneWidget);
   });
 
   testWidgets('dashboard quick action opens report tab', (
@@ -34,7 +34,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Report Flooding'), findsOneWidget);
-    expect(find.text('Submit Water Level'), findsOneWidget);
+    expect(find.text('Location Zone'), findsOneWidget);
   });
 
   testWidgets('dashboard quick action opens safe zones tab', (

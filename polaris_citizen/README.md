@@ -12,6 +12,10 @@ Included now:
 - report API wiring:
   - `POST /input/citizen/water-level`
   - `POST /input/citizen/image`
+- meaningful zone selection in report flow:
+  - auto-load suggested zone IDs from active safe zones
+  - dropdown select by default
+  - optional custom zone override when needed
 - safe-zones API wiring:
   - `GET /map/safe-zones`
 - widget and unit tests for shell + report flow
