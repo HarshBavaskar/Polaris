@@ -1,4 +1,4 @@
-# Polaris Citizen (Phase 8)
+# Polaris Citizen (Phase 9)
 
 Small first slice of the citizen app in a separate folder.
 
@@ -20,6 +20,10 @@ Included now:
   - GPS-assisted nearest safe-zone selection
 - safe-zones API wiring:
   - `GET /map/safe-zones`
+  - safe zone cards now include:
+    - area and pincode (from backend if available; focused fallback inference for Mumbai/Thane/Navi Mumbai/Palghar)
+    - distance in km from citizen location
+    - "updated X ago" from `last_verified`
 - widget and unit tests for shell + report flow
   - safe-zones API and screen states
 - citizen home dashboard:

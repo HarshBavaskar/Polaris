@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_screen.dart';
@@ -13,9 +14,14 @@ class _FakeSafeZonesApi implements SafeZonesApi {
   Future<List<SafeZone>> fetchSafeZones() => _handler();
 }
 
-Widget _buildScreen(SafeZonesApi api) {
+Widget _buildScreen(
+  SafeZonesApi api, {
+  UserLocationProvider? locationProvider,
+}) {
   return MaterialApp(
-    home: Scaffold(body: SafeZonesScreen(api: api)),
+    home: Scaffold(
+      body: SafeZonesScreen(api: api, userLocationProvider: locationProvider),
+    ),
   );
 }
 
@@ -57,6 +63,9 @@ void main() {
           confidence: 'HIGH',
           active: true,
           source: 'AUTO',
+          area: 'Dadar',
+          pincode: '400014',
+          lastVerified: DateTime.now().subtract(const Duration(minutes: 10)),
         ),
       ];
     });
@@ -66,5 +75,50 @@ void main() {
 
     expect(find.text('Active safe zones: 1'), findsOneWidget);
     expect(find.text('SZ-100'), findsOneWidget);
+    expect(find.textContaining('Area: Dadar'), findsOneWidget);
+    expect(find.textContaining('Pincode: 400014'), findsOneWidget);
+    expect(find.textContaining('Updated:'), findsOneWidget);
+  });
+
+  testWidgets('shows distance when location is enabled', (
+    WidgetTester tester,
+  ) async {
+    final SafeZonesApi api = _FakeSafeZonesApi(() async {
+      return <SafeZone>[
+        SafeZone(
+          zoneId: 'SZ-101',
+          lat: 19.076,
+          lng: 72.8777,
+          radius: 300,
+          confidence: 'HIGH',
+          active: true,
+          source: 'AUTO',
+        ),
+      ];
+    });
+
+    Future<Position> fakeLocation() async {
+      return Position(
+        longitude: 72.8777,
+        latitude: 19.076,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 1,
+        heading: 0,
+        headingAccuracy: 1,
+        speed: 0,
+        speedAccuracy: 1,
+      );
+    }
+
+    await tester.pumpWidget(_buildScreen(api, locationProvider: fakeLocation));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('safe-zones-location-btn')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Distance now shown'), findsOneWidget);
+    expect(find.byKey(const Key('safe-zone-distance-label')), findsOneWidget);
   });
 }

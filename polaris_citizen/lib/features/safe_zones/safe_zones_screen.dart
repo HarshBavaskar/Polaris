@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../core/locations/priority_area_anchors.dart';
 import 'safe_zone.dart';
 import 'safe_zones_api.dart';
 
+typedef UserLocationProvider = Future<Position> Function();
+
 class SafeZonesScreen extends StatefulWidget {
   final SafeZonesApi? api;
+  final UserLocationProvider? userLocationProvider;
 
-  const SafeZonesScreen({super.key, this.api});
+  const SafeZonesScreen({super.key, this.api, this.userLocationProvider});
 
   @override
   State<SafeZonesScreen> createState() => _SafeZonesScreenState();
@@ -15,15 +20,58 @@ class SafeZonesScreen extends StatefulWidget {
 
 class _SafeZonesScreenState extends State<SafeZonesScreen> {
   late final SafeZonesApi _api;
+  late final UserLocationProvider _locationProvider;
   bool _loading = true;
   String? _errorMessage;
   List<SafeZone> _zones = <SafeZone>[];
+  Position? _userLocation;
+  bool _loadingLocation = false;
+  String? _locationError;
 
   @override
   void initState() {
     super.initState();
     _api = widget.api ?? HttpSafeZonesApi();
+    _locationProvider = widget.userLocationProvider ?? _defaultLocationProvider;
     _loadSafeZones();
+  }
+
+  Future<Position> _defaultLocationProvider() async {
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location service disabled');
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission denied');
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+  }
+
+  Future<void> _fetchUserLocation() async {
+    setState(() {
+      _loadingLocation = true;
+      _locationError = null;
+    });
+
+    try {
+      final Position p = await _locationProvider();
+      if (!mounted) return;
+      setState(() => _userLocation = p);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _locationError = 'Unable to fetch current location.');
+    } finally {
+      if (mounted) setState(() => _loadingLocation = false);
+    }
   }
 
   Future<void> _loadSafeZones() async {
@@ -42,6 +90,65 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  double? _distanceKm(SafeZone zone) {
+    final Position? user = _userLocation;
+    if (user == null) return null;
+    final double meters = Geolocator.distanceBetween(
+      user.latitude,
+      user.longitude,
+      zone.lat,
+      zone.lng,
+    );
+    return meters / 1000;
+  }
+
+  AreaAnchor? _nearestAnchor(SafeZone zone) {
+    AreaAnchor? best;
+    double bestMeters = double.infinity;
+    for (final AreaAnchor a in priorityAreaAnchors) {
+      final double d = Geolocator.distanceBetween(
+        zone.lat,
+        zone.lng,
+        a.lat,
+        a.lng,
+      );
+      if (d < bestMeters) {
+        bestMeters = d;
+        best = a;
+      }
+    }
+
+    if (best == null) return null;
+    if (bestMeters > 25000) return null;
+    return best;
+  }
+
+  String _areaLabel(SafeZone zone) {
+    final String? explicit = zone.area?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+
+    final AreaAnchor? anchor = _nearestAnchor(zone);
+    if (anchor != null) return '${anchor.area}, ${anchor.city}';
+    return 'Area unavailable';
+  }
+
+  String _pincodeLabel(SafeZone zone) {
+    final String? explicit = zone.pincode?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+
+    final AreaAnchor? anchor = _nearestAnchor(zone);
+    return anchor?.pincode ?? '--';
+  }
+
+  String _updatedAgo(DateTime? timestamp) {
+    if (timestamp == null) return 'Updated: unknown';
+    final Duration diff = DateTime.now().difference(timestamp.toLocal());
+    if (diff.isNegative || diff.inSeconds < 60) return 'Updated: just now';
+    if (diff.inMinutes < 60) return 'Updated: ${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return 'Updated: ${diff.inHours} hr ago';
+    return 'Updated: ${diff.inDays} day(s) ago';
   }
 
   @override
@@ -82,10 +189,51 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
       );
     }
 
-    final LatLng center = LatLng(_zones.first.lat, _zones.first.lng);
+    final List<SafeZone> orderedZones = List<SafeZone>.from(_zones);
+    if (_userLocation != null) {
+      orderedZones.sort((SafeZone a, SafeZone b) {
+        final double da = _distanceKm(a) ?? double.infinity;
+        final double db = _distanceKm(b) ?? double.infinity;
+        return da.compareTo(db);
+      });
+    }
+
+    final LatLng center = _userLocation != null
+        ? LatLng(_userLocation!.latitude, _userLocation!.longitude)
+        : LatLng(orderedZones.first.lat, orderedZones.first.lng);
 
     return Column(
       children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: Row(
+            children: <Widget>[
+              FilledButton.icon(
+                key: const Key('safe-zones-location-btn'),
+                onPressed: _loadingLocation ? null : _fetchUserLocation,
+                icon: _loadingLocation
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.my_location),
+                label: Text(
+                  _loadingLocation ? 'Locating...' : 'Use My Location',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _locationError ??
+                      (_userLocation == null
+                          ? 'Distance hidden until location is enabled.'
+                          : 'Distance now shown from your location.'),
+                ),
+              ),
+            ],
+          ),
+        ),
         Expanded(
           flex: 3,
           child: FlutterMap(
@@ -97,7 +245,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 subdomains: const <String>['a', 'b', 'c', 'd'],
               ),
               CircleLayer(
-                circles: _zones
+                circles: orderedZones
                     .map(
                       (SafeZone zone) => CircleMarker(
                         point: LatLng(zone.lat, zone.lng),
@@ -110,7 +258,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                     .toList(),
               ),
               MarkerLayer(
-                markers: _zones
+                markers: orderedZones
                     .map(
                       (SafeZone zone) => Marker(
                         width: 36,
@@ -121,6 +269,24 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                     )
                     .toList(),
               ),
+              if (_userLocation != null)
+                MarkerLayer(
+                  markers: <Marker>[
+                    Marker(
+                      width: 44,
+                      height: 44,
+                      point: LatLng(
+                        _userLocation!.latitude,
+                        _userLocation!.longitude,
+                      ),
+                      child: const Icon(
+                        Icons.person_pin_circle,
+                        color: Colors.blue,
+                        size: 28,
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -129,11 +295,11 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
           child: RefreshIndicator(
             onRefresh: _loadSafeZones,
             child: ListView.builder(
-              itemCount: _zones.length + 1,
+              itemCount: orderedZones.length + 1,
               itemBuilder: (BuildContext context, int index) {
                 if (index == 0) {
                   return ListTile(
-                    title: Text('Active safe zones: ${_zones.length}'),
+                    title: Text('Active safe zones: ${orderedZones.length}'),
                     trailing: IconButton(
                       key: const Key('safe-zones-refresh'),
                       onPressed: _loadSafeZones,
@@ -142,7 +308,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                   );
                 }
 
-                final SafeZone zone = _zones[index - 1];
+                final SafeZone zone = orderedZones[index - 1];
+                final double? km = _distanceKm(zone);
                 return Card(
                   child: ListTile(
                     title: Text(
@@ -150,7 +317,13 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                     ),
                     subtitle: Text(
                       'Lat ${zone.lat.toStringAsFixed(4)}, Lng ${zone.lng.toStringAsFixed(4)}'
-                      '\nSource: ${zone.source} | Confidence: ${zone.confidence}',
+                      '\nArea: ${_areaLabel(zone)} | Pincode: ${_pincodeLabel(zone)}'
+                      '\nSource: ${zone.source} | Confidence: ${zone.confidence}'
+                      '\n${_updatedAgo(zone.lastVerified)}',
+                    ),
+                    trailing: Text(
+                      km == null ? '--' : '${km.toStringAsFixed(1)} km',
+                      key: const Key('safe-zone-distance-label'),
                     ),
                   ),
                 );

@@ -15,6 +15,16 @@ abstract class CitizenReportApi {
   });
 }
 
+class CitizenReportHttpException implements Exception {
+  final int statusCode;
+  final String message;
+
+  const CitizenReportHttpException(this.statusCode, this.message);
+
+  @override
+  String toString() => 'CitizenReportHttpException($statusCode): $message';
+}
+
 class HttpCitizenReportApi implements CitizenReportApi {
   final String baseUrl;
   final http.Client _client;
@@ -37,7 +47,10 @@ class HttpCitizenReportApi implements CitizenReportApi {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to submit water level');
+      throw CitizenReportHttpException(
+        response.statusCode,
+        'Failed to submit water level',
+      );
     }
 
     return _extractMessage(response.body, fallback: 'Water level submitted.');
@@ -65,7 +78,10 @@ class HttpCitizenReportApi implements CitizenReportApi {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to submit flood photo');
+      throw CitizenReportHttpException(
+        response.statusCode,
+        'Failed to submit flood photo',
+      );
     }
 
     return _extractMessage(response.body, fallback: 'Flood photo submitted.');

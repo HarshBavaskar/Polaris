@@ -6,6 +6,9 @@ class SafeZone {
   final String confidence;
   final bool active;
   final String source;
+  final String? area;
+  final String? pincode;
+  final DateTime? lastVerified;
 
   SafeZone({
     required this.zoneId,
@@ -15,9 +18,18 @@ class SafeZone {
     required this.confidence,
     required this.active,
     required this.source,
+    this.area,
+    this.pincode,
+    this.lastVerified,
   });
 
   factory SafeZone.fromJson(Map<String, dynamic> json) {
+    DateTime? parseDate(dynamic value) {
+      if (value == null) return null;
+      if (value is String) return DateTime.tryParse(value);
+      return DateTime.tryParse(value.toString());
+    }
+
     return SafeZone(
       zoneId: json['zone_id']?.toString() ?? '',
       lat: (json['lat'] as num?)?.toDouble() ?? 0.0,
@@ -29,6 +41,12 @@ class SafeZone {
           'LOW',
       active: json['active'] == true,
       source: json['source']?.toString() ?? 'AUTO',
+      area: json['area']?.toString() ?? json['locality']?.toString(),
+      pincode: json['pincode']?.toString(),
+      lastVerified:
+          parseDate(json['last_verified']) ??
+          parseDate(json['updated_at']) ??
+          parseDate(json['timestamp']),
     );
   }
 }

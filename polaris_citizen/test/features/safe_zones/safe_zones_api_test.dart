@@ -17,6 +17,9 @@ void main() {
             'active': true,
             'source': 'AUTO',
             'confidence_level': 'HIGH',
+            'area': 'Dadar',
+            'pincode': '400014',
+            'last_verified': '2026-02-19T10:00:00',
           },
           <String, dynamic>{
             'zone_id': 'SZ-2',
@@ -41,5 +44,8 @@ void main() {
     expect(zones.length, 1);
     expect(zones.first.zoneId, 'SZ-1');
     expect(zones.first.active, true);
+    expect(zones.first.area, 'Dadar');
+    expect(zones.first.pincode, '400014');
+    expect(zones.first.lastVerified, isNotNull);
   });
 }
