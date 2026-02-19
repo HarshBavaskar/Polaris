@@ -1,4 +1,4 @@
-# Polaris Citizen (Phase 7)
+# Polaris Citizen (Phase 8)
 
 Small first slice of the citizen app in a separate folder.
 
@@ -15,7 +15,7 @@ Included now:
 - meaningful zone selection in report flow:
   - auto-load suggested zone IDs from active safe zones
   - dropdown select by default
-  - area + pincode mode (city/locality/pincode -> generated zone ID)
+  - area + pincode mode (Mumbai/Thane/Navi Mumbai/Palghar focus for now)
   - optional custom zone override when needed
   - GPS-assisted nearest safe-zone selection
 - safe-zones API wiring:
@@ -27,9 +27,11 @@ Included now:
   - live safe-zone count snapshot
   - reporting and safety guidance cards
   - emergency helpline section with quick-call actions
+  - area dropdown for district-wise helpline guidance
+  - optional live-location helper for emergency sharing
 - mobile platform permissions:
-  - Android `INTERNET`, `CAMERA`
-  - iOS `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`
+  - Android `INTERNET`, `CAMERA`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`
+  - iOS `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSLocationWhenInUseUsageDescription`
 
 Run:
 

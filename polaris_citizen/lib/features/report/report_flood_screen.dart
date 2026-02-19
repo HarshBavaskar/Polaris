@@ -36,10 +36,35 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     'Mumbai',
     'Thane',
     'Navi Mumbai',
-    'Kalyan-Dombivli',
-    'Mira-Bhayandar',
     'Palghar',
+    'Other',
   ];
+  static const Map<String, List<String>> _areaSuggestionsByCity =
+      <String, List<String>>{
+        'Mumbai': <String>[
+          'Andheri',
+          'Bandra',
+          'Borivali',
+          'Dadar',
+          'Kurla',
+          'Ghatkopar',
+        ],
+        'Thane': <String>[
+          'Thane West',
+          'Thane East',
+          'Mumbra',
+          'Kalyan',
+          'Dombivli',
+        ],
+        'Navi Mumbai': <String>[
+          'Vashi',
+          'Nerul',
+          'Belapur',
+          'Airoli',
+          'Ghansoli',
+        ],
+        'Palghar': <String>['Vasai', 'Virar', 'Nalasopara', 'Boisar'],
+      };
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
   late final SafeZonesApi _safeZonesApi;
@@ -47,6 +72,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   String _selectedLevel = 'MEDIUM';
   List<SafeZone> _safeZoneOptions = <SafeZone>[];
   String? _selectedZoneId;
+  String? _selectedAreaSuggestion;
   String _zoneMode = 'SUGGESTED';
   String _selectedCity = _cities.first;
   bool _loadingZones = true;
@@ -105,6 +131,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     final String direct = zone.zoneId.trim();
     if (direct.isNotEmpty) return direct;
     return 'LAT${zone.lat.toStringAsFixed(4)}_LNG${zone.lng.toStringAsFixed(4)}';
+  }
+
+  List<String> _areaSuggestions() {
+    return _areaSuggestionsByCity[_selectedCity] ?? const <String>[];
   }
 
   Future<void> _loadZoneOptions() async {
@@ -453,9 +483,36 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                       }).toList(),
                       onChanged: (String? value) {
                         if (value == null) return;
-                        setState(() => _selectedCity = value);
+                        setState(() {
+                          _selectedCity = value;
+                          _selectedAreaSuggestion = null;
+                        });
                       },
                     ),
+                    if (_areaSuggestions().isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        key: const Key('area-suggestion-dropdown'),
+                        initialValue: _selectedAreaSuggestion,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Area Suggestions',
+                        ),
+                        hint: const Text('Select area (optional)'),
+                        items: _areaSuggestions().map((String area) {
+                          return DropdownMenuItem<String>(
+                            value: area,
+                            child: Text(area),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          setState(() {
+                            _selectedAreaSuggestion = value;
+                            _localityController.text = value ?? '';
+                          });
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     TextField(
                       key: const Key('area-locality-input'),

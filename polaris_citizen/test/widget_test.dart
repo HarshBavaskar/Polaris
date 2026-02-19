@@ -22,6 +22,15 @@ void main() {
     expect(find.text('Emergency Helplines'), findsOneWidget);
     expect(find.byKey(const Key('helpline-112')), findsOneWidget);
     expect(find.byKey(const Key('helpline-101')), findsOneWidget);
+    expect(find.byKey(const Key('helpline-area-dropdown')), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('dashboard-fetch-location')),
+      260,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('dashboard-fetch-location')), findsOneWidget);
   });
 
   testWidgets('navigates to report tab', (WidgetTester tester) async {
