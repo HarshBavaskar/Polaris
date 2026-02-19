@@ -1,4 +1,4 @@
-# Polaris Citizen (Phase 1)
+# Polaris Citizen (Phase 2)
 
 Small first slice of the citizen app in a separate folder.
 
@@ -7,9 +7,12 @@ Included now:
 - basic Flutter app shell
 - citizen-only bottom tabs:
   - Dashboard
-  - Report Flooding (placeholder)
+  - Report Flooding (implemented)
   - Safe Zones (placeholder)
-- widget tests for initial shell and tab navigation
+- report API wiring:
+  - `POST /input/citizen/water-level`
+  - `POST /input/citizen/image`
+- widget and unit tests for shell + report flow
 
 Run:
 

@@ -17,10 +17,8 @@ void main() {
     await tester.tap(find.text('Report'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Report Flooding'), findsNWidgets(2));
-    expect(
-      find.text('Next step: flood photo + water-level form.'),
-      findsOneWidget,
-    );
+    expect(find.text('Report Flooding'), findsOneWidget);
+    expect(find.text('Flood Photo'), findsOneWidget);
+    expect(find.text('Flooding Level'), findsOneWidget);
   });
 }

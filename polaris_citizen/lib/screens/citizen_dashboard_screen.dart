@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/report/report_flood_screen.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
   const CitizenDashboardScreen({super.key});
@@ -16,13 +17,9 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     'Safe Zones',
   ];
 
-  static const List<Widget> _pages = <Widget>[
+  final List<Widget> _pages = const <Widget>[
     _DashboardIntroTab(),
-    _PlaceholderTab(
-      title: 'Report Flooding',
-      message: 'Next step: flood photo + water-level form.',
-      icon: Icons.flood,
-    ),
+    ReportFloodScreen(),
     _PlaceholderTab(
       title: 'Safe Zones',
       message: 'Next step: safe-zones map connected to backend endpoint.',
