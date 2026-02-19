@@ -5,17 +5,20 @@ import 'package:image_picker/image_picker.dart';
 import '../safe_zones/safe_zone.dart';
 import '../safe_zones/safe_zones_api.dart';
 import 'report_api.dart';
+import 'report_offline_queue.dart';
 
 class ReportFloodScreen extends StatefulWidget {
   final CitizenReportApi? api;
   final ImagePicker? imagePicker;
   final SafeZonesApi? safeZonesApi;
+  final ReportOfflineQueue? offlineQueue;
 
   const ReportFloodScreen({
     super.key,
     this.api,
     this.imagePicker,
     this.safeZonesApi,
+    this.offlineQueue,
   });
 
   @override
@@ -23,6 +26,7 @@ class ReportFloodScreen extends StatefulWidget {
 }
 
 class _ReportFloodScreenState extends State<ReportFloodScreen> {
+  static const String _manualAreaChoice = '__MANUAL_AREA__';
   final TextEditingController _zoneIdController = TextEditingController();
   final TextEditingController _localityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
@@ -68,6 +72,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
   late final SafeZonesApi _safeZonesApi;
+  late final ReportOfflineQueue _offlineQueue;
 
   String _selectedLevel = 'MEDIUM';
   List<SafeZone> _safeZoneOptions = <SafeZone>[];
@@ -81,6 +86,8 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   bool _sendingLevel = false;
   bool _sendingPhoto = false;
   bool _findingNearest = false;
+  int _pendingWaterLevelCount = 0;
+  bool _syncingPending = false;
 
   @override
   void initState() {
@@ -88,7 +95,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     _api = widget.api ?? HttpCitizenReportApi();
     _picker = widget.imagePicker ?? ImagePicker();
     _safeZonesApi = widget.safeZonesApi ?? HttpSafeZonesApi();
+    _offlineQueue = widget.offlineQueue ?? SharedPrefsReportOfflineQueue();
     _loadZoneOptions();
+    _refreshPendingCount();
   }
 
   @override
@@ -135,6 +144,47 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
   List<String> _areaSuggestions() {
     return _areaSuggestionsByCity[_selectedCity] ?? const <String>[];
+  }
+
+  Future<void> _refreshPendingCount() async {
+    final List<PendingWaterLevelReport> pending = await _offlineQueue
+        .pendingWaterLevels();
+    if (!mounted) return;
+    setState(() => _pendingWaterLevelCount = pending.length);
+  }
+
+  Future<void> _syncPendingWaterLevels() async {
+    if (_syncingPending) return;
+    setState(() => _syncingPending = true);
+    try {
+      final List<PendingWaterLevelReport> pending = await _offlineQueue
+          .pendingWaterLevels();
+      if (pending.isEmpty) {
+        _showMessage('No pending offline reports to sync.');
+        return;
+      }
+
+      int synced = 0;
+      final List<PendingWaterLevelReport> remaining =
+          <PendingWaterLevelReport>[];
+      for (final PendingWaterLevelReport report in pending) {
+        try {
+          await _api.submitWaterLevel(
+            zoneId: report.zoneId,
+            level: report.level,
+          );
+          synced += 1;
+        } catch (_) {
+          remaining.add(report);
+        }
+      }
+
+      await _offlineQueue.replaceWaterLevels(remaining);
+      await _refreshPendingCount();
+      _showMessage('Synced $synced report(s). Pending: ${remaining.length}.');
+    } finally {
+      if (mounted) setState(() => _syncingPending = false);
+    }
   }
 
   Future<void> _loadZoneOptions() async {
@@ -306,16 +356,30 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   Future<void> _submitWaterLevel() async {
     if (!_validateZoneId()) return;
     setState(() => _sendingLevel = true);
+    final String zoneId = _normalizedZoneId();
     try {
       final String message = await _api.submitWaterLevel(
-        zoneId: _normalizedZoneId(),
+        zoneId: zoneId,
         level: _selectedLevel,
       );
       if (!mounted) return;
       _showMessage(message);
-    } catch (_) {
+    } on CitizenReportHttpException {
       if (!mounted) return;
       _showMessage('Failed to submit water level.');
+    } catch (_) {
+      await _offlineQueue.enqueueWaterLevel(
+        PendingWaterLevelReport(
+          zoneId: zoneId,
+          level: _selectedLevel,
+          queuedAt: DateTime.now().toUtc(),
+        ),
+      );
+      await _refreshPendingCount();
+      if (!mounted) return;
+      _showMessage(
+        'No network. Water level saved offline. Pending: $_pendingWaterLevelCount.',
+      );
     } finally {
       if (mounted) setState(() => _sendingLevel = false);
     }
@@ -468,49 +532,82 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     const SizedBox(height: 8),
                   ],
                   if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
-                    DropdownButtonFormField<String>(
-                      key: const Key('area-city-dropdown'),
-                      initialValue: _selectedCity,
+                    InputDecorator(
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         labelText: 'City / District',
                       ),
-                      items: _cities.map((String city) {
-                        return DropdownMenuItem<String>(
-                          value: city,
-                          child: Text(city),
-                        );
-                      }).toList(),
-                      onChanged: (String? value) {
-                        if (value == null) return;
-                        setState(() {
-                          _selectedCity = value;
-                          _selectedAreaSuggestion = null;
-                        });
-                      },
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          key: const Key('area-city-dropdown'),
+                          isExpanded: true,
+                          value: _selectedCity,
+                          items: _cities.map((String city) {
+                            return DropdownMenuItem<String>(
+                              value: city,
+                              child: Text(city),
+                            );
+                          }).toList(),
+                          onChanged: (String? value) {
+                            if (value == null) return;
+                            setState(() {
+                              _selectedCity = value;
+                              _selectedAreaSuggestion = null;
+                              _localityController.clear();
+                            });
+                          },
+                        ),
+                      ),
                     ),
                     if (_areaSuggestions().isNotEmpty) ...<Widget>[
                       const SizedBox(height: 8),
-                      DropdownButtonFormField<String>(
-                        key: const Key('area-suggestion-dropdown'),
-                        initialValue: _selectedAreaSuggestion,
+                      InputDecorator(
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           labelText: 'Area Suggestions',
+                          helperText:
+                              'Select from list or choose clear/manual below.',
                         ),
-                        hint: const Text('Select area (optional)'),
-                        items: _areaSuggestions().map((String area) {
-                          return DropdownMenuItem<String>(
-                            value: area,
-                            child: Text(area),
-                          );
-                        }).toList(),
-                        onChanged: (String? value) {
-                          setState(() {
-                            _selectedAreaSuggestion = value;
-                            _localityController.text = value ?? '';
-                          });
-                        },
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            key: const Key('area-suggestion-dropdown'),
+                            isExpanded: true,
+                            value:
+                                _selectedAreaSuggestion != null &&
+                                    _areaSuggestions().contains(
+                                      _selectedAreaSuggestion,
+                                    )
+                                ? _selectedAreaSuggestion
+                                : null,
+                            hint: const Text('Select area (optional)'),
+                            items: <DropdownMenuItem<String>>[
+                              ..._areaSuggestions().map((String area) {
+                                return DropdownMenuItem<String>(
+                                  value: area,
+                                  child: Text(area),
+                                );
+                              }),
+                              const DropdownMenuItem<String>(
+                                value: _manualAreaChoice,
+                                child: Text(
+                                  'Clear selection and enter manually',
+                                ),
+                              ),
+                            ],
+                            onChanged: (String? value) {
+                              setState(() {
+                                if (value == null ||
+                                    value == _manualAreaChoice) {
+                                  _selectedAreaSuggestion = null;
+                                  _localityController.clear();
+                                } else {
+                                  _selectedAreaSuggestion = value;
+                                  _localityController.text = value;
+                                }
+                              });
+                            },
+                          ),
+                        ),
                       ),
                     ],
                     const SizedBox(height: 8),
@@ -519,8 +616,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                       controller: _localityController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        labelText: 'Area / Locality (optional)',
-                        hintText: 'Example: Thane West',
+                        labelText: 'Area / Locality (manual optional)',
+                        hintText: 'Example: Thane West or your locality',
+                        helperText:
+                            'Use this if your area is not in the dropdown.',
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -649,6 +748,23 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                       : const Icon(Icons.send_rounded),
                   label: Text(
                     _sendingLevel ? 'Submitting...' : 'Submit Water Level',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  key: const Key('sync-pending-levels-button'),
+                  onPressed: _syncingPending ? null : _syncPendingWaterLevels,
+                  icon: _syncingPending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sync),
+                  label: Text(
+                    _syncingPending
+                        ? 'Syncing pending...'
+                        : 'Sync Pending Water Reports ($_pendingWaterLevelCount)',
                   ),
                 ),
               ],
