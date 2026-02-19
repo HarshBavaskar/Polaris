@@ -49,4 +49,20 @@ class SafeZone {
           parseDate(json['timestamp']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      'zone_id': zoneId,
+      'lat': lat,
+      'lng': lng,
+      'radius': radius,
+      'confidence_level': confidence,
+      'active': active,
+      'source': source,
+      if (area != null) 'area': area,
+      if (pincode != null) 'pincode': pincode,
+      if (lastVerified != null)
+        'last_verified': lastVerified!.toUtc().toIso8601String(),
+    };
+  }
 }

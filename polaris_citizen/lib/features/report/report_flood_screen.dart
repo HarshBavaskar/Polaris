@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../safe_zones/safe_zone.dart';
 import '../safe_zones/safe_zones_api.dart';
+import '../safe_zones/safe_zones_cache.dart';
 import 'report_api.dart';
 import 'report_offline_queue.dart';
 
@@ -11,6 +12,7 @@ class ReportFloodScreen extends StatefulWidget {
   final CitizenReportApi? api;
   final ImagePicker? imagePicker;
   final SafeZonesApi? safeZonesApi;
+  final SafeZonesCache? safeZonesCache;
   final ReportOfflineQueue? offlineQueue;
 
   const ReportFloodScreen({
@@ -18,6 +20,7 @@ class ReportFloodScreen extends StatefulWidget {
     this.api,
     this.imagePicker,
     this.safeZonesApi,
+    this.safeZonesCache,
     this.offlineQueue,
   });
 
@@ -26,7 +29,6 @@ class ReportFloodScreen extends StatefulWidget {
 }
 
 class _ReportFloodScreenState extends State<ReportFloodScreen> {
-  static const String _manualAreaChoice = '__MANUAL_AREA__';
   final TextEditingController _zoneIdController = TextEditingController();
   final TextEditingController _localityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
@@ -72,6 +74,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
   late final SafeZonesApi _safeZonesApi;
+  late final SafeZonesCache _safeZonesCache;
   late final ReportOfflineQueue _offlineQueue;
 
   String _selectedLevel = 'MEDIUM';
@@ -95,9 +98,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     _api = widget.api ?? HttpCitizenReportApi();
     _picker = widget.imagePicker ?? ImagePicker();
     _safeZonesApi = widget.safeZonesApi ?? HttpSafeZonesApi();
+    _safeZonesCache = widget.safeZonesCache ?? SharedPrefsSafeZonesCache();
     _offlineQueue = widget.offlineQueue ?? SharedPrefsReportOfflineQueue();
     _loadZoneOptions();
     _refreshPendingCount();
+    _syncPendingWaterLevels(showEmptyMessage: false);
   }
 
   @override
@@ -153,14 +158,16 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     setState(() => _pendingWaterLevelCount = pending.length);
   }
 
-  Future<void> _syncPendingWaterLevels() async {
+  Future<void> _syncPendingWaterLevels({bool showEmptyMessage = true}) async {
     if (_syncingPending) return;
     setState(() => _syncingPending = true);
     try {
       final List<PendingWaterLevelReport> pending = await _offlineQueue
           .pendingWaterLevels();
       if (pending.isEmpty) {
-        _showMessage('No pending offline reports to sync.');
+        if (showEmptyMessage) {
+          _showMessage('No pending offline reports to sync.');
+        }
         return;
       }
 
@@ -181,7 +188,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
       await _offlineQueue.replaceWaterLevels(remaining);
       await _refreshPendingCount();
-      _showMessage('Synced $synced report(s). Pending: ${remaining.length}.');
+      if (showEmptyMessage || synced > 0 || remaining.isNotEmpty) {
+        _showMessage('Synced $synced report(s). Pending: ${remaining.length}.');
+      }
     } finally {
       if (mounted) setState(() => _syncingPending = false);
     }
@@ -195,6 +204,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
     try {
       final List<SafeZone> zones = await _safeZonesApi.fetchSafeZones();
+      await _safeZonesCache.saveZones(zones);
       if (!mounted) return;
 
       final List<SafeZone> valid = zones
@@ -216,10 +226,37 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       setState(() {
         _safeZoneOptions = valid;
         _selectedZoneId = nextSelection;
+        _zoneLoadError = null;
       });
     } catch (_) {
+      final List<SafeZone> cached = await _safeZonesCache.loadZones();
       if (!mounted) return;
-      setState(() => _zoneLoadError = 'Could not load zone suggestions.');
+      if (cached.isNotEmpty) {
+        final List<SafeZone> valid = cached
+            .where((SafeZone z) => z.active)
+            .toList();
+        String? nextSelection = _selectedZoneId;
+        if (valid.isNotEmpty) {
+          final List<String> ids = valid.map(_zoneIdForOption).toList();
+          if (nextSelection == null || !ids.contains(nextSelection)) {
+            nextSelection = ids.first;
+          }
+        } else {
+          nextSelection = null;
+          if (_zoneMode == 'SUGGESTED') {
+            _zoneMode = 'AREA_PINCODE';
+          }
+        }
+
+        setState(() {
+          _safeZoneOptions = valid;
+          _selectedZoneId = nextSelection;
+          _zoneLoadError =
+              'Offline mode: showing last saved safe zone suggestions.';
+        });
+      } else {
+        setState(() => _zoneLoadError = 'Could not load zone suggestions.');
+      }
     } finally {
       if (mounted) {
         setState(() => _loadingZones = false);
@@ -561,12 +598,34 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     ),
                     if (_areaSuggestions().isNotEmpty) ...<Widget>[
                       const SizedBox(height: 8),
+                      Row(
+                        children: <Widget>[
+                          const Expanded(
+                            child: Text(
+                              'Area Suggestions',
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                          TextButton.icon(
+                            key: const Key('area-clear-selection-button'),
+                            onPressed: () {
+                              setState(() {
+                                _selectedAreaSuggestion = null;
+                                _localityController.clear();
+                              });
+                            },
+                            icon: const Icon(Icons.clear),
+                            label: const Text('Clear selected area'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
                       InputDecorator(
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          labelText: 'Area Suggestions',
+                          labelText: 'Suggested Areas',
                           helperText:
-                              'Select from list or choose clear/manual below.',
+                              'Pick from list, or type your own region below.',
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
@@ -587,17 +646,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                                   child: Text(area),
                                 );
                               }),
-                              const DropdownMenuItem<String>(
-                                value: _manualAreaChoice,
-                                child: Text(
-                                  'Clear selection and enter manually',
-                                ),
-                              ),
                             ],
                             onChanged: (String? value) {
                               setState(() {
-                                if (value == null ||
-                                    value == _manualAreaChoice) {
+                                if (value == null) {
                                   _selectedAreaSuggestion = null;
                                   _localityController.clear();
                                 } else {
@@ -616,10 +668,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                       controller: _localityController,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
-                        labelText: 'Area / Locality (manual optional)',
-                        hintText: 'Example: Thane West or your locality',
+                        labelText: 'Region / Locality (manual optional)',
+                        hintText: 'Enter your region, area, or neighborhood',
                         helperText:
-                            'Use this if your area is not in the dropdown.',
+                            'Use this if your region is not in the dropdown.',
                       ),
                     ),
                     const SizedBox(height: 8),
