@@ -12,6 +12,16 @@ void main() {
     expect(find.text('Report'), findsOneWidget);
     expect(find.text('Safe Zones'), findsOneWidget);
     expect(find.text('Stay Alert. Report Flooding Fast.'), findsOneWidget);
+
+    await tester.scrollUntilVisible(
+      find.text('Emergency Helplines'),
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Emergency Helplines'), findsOneWidget);
+    expect(find.byKey(const Key('helpline-112')), findsOneWidget);
+    expect(find.byKey(const Key('helpline-101')), findsOneWidget);
   });
 
   testWidgets('navigates to report tab', (WidgetTester tester) async {

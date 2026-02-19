@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../features/report/report_flood_screen.dart';
 import '../features/safe_zones/safe_zones_api.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
@@ -115,6 +116,17 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     }
   }
 
+  Future<void> _callHelpline(String number) async {
+    final Uri uri = Uri(scheme: 'tel', path: number);
+    final bool launched = await launchUrl(uri);
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not place call to $number')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -224,12 +236,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
           ),
         ),
         const SizedBox(height: 12),
-        const Card(
+        Card(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
+              children: const <Widget>[
                 Text(
                   'Immediate Safety',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
@@ -242,7 +254,92 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                const Text(
+                  'Emergency Helplines',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'For Mumbai/Thane and nearby areas, call these first. For district-specific control rooms, follow local authority advisories.',
+                ),
+                const SizedBox(height: 12),
+                _HelplineTile(
+                  key: const Key('helpline-112'),
+                  label: 'National Emergency Response',
+                  number: '112',
+                  onCall: () => _callHelpline('112'),
+                ),
+                const SizedBox(height: 8),
+                _HelplineTile(
+                  key: const Key('helpline-101'),
+                  label: 'Fire Brigade',
+                  number: '101',
+                  onCall: () => _callHelpline('101'),
+                ),
+                const SizedBox(height: 8),
+                _HelplineTile(
+                  key: const Key('helpline-108'),
+                  label: 'Ambulance / Medical Emergency',
+                  number: '108',
+                  onCall: () => _callHelpline('108'),
+                ),
+                const SizedBox(height: 8),
+                _HelplineTile(
+                  key: const Key('helpline-1077'),
+                  label: 'District Disaster Control Room',
+                  number: '1077',
+                  onCall: () => _callHelpline('1077'),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Tip: Save local Mumbai/Thane municipal disaster control numbers in your contacts for faster response.',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
+    );
+  }
+}
+
+class _HelplineTile extends StatelessWidget {
+  final String label;
+  final String number;
+  final VoidCallback onCall;
+
+  const _HelplineTile({
+    super.key,
+    required this.label,
+    required this.number,
+    required this.onCall,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: ListTile(
+        dense: true,
+        title: Text(label),
+        subtitle: Text(number),
+        trailing: FilledButton.tonalIcon(
+          onPressed: onCall,
+          icon: const Icon(Icons.call),
+          label: const Text('Call'),
+        ),
+      ),
     );
   }
 }
