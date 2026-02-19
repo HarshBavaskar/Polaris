@@ -5,19 +5,19 @@ Small first slice of the citizen app in a separate folder.
 Included now:
 
 - basic Flutter app shell
-- citizen-only bottom tabs:
+- citizen-only app navigation (drawer):
   - Dashboard
+  - Alerts (implemented)
   - Report Flooding (implemented)
   - Safe Zones (implemented)
+  - My Reports (implemented)
 - report API wiring:
   - `POST /input/citizen/water-level`
   - `POST /input/citizen/image`
 - meaningful zone selection in report flow:
-  - auto-load suggested zone IDs from active safe zones
-  - dropdown select by default
   - area + pincode mode (Mumbai/Thane/Navi Mumbai/Palghar focus for now)
   - optional custom zone override when needed
-  - GPS-assisted nearest safe-zone selection
+  - GPS-assisted auto area detection from user location
 - safe-zones API wiring:
   - `GET /map/safe-zones`
   - safe zone cards now include:
@@ -25,6 +25,8 @@ Included now:
     - distance in km from citizen location
     - "updated X ago" from `last_verified`
 - widget and unit tests for shell + report flow
+  - alerts API/screen/cache
+  - my reports history
   - safe-zones API and screen states
 - citizen home dashboard:
   - quick actions to open Report and Safe Zones tabs

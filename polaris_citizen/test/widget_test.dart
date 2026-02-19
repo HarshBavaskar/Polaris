@@ -10,12 +10,8 @@ void main() {
     await tester.pumpWidget(const CitizenApp());
 
     expect(find.text('Citizen Dashboard'), findsOneWidget);
-    expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Alerts'), findsOneWidget);
-    expect(find.text('Report'), findsOneWidget);
-    expect(find.text('Safe Zones'), findsOneWidget);
-    expect(find.text('My Reports'), findsOneWidget);
     expect(find.text('Stay Alert. Report Flooding Fast.'), findsOneWidget);
+    expect(find.byTooltip('Open navigation menu'), findsOneWidget);
 
     await tester.scrollUntilVisible(
       find.text('Emergency Helplines'),
@@ -37,27 +33,6 @@ void main() {
     expect(find.byKey(const Key('dashboard-fetch-location')), findsOneWidget);
   });
 
-  testWidgets('navigates to report tab', (WidgetTester tester) async {
-    await tester.pumpWidget(const CitizenApp());
-
-    await tester.tap(find.text('Report'));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.text('Report Flooding'), findsOneWidget);
-    expect(find.text('Location Zone'), findsOneWidget);
-    expect(find.text('Flood Photo'), findsOneWidget);
-  });
-
-  testWidgets('navigates to alerts tab', (WidgetTester tester) async {
-    await tester.pumpWidget(const CitizenApp());
-
-    await tester.tap(find.text('Alerts'));
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.byType(AlertsScreen), findsOneWidget);
-    expect(find.text('Alerts'), findsWidgets);
-  });
-
   testWidgets('dashboard quick action opens report tab', (
     WidgetTester tester,
   ) async {
@@ -68,6 +43,18 @@ void main() {
 
     expect(find.text('Report Flooding'), findsOneWidget);
     expect(find.text('Location Zone'), findsOneWidget);
+  });
+
+  testWidgets('dashboard quick action opens alerts tab', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const CitizenApp());
+
+    await tester.tap(find.byKey(const Key('dashboard-go-alerts')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(AlertsScreen), findsOneWidget);
+    expect(find.text('Alerts'), findsWidgets);
   });
 
   testWidgets('dashboard quick action opens safe zones tab', (

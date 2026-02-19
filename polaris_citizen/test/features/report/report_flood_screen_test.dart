@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:polaris_citizen/features/report/report_api.dart';
 import 'package:polaris_citizen/features/report/report_flood_screen.dart';
 import 'package:polaris_citizen/features/report/report_history.dart';
 import 'package:polaris_citizen/features/report/report_offline_queue.dart';
-import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
-import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
-import 'package:polaris_citizen/features/safe_zones/safe_zones_cache.dart';
 
 class _FakeCitizenReportApi implements CitizenReportApi {
   String? lastZoneId;
@@ -38,22 +36,6 @@ class _FakeCitizenReportApi implements CitizenReportApi {
   }
 }
 
-class _FakeSafeZonesApi implements SafeZonesApi {
-  final List<SafeZone> zones;
-
-  _FakeSafeZonesApi(this.zones);
-
-  @override
-  Future<List<SafeZone>> fetchSafeZones() async => zones;
-}
-
-class _ThrowingSafeZonesApi implements SafeZonesApi {
-  @override
-  Future<List<SafeZone>> fetchSafeZones() async {
-    throw Exception('network');
-  }
-}
-
 class _MemoryOfflineQueue implements ReportOfflineQueue {
   final List<PendingWaterLevelReport> reports = <PendingWaterLevelReport>[];
 
@@ -75,18 +57,6 @@ class _MemoryOfflineQueue implements ReportOfflineQueue {
   }
 }
 
-class _MemorySafeZonesCache implements SafeZonesCache {
-  List<SafeZone> zones = <SafeZone>[];
-
-  @override
-  Future<List<SafeZone>> loadZones() async => List<SafeZone>.from(zones);
-
-  @override
-  Future<void> saveZones(List<SafeZone> next) async {
-    zones = List<SafeZone>.from(next);
-  }
-}
-
 class _MemoryHistoryStore implements CitizenReportHistoryStore {
   final List<CitizenReportRecord> records = <CitizenReportRecord>[];
 
@@ -100,45 +70,28 @@ class _MemoryHistoryStore implements CitizenReportHistoryStore {
     required String id,
     required CitizenReportStatus status,
     String? note,
-  }) async {
-    final int index = records.indexWhere((CitizenReportRecord r) => r.id == id);
-    if (index == -1) return;
-    records[index] = records[index].copyWith(
-      status: status,
-      note: note,
-      updatedAt: DateTime.now().toLocal(),
-    );
-  }
+  }) async {}
 
   @override
   Future<void> upsertRecord(CitizenReportRecord record) async {
-    final int index = records.indexWhere(
-      (CitizenReportRecord r) => r.id == record.id,
-    );
-    if (index == -1) {
-      records.add(record);
-      return;
-    }
-    records[index] = record;
+    records.add(record);
   }
 }
 
 void main() {
   Widget buildTestWidget({
     required CitizenReportApi api,
-    required SafeZonesApi safeZonesApi,
     ReportOfflineQueue? offlineQueue,
-    SafeZonesCache? safeZonesCache,
     CitizenReportHistoryStore? historyStore,
+    CurrentPositionProvider? positionProvider,
   }) {
     return MaterialApp(
       home: Scaffold(
         body: ReportFloodScreen(
           api: api,
-          safeZonesApi: safeZonesApi,
           offlineQueue: offlineQueue ?? _MemoryOfflineQueue(),
-          safeZonesCache: safeZonesCache ?? _MemorySafeZonesCache(),
           historyStore: historyStore ?? _MemoryHistoryStore(),
+          positionProvider: positionProvider,
         ),
       ),
     );
@@ -156,129 +109,26 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets(
-    'shows validation when no suggested zone and custom id is missing',
-    (WidgetTester tester) async {
-      final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-      await tester.pumpWidget(
-        buildTestWidget(
-          api: api,
-          safeZonesApi: _FakeSafeZonesApi(<SafeZone>[]),
-          safeZonesCache: _MemorySafeZonesCache(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('zone-mode-custom')));
-      await tester.pumpAndSettle();
-
-      await tapSubmitLevel(tester);
-
-      expect(
-        find.text('Please select a zone or enter a custom zone ID.'),
-        findsOneWidget,
-      );
-      expect(api.lastZoneId, isNull);
-    },
-  );
-
-  testWidgets('submits water level using suggested zone id by default', (
+  testWidgets('shows validation when custom zone id is missing', (
     WidgetTester tester,
   ) async {
     final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-    final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
-      SafeZone(
-        zoneId: 'SZ-100',
-        lat: 19.076,
-        lng: 72.8777,
-        radius: 300,
-        confidence: 'HIGH',
-        active: true,
-        source: 'AUTO',
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      buildTestWidget(
-        api: api,
-        safeZonesApi: zonesApi,
-        safeZonesCache: _MemorySafeZonesCache(),
-      ),
-    );
+    await tester.pumpWidget(buildTestWidget(api: api));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('zone-mode-custom')));
+    await tester.pumpAndSettle();
     await tapSubmitLevel(tester);
 
-    expect(api.lastZoneId, 'SZ-100');
-    expect(api.lastLevel, 'MEDIUM');
-    expect(find.text('Water level report received'), findsOneWidget);
+    expect(find.text('Please enter a custom zone ID.'), findsOneWidget);
+    expect(api.lastZoneId, isNull);
   });
-
-  testWidgets(
-    'submits water level with custom zone id when override is enabled',
-    (WidgetTester tester) async {
-      final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-      final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
-        SafeZone(
-          zoneId: 'SZ-100',
-          lat: 19.076,
-          lng: 72.8777,
-          radius: 300,
-          confidence: 'HIGH',
-          active: true,
-          source: 'AUTO',
-        ),
-      ]);
-
-      await tester.pumpWidget(
-        buildTestWidget(
-          api: api,
-          safeZonesApi: zonesApi,
-          safeZonesCache: _MemorySafeZonesCache(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const Key('zone-mode-custom')));
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('custom-zone-id-input')),
-        'WARD-44',
-      );
-      await tapSubmitLevel(tester);
-
-      expect(api.lastZoneId, 'WARD-44');
-      expect(api.lastLevel, 'MEDIUM');
-      expect(find.text('Water level report received'), findsOneWidget);
-    },
-  );
 
   testWidgets('submits water level with area + pincode generated zone id', (
     WidgetTester tester,
   ) async {
     final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-    final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
-      SafeZone(
-        zoneId: 'SZ-100',
-        lat: 19.076,
-        lng: 72.8777,
-        radius: 300,
-        confidence: 'HIGH',
-        active: true,
-        source: 'AUTO',
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      buildTestWidget(
-        api: api,
-        safeZonesApi: zonesApi,
-        safeZonesCache: _MemorySafeZonesCache(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('zone-mode-area-pincode')));
+    await tester.pumpWidget(buildTestWidget(api: api));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -296,32 +146,32 @@ void main() {
     expect(find.text('Water level report received'), findsOneWidget);
   });
 
+  testWidgets(
+    'submits water level with custom zone id when custom mode is enabled',
+    (WidgetTester tester) async {
+      final _FakeCitizenReportApi api = _FakeCitizenReportApi();
+      await tester.pumpWidget(buildTestWidget(api: api));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('zone-mode-custom')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('custom-zone-id-input')),
+        'WARD-44',
+      );
+      await tapSubmitLevel(tester);
+
+      expect(api.lastZoneId, 'WARD-44');
+      expect(api.lastLevel, 'MEDIUM');
+      expect(find.text('Water level report received'), findsOneWidget);
+    },
+  );
+
   testWidgets('supports city switch and clear/manual area entry', (
     WidgetTester tester,
   ) async {
     final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-    final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
-      SafeZone(
-        zoneId: 'SZ-100',
-        lat: 19.076,
-        lng: 72.8777,
-        radius: 300,
-        confidence: 'HIGH',
-        active: true,
-        source: 'AUTO',
-      ),
-    ]);
-
-    await tester.pumpWidget(
-      buildTestWidget(
-        api: api,
-        safeZonesApi: zonesApi,
-        safeZonesCache: _MemorySafeZonesCache(),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byKey(const Key('zone-mode-area-pincode')));
+    await tester.pumpWidget(buildTestWidget(api: api));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('area-city-dropdown')));
@@ -351,16 +201,57 @@ void main() {
 
     await tester.tap(find.byKey(const Key('area-clear-selection-button')));
     await tester.pumpAndSettle();
-
     await tester.enterText(
       find.byKey(const Key('area-locality-input')),
       'Kasarvadavali',
     );
     await tester.pumpAndSettle();
+
     localityField = tester.widget<TextField>(
       find.byKey(const Key('area-locality-input')),
     );
     expect(localityField.controller?.text, 'Kasarvadavali');
+  });
+
+  testWidgets('auto-fills area from GPS and submits generated zone id', (
+    WidgetTester tester,
+  ) async {
+    final _FakeCitizenReportApi api = _FakeCitizenReportApi();
+
+    Future<Position> positionProvider() async {
+      return Position(
+        longitude: 72.8478,
+        latitude: 19.0178,
+        timestamp: DateTime.now(),
+        accuracy: 5,
+        altitude: 0,
+        altitudeAccuracy: 1,
+        heading: 0,
+        headingAccuracy: 1,
+        speed: 0,
+        speedAccuracy: 1,
+      );
+    }
+
+    await tester.pumpWidget(
+      buildTestWidget(api: api, positionProvider: positionProvider),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('area-gps-autofill-button')));
+    await tester.pumpAndSettle();
+
+    final TextField localityField = tester.widget<TextField>(
+      find.byKey(const Key('area-locality-input')),
+    );
+    final TextField pincodeField = tester.widget<TextField>(
+      find.byKey(const Key('area-pincode-input')),
+    );
+    expect(localityField.controller?.text, 'Dadar');
+    expect(pincodeField.controller?.text, '400014');
+
+    await tapSubmitLevel(tester);
+    expect(api.lastZoneId, 'MUMBAI-DADAR-400014');
   });
 
   testWidgets('queues water level offline and syncs later', (
@@ -368,29 +259,21 @@ void main() {
   ) async {
     final _FakeCitizenReportApi api = _FakeCitizenReportApi()
       ..failWithGenericError = true;
-    final _FakeSafeZonesApi zonesApi = _FakeSafeZonesApi(<SafeZone>[
-      SafeZone(
-        zoneId: 'SZ-100',
-        lat: 19.076,
-        lng: 72.8777,
-        radius: 300,
-        confidence: 'HIGH',
-        active: true,
-        source: 'AUTO',
-      ),
-    ]);
     final _MemoryOfflineQueue offlineQueue = _MemoryOfflineQueue();
 
     await tester.pumpWidget(
-      buildTestWidget(
-        api: api,
-        safeZonesApi: zonesApi,
-        offlineQueue: offlineQueue,
-        safeZonesCache: _MemorySafeZonesCache(),
-      ),
+      buildTestWidget(api: api, offlineQueue: offlineQueue),
     );
     await tester.pumpAndSettle();
 
+    await tester.enterText(
+      find.byKey(const Key('area-locality-input')),
+      'Dadar',
+    );
+    await tester.enterText(
+      find.byKey(const Key('area-pincode-input')),
+      '400014',
+    );
     await tapSubmitLevel(tester);
     expect(find.textContaining('saved offline'), findsOneWidget);
     expect(offlineQueue.reports.length, 1);
@@ -401,35 +284,5 @@ void main() {
 
     expect(offlineQueue.reports, isEmpty);
     expect(api.submitWaterLevelCalls, 2);
-  });
-
-  testWidgets('uses cached suggested zones when API is offline', (
-    WidgetTester tester,
-  ) async {
-    final _FakeCitizenReportApi api = _FakeCitizenReportApi();
-    final SafeZonesApi zonesApi = _ThrowingSafeZonesApi();
-    final _MemorySafeZonesCache cache = _MemorySafeZonesCache()
-      ..zones = <SafeZone>[
-        SafeZone(
-          zoneId: 'SZ-CACHED-1',
-          lat: 19.1,
-          lng: 72.9,
-          radius: 300,
-          confidence: 'HIGH',
-          active: true,
-          source: 'CACHE',
-        ),
-      ];
-
-    await tester.pumpWidget(
-      buildTestWidget(api: api, safeZonesApi: zonesApi, safeZonesCache: cache),
-    );
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text('Offline mode: showing last saved safe zone suggestions.'),
-      findsOneWidget,
-    );
-    expect(find.text('SZ-CACHED-1'), findsOneWidget);
   });
 }

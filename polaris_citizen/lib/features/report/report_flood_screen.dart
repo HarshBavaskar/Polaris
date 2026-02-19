@@ -2,29 +2,27 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import '../safe_zones/safe_zone.dart';
-import '../safe_zones/safe_zones_api.dart';
-import '../safe_zones/safe_zones_cache.dart';
+import '../../core/locations/priority_area_anchors.dart';
 import 'report_api.dart';
 import 'report_history.dart';
 import 'report_offline_queue.dart';
 
+typedef CurrentPositionProvider = Future<Position> Function();
+
 class ReportFloodScreen extends StatefulWidget {
   final CitizenReportApi? api;
   final ImagePicker? imagePicker;
-  final SafeZonesApi? safeZonesApi;
-  final SafeZonesCache? safeZonesCache;
   final ReportOfflineQueue? offlineQueue;
   final CitizenReportHistoryStore? historyStore;
+  final CurrentPositionProvider? positionProvider;
 
   const ReportFloodScreen({
     super.key,
     this.api,
     this.imagePicker,
-    this.safeZonesApi,
-    this.safeZonesCache,
     this.offlineQueue,
     this.historyStore,
+    this.positionProvider,
   });
 
   @override
@@ -35,12 +33,14 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   final TextEditingController _zoneIdController = TextEditingController();
   final TextEditingController _localityController = TextEditingController();
   final TextEditingController _pincodeController = TextEditingController();
+
   static const List<String> _levels = <String>[
     'LOW',
     'MEDIUM',
     'HIGH',
     'SEVERE',
   ];
+
   static const List<String> _cities = <String>[
     'Mumbai',
     'Thane',
@@ -48,6 +48,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     'Palghar',
     'Other',
   ];
+
   static const Map<String, List<String>> _areaSuggestionsByCity =
       <String, List<String>>{
         'Mumbai': <String>[
@@ -74,39 +75,33 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
         ],
         'Palghar': <String>['Vasai', 'Virar', 'Nalasopara', 'Boisar'],
       };
+
   late final CitizenReportApi _api;
   late final ImagePicker _picker;
-  late final SafeZonesApi _safeZonesApi;
-  late final SafeZonesCache _safeZonesCache;
   late final ReportOfflineQueue _offlineQueue;
   late final CitizenReportHistoryStore _historyStore;
+  late final CurrentPositionProvider _positionProvider;
 
   String _selectedLevel = 'MEDIUM';
-  List<SafeZone> _safeZoneOptions = <SafeZone>[];
-  String? _selectedZoneId;
-  String? _selectedAreaSuggestion;
-  String _zoneMode = 'SUGGESTED';
+  String _zoneMode = 'AREA_PINCODE';
   String _selectedCity = _cities.first;
-  bool _loadingZones = true;
-  String? _zoneLoadError;
+  String? _selectedAreaSuggestion;
   XFile? _selectedImage;
   bool _sendingLevel = false;
   bool _sendingPhoto = false;
-  bool _findingNearest = false;
-  int _pendingWaterLevelCount = 0;
   bool _syncingPending = false;
+  bool _locatingArea = false;
+  int _pendingWaterLevelCount = 0;
 
   @override
   void initState() {
     super.initState();
     _api = widget.api ?? HttpCitizenReportApi();
     _picker = widget.imagePicker ?? ImagePicker();
-    _safeZonesApi = widget.safeZonesApi ?? HttpSafeZonesApi();
-    _safeZonesCache = widget.safeZonesCache ?? SharedPrefsSafeZonesCache();
     _offlineQueue = widget.offlineQueue ?? SharedPrefsReportOfflineQueue();
     _historyStore =
         widget.historyStore ?? SharedPrefsCitizenReportHistoryStore();
-    _loadZoneOptions();
+    _positionProvider = widget.positionProvider ?? _defaultPositionProvider;
     _refreshPendingCount();
     _syncPendingWaterLevels(showEmptyMessage: false);
   }
@@ -125,10 +120,31 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  String _normalizedZoneId() {
-    if (_zoneMode == 'SUGGESTED') {
-      return (_selectedZoneId ?? '').trim();
+  Future<Position> _defaultPositionProvider() async {
+    final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      throw Exception('Location service disabled');
     }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      throw Exception('Location permission denied');
+    }
+
+    return Geolocator.getCurrentPosition(
+      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+    );
+  }
+
+  List<String> _areaSuggestions() {
+    return _areaSuggestionsByCity[_selectedCity] ?? const <String>[];
+  }
+
+  String _normalizedZoneId() {
     if (_zoneMode == 'AREA_PINCODE') {
       final String city = _selectedCity.trim().toUpperCase().replaceAll(
         ' ',
@@ -145,16 +161,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       return '$city-$pincode';
     }
     return _zoneIdController.text.trim();
-  }
-
-  String _zoneIdForOption(SafeZone zone) {
-    final String direct = zone.zoneId.trim();
-    if (direct.isNotEmpty) return direct;
-    return 'LAT${zone.lat.toStringAsFixed(4)}_LNG${zone.lng.toStringAsFixed(4)}';
-  }
-
-  List<String> _areaSuggestions() {
-    return _areaSuggestionsByCity[_selectedCity] ?? const <String>[];
   }
 
   String _newReportId(String prefix) {
@@ -221,82 +227,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
   }
 
-  Future<void> _loadZoneOptions() async {
-    setState(() {
-      _loadingZones = true;
-      _zoneLoadError = null;
-    });
-
-    try {
-      final List<SafeZone> zones = await _safeZonesApi.fetchSafeZones();
-      await _safeZonesCache.saveZones(zones);
-      if (!mounted) return;
-
-      final List<SafeZone> valid = zones
-          .where((SafeZone z) => z.active)
-          .toList();
-      String? nextSelection = _selectedZoneId;
-      if (valid.isNotEmpty) {
-        final List<String> ids = valid.map(_zoneIdForOption).toList();
-        if (nextSelection == null || !ids.contains(nextSelection)) {
-          nextSelection = ids.first;
-        }
-      } else {
-        nextSelection = null;
-        if (_zoneMode == 'SUGGESTED') {
-          _zoneMode = 'AREA_PINCODE';
-        }
-      }
-
-      setState(() {
-        _safeZoneOptions = valid;
-        _selectedZoneId = nextSelection;
-        _zoneLoadError = null;
-      });
-    } catch (_) {
-      final List<SafeZone> cached = await _safeZonesCache.loadZones();
-      if (!mounted) return;
-      if (cached.isNotEmpty) {
-        final List<SafeZone> valid = cached
-            .where((SafeZone z) => z.active)
-            .toList();
-        String? nextSelection = _selectedZoneId;
-        if (valid.isNotEmpty) {
-          final List<String> ids = valid.map(_zoneIdForOption).toList();
-          if (nextSelection == null || !ids.contains(nextSelection)) {
-            nextSelection = ids.first;
-          }
-        } else {
-          nextSelection = null;
-          if (_zoneMode == 'SUGGESTED') {
-            _zoneMode = 'AREA_PINCODE';
-          }
-        }
-
-        setState(() {
-          _safeZoneOptions = valid;
-          _selectedZoneId = nextSelection;
-          _zoneLoadError =
-              'Offline mode: showing last saved safe zone suggestions.';
-        });
-      } else {
-        setState(() => _zoneLoadError = 'Could not load zone suggestions.');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loadingZones = false);
-      }
-    }
-  }
-
   bool _validateZoneId() {
-    if (_zoneMode == 'SUGGESTED' && (_selectedZoneId ?? '').trim().isEmpty) {
-      _showMessage(
-        'No suggested zone available. Switch to Area/Pincode or Custom.',
-      );
-      return false;
-    }
-
     if (_zoneMode == 'AREA_PINCODE') {
       final String pin = _pincodeController.text.trim();
       if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
@@ -306,7 +237,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
 
     if (_zoneMode == 'CUSTOM' && _zoneIdController.text.trim().isEmpty) {
-      _showMessage('Please select a zone or enter a custom zone ID.');
+      _showMessage('Please enter a custom zone ID.');
       return false;
     }
     return true;
@@ -333,70 +264,58 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
   double _toRad(double value) => value * (math.pi / 180);
 
-  Future<void> _useGpsNearestZone() async {
-    if (_safeZoneOptions.isEmpty) {
-      _showMessage('No active safe zones available for nearest lookup.');
-      return;
-    }
-
-    setState(() => _findingNearest = true);
+  Future<void> _useGpsAutoFillArea() async {
+    if (_locatingArea) return;
+    setState(() => _locatingArea = true);
     try {
-      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        _showMessage('Location service is disabled on this device.');
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        _showMessage('Location permission denied.');
-        return;
-      }
-
-      final Position pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
-
-      SafeZone nearest = _safeZoneOptions.first;
-      double bestDistance = _distanceMeters(
-        lat1: pos.latitude,
-        lng1: pos.longitude,
-        lat2: nearest.lat,
-        lng2: nearest.lng,
-      );
-
-      for (final SafeZone zone in _safeZoneOptions.skip(1)) {
+      final Position pos = await _positionProvider();
+      AreaAnchor? nearest;
+      double nearestDistance = double.infinity;
+      for (final AreaAnchor anchor in priorityAreaAnchors) {
         final double d = _distanceMeters(
           lat1: pos.latitude,
           lng1: pos.longitude,
-          lat2: zone.lat,
-          lng2: zone.lng,
+          lat2: anchor.lat,
+          lng2: anchor.lng,
         );
-        if (d < bestDistance) {
-          bestDistance = d;
-          nearest = zone;
+        if (d < nearestDistance) {
+          nearest = anchor;
+          nearestDistance = d;
         }
       }
 
       if (!mounted) return;
-      setState(() {
-        _selectedZoneId = _zoneIdForOption(nearest);
-        _zoneMode = 'SUGGESTED';
-      });
-      _showMessage(
-        'Nearest safe zone selected: ${_selectedZoneId!} (${bestDistance.toStringAsFixed(0)} m)',
-      );
+      if (nearest != null && nearestDistance <= 35000) {
+        setState(() {
+          _zoneMode = 'AREA_PINCODE';
+          _selectedCity = _cities.contains(nearest!.city)
+              ? nearest.city
+              : 'Other';
+          _selectedAreaSuggestion = _areaSuggestions().contains(nearest.area)
+              ? nearest.area
+              : null;
+          _localityController.text = nearest.area;
+          _pincodeController.text = nearest.pincode;
+        });
+        _showMessage(
+          'Detected area: ${nearest.city}, ${nearest.area} (${nearest.pincode})',
+        );
+      } else {
+        final String lat = pos.latitude.toStringAsFixed(4);
+        final String lng = pos.longitude.toStringAsFixed(4);
+        setState(() {
+          _zoneMode = 'CUSTOM';
+          _zoneIdController.text = 'GPS-$lat-$lng';
+        });
+        _showMessage(
+          'Could not map to known region. Custom GPS zone ID created.',
+        );
+      }
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Unable to determine current location.');
+      _showMessage('Unable to detect current location.');
     } finally {
-      if (mounted) setState(() => _findingNearest = false);
+      if (mounted) setState(() => _locatingArea = false);
     }
   }
 
@@ -546,250 +465,180 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Row(
+                const Text(
+                  'Location Zone',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: <Widget>[
-                    const Text(
-                      'Location Zone',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ChoiceChip(
+                      key: const Key('zone-mode-area-pincode'),
+                      label: const Text('Area + Pincode'),
+                      selected: _zoneMode == 'AREA_PINCODE',
+                      onSelected: (_) =>
+                          setState(() => _zoneMode = 'AREA_PINCODE'),
                     ),
-                    const Spacer(),
-                    IconButton(
-                      key: const Key('zone-refresh-button'),
-                      onPressed: _loadingZones ? null : _loadZoneOptions,
-                      icon: const Icon(Icons.refresh),
-                      tooltip: 'Refresh zones',
+                    ChoiceChip(
+                      key: const Key('zone-mode-custom'),
+                      label: const Text('Custom ID'),
+                      selected: _zoneMode == 'CUSTOM',
+                      onSelected: (_) => setState(() => _zoneMode = 'CUSTOM'),
                     ),
                   ],
                 ),
-                if (_loadingZones) ...<Widget>[
-                  const SizedBox(height: 8),
-                  const Row(
-                    children: <Widget>[
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 8),
-                      Text('Loading nearby zone suggestions...'),
-                    ],
+                const SizedBox(height: 8),
+                if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
+                  OutlinedButton.icon(
+                    key: const Key('area-gps-autofill-button'),
+                    onPressed: _locatingArea ? null : _useGpsAutoFillArea,
+                    icon: _locatingArea
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location),
+                    label: Text(
+                      _locatingArea
+                          ? 'Detecting location...'
+                          : 'Use GPS to Auto Detect Area',
+                    ),
                   ),
-                ] else ...<Widget>[
-                  if (_zoneLoadError != null) ...<Widget>[
-                    Text(_zoneLoadError!),
+                  const SizedBox(height: 8),
+                  InputDecorator(
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'City / District',
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        key: const Key('area-city-dropdown'),
+                        isExpanded: true,
+                        value: _selectedCity,
+                        items: _cities.map((String city) {
+                          return DropdownMenuItem<String>(
+                            value: city,
+                            child: Text(city),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          if (value == null) return;
+                          setState(() {
+                            _selectedCity = value;
+                            _selectedAreaSuggestion = null;
+                            _localityController.clear();
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  if (_areaSuggestions().isNotEmpty) ...<Widget>[
                     const SizedBox(height: 8),
-                  ],
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      ChoiceChip(
-                        key: const Key('zone-mode-suggested'),
-                        label: const Text('Suggested Safe Zone'),
-                        selected: _zoneMode == 'SUGGESTED',
-                        onSelected: _safeZoneOptions.isEmpty
-                            ? null
-                            : (_) => setState(() => _zoneMode = 'SUGGESTED'),
-                      ),
-                      ChoiceChip(
-                        key: const Key('zone-mode-area-pincode'),
-                        label: const Text('Area + Pincode'),
-                        selected: _zoneMode == 'AREA_PINCODE',
-                        onSelected: (_) =>
-                            setState(() => _zoneMode = 'AREA_PINCODE'),
-                      ),
-                      ChoiceChip(
-                        key: const Key('zone-mode-custom'),
-                        label: const Text('Custom ID'),
-                        selected: _zoneMode == 'CUSTOM',
-                        onSelected: (_) => setState(() => _zoneMode = 'CUSTOM'),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (_safeZoneOptions.isNotEmpty) ...<Widget>[
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Suggested Zone ID',
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          key: const Key('zone-id-dropdown'),
-                          isExpanded: true,
-                          value: _selectedZoneId,
-                          items: _safeZoneOptions.map((SafeZone zone) {
-                            final String zoneId = _zoneIdForOption(zone);
-                            return DropdownMenuItem<String>(
-                              value: zoneId,
-                              child: Text(zoneId),
-                            );
-                          }).toList(),
-                          onChanged: _zoneMode != 'SUGGESTED'
-                              ? null
-                              : (String? value) {
-                                  setState(() => _selectedZoneId = value);
-                                },
+                    Row(
+                      children: <Widget>[
+                        const Expanded(
+                          child: Text(
+                            'Area Suggestions',
+                            style: TextStyle(fontWeight: FontWeight.w600),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      key: const Key('zone-gps-nearest'),
-                      onPressed: _findingNearest ? null : _useGpsNearestZone,
-                      icon: _findingNearest
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.my_location),
-                      label: Text(
-                        _findingNearest
-                            ? 'Finding nearest safe zone...'
-                            : 'Use GPS Nearest Safe Zone',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ] else ...<Widget>[
-                    const Text(
-                      'No suggested zone IDs available right now. Use custom zone ID.',
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
-                    InputDecorator(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'City / District',
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          key: const Key('area-city-dropdown'),
-                          isExpanded: true,
-                          value: _selectedCity,
-                          items: _cities.map((String city) {
-                            return DropdownMenuItem<String>(
-                              value: city,
-                              child: Text(city),
-                            );
-                          }).toList(),
-                          onChanged: (String? value) {
-                            if (value == null) return;
+                        TextButton.icon(
+                          key: const Key('area-clear-selection-button'),
+                          onPressed: () {
                             setState(() {
-                              _selectedCity = value;
                               _selectedAreaSuggestion = null;
                               _localityController.clear();
+                            });
+                          },
+                          icon: const Icon(Icons.clear),
+                          label: const Text('Clear selected area'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    InputDecorator(
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Suggested Areas',
+                        helperText:
+                            'Pick from list, or type your own region below.',
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          key: const Key('area-suggestion-dropdown'),
+                          isExpanded: true,
+                          value:
+                              _selectedAreaSuggestion != null &&
+                                  _areaSuggestions().contains(
+                                    _selectedAreaSuggestion,
+                                  )
+                              ? _selectedAreaSuggestion
+                              : null,
+                          hint: const Text('Select area (optional)'),
+                          items: <DropdownMenuItem<String>>[
+                            ..._areaSuggestions().map((String area) {
+                              return DropdownMenuItem<String>(
+                                value: area,
+                                child: Text(area),
+                              );
+                            }),
+                          ],
+                          onChanged: (String? value) {
+                            setState(() {
+                              if (value == null) {
+                                _selectedAreaSuggestion = null;
+                                _localityController.clear();
+                              } else {
+                                _selectedAreaSuggestion = value;
+                                _localityController.text = value;
+                              }
                             });
                           },
                         ),
                       ),
                     ),
-                    if (_areaSuggestions().isNotEmpty) ...<Widget>[
-                      const SizedBox(height: 8),
-                      Row(
-                        children: <Widget>[
-                          const Expanded(
-                            child: Text(
-                              'Area Suggestions',
-                              style: TextStyle(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                          TextButton.icon(
-                            key: const Key('area-clear-selection-button'),
-                            onPressed: () {
-                              setState(() {
-                                _selectedAreaSuggestion = null;
-                                _localityController.clear();
-                              });
-                            },
-                            icon: const Icon(Icons.clear),
-                            label: const Text('Clear selected area'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      InputDecorator(
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Suggested Areas',
-                          helperText:
-                              'Pick from list, or type your own region below.',
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            key: const Key('area-suggestion-dropdown'),
-                            isExpanded: true,
-                            value:
-                                _selectedAreaSuggestion != null &&
-                                    _areaSuggestions().contains(
-                                      _selectedAreaSuggestion,
-                                    )
-                                ? _selectedAreaSuggestion
-                                : null,
-                            hint: const Text('Select area (optional)'),
-                            items: <DropdownMenuItem<String>>[
-                              ..._areaSuggestions().map((String area) {
-                                return DropdownMenuItem<String>(
-                                  value: area,
-                                  child: Text(area),
-                                );
-                              }),
-                            ],
-                            onChanged: (String? value) {
-                              setState(() {
-                                if (value == null) {
-                                  _selectedAreaSuggestion = null;
-                                  _localityController.clear();
-                                } else {
-                                  _selectedAreaSuggestion = value;
-                                  _localityController.text = value;
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('area-locality-input'),
-                      controller: _localityController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Region / Locality (manual optional)',
-                        hintText: 'Enter your region, area, or neighborhood',
-                        helperText:
-                            'Use this if your region is not in the dropdown.',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const Key('area-pincode-input'),
-                      controller: _pincodeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Pincode',
-                        hintText: '6-digit pincode',
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Generated zone ID: ${_normalizedZoneId().isEmpty ? '--' : _normalizedZoneId()}',
-                    ),
                   ],
-                  if (_zoneMode == 'CUSTOM')
-                    TextField(
-                      key: const Key('custom-zone-id-input'),
-                      controller: _zoneIdController,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Custom Zone ID',
-                        hintText: 'Example: WARD-12 or STREET-03',
-                      ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const Key('area-locality-input'),
+                    controller: _localityController,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Region / Locality (manual optional)',
+                      hintText: 'Enter your region, area, or neighborhood',
+                      helperText:
+                          'Use this if your region is not in the dropdown.',
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const Key('area-pincode-input'),
+                    controller: _pincodeController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Pincode',
+                      hintText: '6-digit pincode',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Generated zone ID: ${_normalizedZoneId().isEmpty ? '--' : _normalizedZoneId()}',
+                  ),
                 ],
+                if (_zoneMode == 'CUSTOM')
+                  TextField(
+                    key: const Key('custom-zone-id-input'),
+                    controller: _zoneIdController,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      labelText: 'Custom Zone ID',
+                      hintText: 'Example: WARD-12 or GPS-19.0178-72.8478',
+                    ),
+                  ),
               ],
             ),
           ),
