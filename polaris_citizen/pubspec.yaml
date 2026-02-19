@@ -11,6 +11,8 @@ dependencies:
     sdk: flutter
   http: ^1.2.0
   image_picker: ^1.1.2
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.0
 
 dev_dependencies:
   flutter_test:
