@@ -33,6 +33,7 @@ Widget _buildScreen(
 
 class _MemorySafeZonesCache implements SafeZonesCache {
   List<SafeZone> zones = <SafeZone>[];
+  DateTime? updatedAt;
 
   @override
   Future<List<SafeZone>> loadZones() async => List<SafeZone>.from(zones);
@@ -40,6 +41,12 @@ class _MemorySafeZonesCache implements SafeZonesCache {
   @override
   Future<void> saveZones(List<SafeZone> next) async {
     zones = List<SafeZone>.from(next);
+    updatedAt = DateTime.now();
+  }
+
+  @override
+  Future<DateTime?> lastUpdatedAt() async {
+    return updatedAt;
   }
 }
 
@@ -144,6 +151,7 @@ void main() {
 
     expect(find.textContaining('Distance now shown'), findsOneWidget);
     expect(find.byKey(const Key('safe-zone-distance-label')), findsOneWidget);
+    expect(find.byKey(const Key('safe-zones-nearest-route-card')), findsOneWidget);
   });
 
   testWidgets('falls back to cached zones when API fails', (

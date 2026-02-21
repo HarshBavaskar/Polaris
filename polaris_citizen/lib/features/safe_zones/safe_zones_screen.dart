@@ -33,6 +33,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   String? _errorMessage;
   List<SafeZone> _zones = <SafeZone>[];
   bool _usingCachedZones = false;
+  DateTime? _lastUpdatedAt;
   Position? _userLocation;
   bool _loadingLocation = false;
   String? _locationError;
@@ -94,19 +95,23 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     try {
       final List<SafeZone> zones = await _api.fetchSafeZones();
       await _cache.saveZones(zones);
+      final DateTime? updatedAt = await _cache.lastUpdatedAt();
       if (!mounted) return;
       setState(() {
         _zones = zones;
         _usingCachedZones = false;
+        _lastUpdatedAt = updatedAt;
       });
     } catch (_) {
       final List<SafeZone> cached = await _cache.loadZones();
+      final DateTime? updatedAt = await _cache.lastUpdatedAt();
       if (!mounted) return;
       if (cached.isNotEmpty) {
         setState(() {
           _zones = cached;
           _usingCachedZones = true;
           _errorMessage = null;
+          _lastUpdatedAt = updatedAt;
         });
       } else {
         setState(() => _errorMessage = 'Failed to load safe zones.');
@@ -175,6 +180,37 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     return 'Updated: ${diff.inDays} day(s) ago';
   }
 
+  SafeZone? _nearestZone(List<SafeZone> zones) {
+    final Position? user = _userLocation;
+    if (user == null || zones.isEmpty) return null;
+    SafeZone nearest = zones.first;
+    double best = Geolocator.distanceBetween(
+      user.latitude,
+      user.longitude,
+      nearest.lat,
+      nearest.lng,
+    );
+    for (final SafeZone zone in zones.skip(1)) {
+      final double d = Geolocator.distanceBetween(
+        user.latitude,
+        user.longitude,
+        zone.lat,
+        zone.lng,
+      );
+      if (d < best) {
+        best = d;
+        nearest = zone;
+      }
+    }
+    return nearest;
+  }
+
+  int _etaMinutes(double km) {
+    final double walkingKmph = 4.5;
+    final double mins = (km / walkingKmph) * 60;
+    return mins.ceil().clamp(1, 999);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading && _zones.isEmpty) {
@@ -225,6 +261,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     final LatLng center = _userLocation != null
         ? LatLng(_userLocation!.latitude, _userLocation!.longitude)
         : LatLng(orderedZones.first.lat, orderedZones.first.lng);
+    final SafeZone? nearest = _nearestZone(orderedZones);
+    final double? nearestKm = nearest == null ? null : _distanceKm(nearest);
 
     return Column(
       children: <Widget>[
@@ -269,6 +307,28 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Safe zones last updated: ${_updatedAgo(_lastUpdatedAt).replaceFirst('Updated: ', '')}',
+            ),
+          ),
+        ),
+        if (nearest != null && nearestKm != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: Card(
+              key: const Key('safe-zones-nearest-route-card'),
+              child: ListTile(
+                title: Text('Nearest safe zone: ${nearest.zoneId}'),
+                subtitle: Text(
+                  'Distance: ${nearestKm.toStringAsFixed(1)} km | ETA: ~${_etaMinutes(nearestKm)} min',
+                ),
+              ),
+            ),
+          ),
         Expanded(
           flex: 3,
           child: FlutterMap(
@@ -319,6 +379,19 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                         color: Colors.blue,
                         size: 28,
                       ),
+                    ),
+                  ],
+                ),
+              if (_userLocation != null && nearest != null)
+                PolylineLayer(
+                  polylines: <Polyline>[
+                    Polyline(
+                      points: <LatLng>[
+                        LatLng(_userLocation!.latitude, _userLocation!.longitude),
+                        LatLng(nearest.lat, nearest.lng),
+                      ],
+                      color: Colors.blue,
+                      strokeWidth: 3,
                     ),
                   ],
                 ),

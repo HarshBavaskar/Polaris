@@ -6,6 +6,7 @@ import '../../core/locations/priority_area_anchors.dart';
 import 'report_api.dart';
 import 'report_history.dart';
 import 'report_offline_queue.dart';
+import 'report_sync_service.dart';
 
 typedef CurrentPositionProvider = Future<Position> Function();
 
@@ -81,6 +82,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   late final ReportOfflineQueue _offlineQueue;
   late final CitizenReportHistoryStore _historyStore;
   late final CurrentPositionProvider _positionProvider;
+  late final ReportSyncService _syncService;
 
   String _selectedLevel = 'MEDIUM';
   String _zoneMode = 'AREA_PINCODE';
@@ -102,6 +104,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     _historyStore =
         widget.historyStore ?? SharedPrefsCitizenReportHistoryStore();
     _positionProvider = widget.positionProvider ?? _defaultPositionProvider;
+    _syncService = ReportSyncService(
+      api: _api,
+      offlineQueue: _offlineQueue,
+      historyStore: _historyStore,
+    );
     _refreshPendingCount();
     _syncPendingWaterLevels(showEmptyMessage: false);
   }
@@ -178,48 +185,18 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     if (_syncingPending) return;
     setState(() => _syncingPending = true);
     try {
-      final List<PendingWaterLevelReport> pending = await _offlineQueue
-          .pendingWaterLevels();
-      if (pending.isEmpty) {
+      final ReportSyncSummary summary = await _syncService
+          .syncPendingWaterLevels();
+      if (summary.synced == 0 && summary.failed == 0 && summary.pending == 0) {
         if (showEmptyMessage) {
           _showMessage('No pending offline reports to sync.');
         }
         return;
       }
-
-      int synced = 0;
-      int failed = 0;
-      final List<PendingWaterLevelReport> remaining =
-          <PendingWaterLevelReport>[];
-      for (final PendingWaterLevelReport report in pending) {
-        try {
-          await _api.submitWaterLevel(
-            zoneId: report.zoneId,
-            level: report.level,
-          );
-          synced += 1;
-          await _historyStore.markStatus(
-            id: report.clientReportId,
-            status: CitizenReportStatus.synced,
-            note: 'Synced from offline queue',
-          );
-        } on CitizenReportHttpException {
-          failed += 1;
-          await _historyStore.markStatus(
-            id: report.clientReportId,
-            status: CitizenReportStatus.failed,
-            note: 'Sync failed: rejected by server',
-          );
-        } catch (_) {
-          remaining.add(report);
-        }
-      }
-
-      await _offlineQueue.replaceWaterLevels(remaining);
       await _refreshPendingCount();
-      if (showEmptyMessage || synced > 0 || remaining.isNotEmpty) {
+      if (showEmptyMessage || summary.synced > 0 || summary.pending > 0) {
         _showMessage(
-          'Synced $synced report(s), failed $failed, pending ${remaining.length}.',
+          'Synced ${summary.synced} report(s), failed ${summary.failed}, pending ${summary.pending}.',
         );
       }
     } finally {

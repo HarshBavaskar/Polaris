@@ -6,10 +6,13 @@ abstract class SafeZonesCache {
   Future<List<SafeZone>> loadZones();
 
   Future<void> saveZones(List<SafeZone> zones);
+
+  Future<DateTime?> lastUpdatedAt();
 }
 
 class SharedPrefsSafeZonesCache implements SafeZonesCache {
   static const String _zonesKey = 'citizen.cached_safe_zones.v1';
+  static const String _updatedAtKey = 'citizen.cached_safe_zones.updated_at.v1';
   SharedPreferences? _prefs;
 
   Future<SharedPreferences> _instance() async {
@@ -43,5 +46,14 @@ class SharedPrefsSafeZonesCache implements SafeZonesCache {
           .toList(),
     );
     await prefs.setString(_zonesKey, payload);
+    await prefs.setString(_updatedAtKey, DateTime.now().toUtc().toIso8601String());
+  }
+
+  @override
+  Future<DateTime?> lastUpdatedAt() async {
+    final SharedPreferences prefs = await _instance();
+    final String raw = prefs.getString(_updatedAtKey) ?? '';
+    if (raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
   }
 }

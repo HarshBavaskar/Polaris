@@ -2,11 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../core/settings/citizen_preferences_scope.dart';
+import '../core/settings/citizen_strings.dart';
 import '../features/alerts/alerts_screen.dart';
+import '../features/help/request_help_screen.dart';
 import '../features/report/report_flood_screen.dart';
 import '../features/report/my_reports_screen.dart';
 import '../features/safe_zones/safe_zones_api.dart';
+import '../features/safe_zones/safe_zones_cache.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
+import '../features/settings/trust_usability_screen.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
   const CitizenDashboardScreen({super.key});
@@ -20,11 +25,13 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   late final List<Widget> _pages;
 
   static const List<String> _titles = <String>[
-    'Citizen Dashboard',
-    'Alerts',
-    'Report Flooding',
-    'Safe Zones',
-    'My Reports',
+    'title_dashboard',
+    'title_alerts',
+    'title_report',
+    'title_safe_zones',
+    'title_request_help',
+    'title_my_reports',
+    'title_trust',
   ];
 
   @override
@@ -35,12 +42,15 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
         onGoAlerts: _openAlertsTab,
         onGoReport: _openReportTab,
         onGoSafeZones: _openSafeZonesTab,
+        onGoRequestHelp: _openRequestHelpTab,
         onGoMyReports: _openMyReportsTab,
       ),
       const AlertsScreen(),
       const ReportFloodScreen(),
       const SafeZonesScreen(),
+      const RequestHelpScreen(),
       const MyReportsScreen(),
+      const TrustUsabilityScreen(),
     ];
   }
 
@@ -50,7 +60,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 
   void _openSafeZonesTab() => setState(() => _selectedIndex = 3);
 
-  void _openMyReportsTab() => setState(() => _selectedIndex = 4);
+  void _openRequestHelpTab() => setState(() => _selectedIndex = 4);
+
+  void _openMyReportsTab() => setState(() => _selectedIndex = 5);
+
+  void _openTrustTab() => setState(() => _selectedIndex = 6);
 
   void _openFromDrawer(int index) {
     setState(() => _selectedIndex = index);
@@ -59,55 +73,82 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
+    final String title = CitizenStrings.tr(
+      _titles[_selectedIndex],
+      languageCode,
+    );
     return Scaffold(
-      appBar: AppBar(title: Text(_titles[_selectedIndex])),
+      appBar: AppBar(
+        title: Text(title),
+        actions: <Widget>[
+          IconButton(
+            key: const Key('appbar-go-language'),
+            tooltip: 'Language',
+            onPressed: _openTrustTab,
+            icon: const Icon(Icons.language_outlined),
+          ),
+        ],
+      ),
       body: IndexedStack(index: _selectedIndex, children: _pages),
       drawer: Drawer(
         child: SafeArea(
           child: Column(
             children: <Widget>[
-              const ListTile(
+              ListTile(
                 title: Text(
-                  'Citizen Menu',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+                  CitizenStrings.tr('menu', languageCode),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 18,
+                  ),
                 ),
-                subtitle: Text('Navigation'),
+                subtitle: Text(CitizenStrings.tr('navigation', languageCode)),
               ),
               const Divider(height: 1),
               ListTile(
                 key: const Key('drawer-nav-dashboard'),
                 leading: const Icon(Icons.dashboard_outlined),
-                title: const Text('Dashboard'),
+                title: Text(CitizenStrings.tr('dashboard', languageCode)),
                 selected: _selectedIndex == 0,
                 onTap: () => _openFromDrawer(0),
               ),
               ListTile(
                 key: const Key('drawer-nav-alerts'),
                 leading: const Icon(Icons.notifications_outlined),
-                title: const Text('Alerts'),
+                title: Text(CitizenStrings.tr('alerts', languageCode)),
                 selected: _selectedIndex == 1,
                 onTap: () => _openFromDrawer(1),
               ),
               ListTile(
                 key: const Key('drawer-nav-report'),
                 leading: const Icon(Icons.flood_outlined),
-                title: const Text('Report Flooding'),
+                title: Text(CitizenStrings.tr('report', languageCode)),
                 selected: _selectedIndex == 2,
                 onTap: () => _openFromDrawer(2),
               ),
               ListTile(
                 key: const Key('drawer-nav-safezones'),
                 leading: const Icon(Icons.map_outlined),
-                title: const Text('Safe Zones'),
+                title: Text(CitizenStrings.tr('safe_zones', languageCode)),
                 selected: _selectedIndex == 3,
                 onTap: () => _openFromDrawer(3),
               ),
               ListTile(
-                key: const Key('drawer-nav-myreports'),
-                leading: const Icon(Icons.receipt_long_outlined),
-                title: const Text('My Reports'),
+                key: const Key('drawer-nav-request-help'),
+                leading: const Icon(Icons.sos_outlined),
+                title: Text(CitizenStrings.tr('request_help', languageCode)),
                 selected: _selectedIndex == 4,
                 onTap: () => _openFromDrawer(4),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-myreports'),
+                leading: const Icon(Icons.receipt_long_outlined),
+                title: Text(CitizenStrings.tr('my_reports', languageCode)),
+                selected: _selectedIndex == 5,
+                onTap: () => _openFromDrawer(5),
               ),
             ],
           ),
@@ -121,12 +162,14 @@ class _DashboardHomeTab extends StatefulWidget {
   final VoidCallback onGoAlerts;
   final VoidCallback onGoReport;
   final VoidCallback onGoSafeZones;
+  final VoidCallback onGoRequestHelp;
   final VoidCallback onGoMyReports;
 
   const _DashboardHomeTab({
     required this.onGoAlerts,
     required this.onGoReport,
     required this.onGoSafeZones,
+    required this.onGoRequestHelp,
     required this.onGoMyReports,
   });
 
@@ -143,9 +186,11 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
   ];
 
   late final SafeZonesApi _safeZonesApi;
+  late final SafeZonesCache _safeZonesCache;
   bool _loadingSummary = true;
   String? _summaryError;
   int? _activeSafeZoneCount;
+  DateTime? _safeZonesUpdatedAt;
   String _selectedArea = _priorityAreas.first;
   bool _locating = false;
   Position? _livePosition;
@@ -155,6 +200,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
   void initState() {
     super.initState();
     _safeZonesApi = HttpSafeZonesApi();
+    _safeZonesCache = SharedPrefsSafeZonesCache();
     _loadSummary();
   }
 
@@ -166,16 +212,38 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
 
     try {
       final zones = await _safeZonesApi.fetchSafeZones();
+      await _safeZonesCache.saveZones(zones);
+      final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
       if (!mounted) return;
-      setState(() => _activeSafeZoneCount = zones.length);
+      setState(() {
+        _activeSafeZoneCount = zones.length;
+        _safeZonesUpdatedAt = updatedAt;
+      });
     } catch (_) {
+      final cachedZones = await _safeZonesCache.loadZones();
+      final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
       if (!mounted) return;
-      setState(() => _summaryError = 'Could not fetch live summary.');
+      setState(() {
+        _summaryError = cachedZones.isEmpty
+            ? 'Could not fetch live summary.'
+            : null;
+        _activeSafeZoneCount = cachedZones.length;
+        _safeZonesUpdatedAt = updatedAt;
+      });
     } finally {
       if (mounted) {
         setState(() => _loadingSummary = false);
       }
     }
+  }
+
+  String _updatedAgo(DateTime? timestamp) {
+    if (timestamp == null) return 'unknown';
+    final Duration diff = DateTime.now().difference(timestamp.toLocal());
+    if (diff.isNegative || diff.inSeconds < 60) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+    if (diff.inHours < 24) return '${diff.inHours} hr ago';
+    return '${diff.inDays} day(s) ago';
   }
 
   Future<void> _callHelpline(String number) async {
@@ -296,6 +364,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       label: const Text('Open Safe Zones Map'),
                     ),
                     OutlinedButton.icon(
+                      key: const Key('dashboard-go-request-help'),
+                      onPressed: widget.onGoRequestHelp,
+                      icon: const Icon(Icons.sos),
+                      label: const Text('Request Help'),
+                    ),
+                    OutlinedButton.icon(
                       key: const Key('dashboard-go-myreports'),
                       onPressed: widget.onGoMyReports,
                       icon: const Icon(Icons.receipt_long),
@@ -345,8 +419,17 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                     ],
                   )
                 else
-                  Text(
-                    'Active safe zones available now: ${_activeSafeZoneCount ?? 0}',
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Active safe zones available now: ${_activeSafeZoneCount ?? 0}',
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Safe zones data last updated: ${_updatedAgo(_safeZonesUpdatedAt)}',
+                      ),
+                    ],
                   ),
               ],
             ),
@@ -379,15 +462,25 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const <Widget>[
-                Text(
+              children: <Widget>[
+                const Text(
                   'Immediate Safety',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
-                SizedBox(height: 8),
-                Text('Avoid low-lying roads and underpasses.'),
-                Text('Move to marked safe zones and stay updated.'),
-                Text('Call local emergency services for urgent danger.'),
+                const SizedBox(height: 8),
+                const Text('Avoid low-lying roads and underpasses.'),
+                const Text('Move to marked safe zones and stay updated.'),
+                const Text('Call local emergency services for urgent danger.'),
+                const SizedBox(height: 6),
+                const Text(
+                  'Keep phone battery above 50% when heavy rain starts.',
+                ),
+                const Text(
+                  'Share verified location with family before moving.',
+                ),
+                Text(
+                  'Safe zone data freshness: updated ${_updatedAgo(_safeZonesUpdatedAt)}.',
+                ),
               ],
             ),
           ),
@@ -454,7 +547,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tip: Save your $_selectedArea emergency contacts for faster response.',
+                  'Tip: Share your exact area while calling for faster response.',
                   style: TextStyle(fontSize: 12),
                 ),
               ],

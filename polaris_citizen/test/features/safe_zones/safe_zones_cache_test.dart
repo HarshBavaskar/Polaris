@@ -43,5 +43,7 @@ void main() {
     expect(loaded.first.area, 'Dadar');
     expect(loaded.first.pincode, '400014');
     expect(loaded.first.lastVerified, isNotNull);
+    final DateTime? updated = await cache.lastUpdatedAt();
+    expect(updated, isNotNull);
   });
 }
