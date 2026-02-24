@@ -1,48 +1,38 @@
-# Polaris Citizen (Phase 9)
+# Polaris Citizen
 
-Small first slice of the citizen app in a separate folder.
+Citizen-facing Flutter app for emergency reporting, local alert visibility,
+safe-zone lookup, and urgent help requests.
 
-Included now:
+## Highlights
 
-- basic Flutter app shell
-- citizen-only app navigation (drawer):
-  - Dashboard
-  - Alerts (implemented)
-  - Report Flooding (implemented)
-  - Safe Zones (implemented)
-  - My Reports (implemented)
-- report API wiring:
-  - `POST /input/citizen/water-level`
-  - `POST /input/citizen/image`
-- meaningful zone selection in report flow:
-  - area + pincode mode (Mumbai/Thane/Navi Mumbai/Palghar focus for now)
-  - optional custom zone override when needed
-  - GPS-assisted auto area detection from user location
-- safe-zones API wiring:
-  - `GET /map/safe-zones`
-  - safe zone cards now include:
-    - area and pincode (from backend if available; focused fallback inference for Mumbai/Thane/Navi Mumbai/Palghar)
-    - distance in km from citizen location
-    - "updated X ago" from `last_verified`
-- widget and unit tests for shell + report flow
-  - alerts API/screen/cache
-  - my reports history
-  - safe-zones API and screen states
-- citizen home dashboard:
-  - quick actions to open Report and Safe Zones tabs
-  - live safe-zone count snapshot
-  - reporting and safety guidance cards
-  - emergency helpline section with quick-call actions
-  - area dropdown for district-wise helpline guidance
-  - optional live-location helper for emergency sharing
-- mobile platform permissions:
-  - Android `INTERNET`, `CAMERA`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`
-  - iOS `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSLocationWhenInUseUsageDescription`
-- push notification flow (FCM):
-  - app requests notification permission on startup (Android/iOS)
-  - app fetches FCM token and registers it to backend `POST /alert/register-token`
-  - app listens for foreground/background push
-  - tapping notification opens Alerts tab directly in citizen app
+- dashboard-aligned Polaris theme and branding
+- emergency-first dashboard flow with quick guide animation
+- report flooding flow:
+  - area+pincode/custom zone modes
+  - GPS-assisted area auto-detection
+  - flood photo upload and water-level reporting
+  - color-coded severity slider
+- alerts feed with cache fallback and pull-to-refresh
+- safe zones with map, user distance, nearest zone, and ETA
+- help request flow with optional live location
+- my reports history with status filters (all/synced/pending/failed)
+- branded startup loader and Android splash/launcher parity
+
+## Demo
+
+<div align="center">
+  <img src="../misc/Polaris Citizen App Demo.gif" width="320"/>
+</div>
+
+## API Endpoints Used
+
+- `POST /input/citizen/water-level`
+- `POST /input/citizen/image`
+- `GET /map/safe-zones`
+- `GET /alerts/history`
+- `POST /alert/register-token`
+
+## Run
 
 Run:
 

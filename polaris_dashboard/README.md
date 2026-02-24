@@ -1,16 +1,34 @@
-# polaris_dashboard
+# Polaris Dashboard
 
-A new Flutter project.
+Authority-facing Flutter dashboard for real-time risk monitoring, map intelligence,
+alert operations, and override control in the Polaris system.
 
-## Getting Started
+## Highlights
 
-This project is a starting point for a Flutter application.
+- live operational overview with risk, confidence, and ETA trends
+- active alert timeline and control surfaces
+- citizen verification workflow integration
+- map overlays for risk, safe zones, and historical events
+- Android-optimized compact UI mode and branded Polaris shell
+- FCM web/app notification integration
 
-A few resources to get you started if this is your first Flutter project:
+## Demo
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+<div align="center">
+  <img src="../misc/Polaris Dashboard Demo.gif" width="760"/>
+</div>
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Run
+
+```bash
+cd polaris_dashboard
+flutter pub get
+flutter run -d chrome --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
+```
+
+## Optional Android Run
+
+```bash
+flutter devices
+flutter run -d <android-device-id> --dart-define=POLARIS_API_BASE_URL=http://<YOUR_LAN_IP>:8000
+```
