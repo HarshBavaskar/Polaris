@@ -18,10 +18,12 @@ class AlertsScreen extends StatefulWidget {
 class _AlertsScreenState extends State<AlertsScreen> {
   late final CitizenAlertsApi _api;
   late final CitizenAlertsCache _cache;
+  static const Duration _autoRefreshInterval = Duration(seconds: 20);
   bool _loading = true;
   bool _usingCachedAlerts = false;
   String? _errorMessage;
   List<CitizenAlert> _alerts = <CitizenAlert>[];
+  bool _isAutoRefreshing = false;
 
   String _languageCode(BuildContext context) {
     return CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
@@ -33,6 +35,13 @@ class _AlertsScreenState extends State<AlertsScreen> {
     _api = widget.api ?? HttpCitizenAlertsApi();
     _cache = widget.cache ?? SharedPrefsCitizenAlertsCache();
     _loadAlerts();
+    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
+  }
+
+  void _scheduleAutoRefresh() {
+    if (!mounted) return;
+    _autoRefresh();
+    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
   }
 
   Future<void> _loadAlerts() async {
@@ -50,7 +59,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
         _alerts = alerts;
         _usingCachedAlerts = false;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Alerts fetch failed (${_api.runtimeType}): $e');
       final List<CitizenAlert> cached = await _cache.loadAlerts();
       if (!mounted) return;
       if (cached.isNotEmpty) {
@@ -70,6 +80,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _autoRefresh() async {
+    if (!mounted || _loading || _isAutoRefreshing) return;
+    _isAutoRefreshing = true;
+    try {
+      await _loadAlerts();
+    } finally {
+      _isAutoRefreshing = false;
     }
   }
 
@@ -220,15 +240,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(alert.message),
-                      const SizedBox(height: 10),
-                      Text(
-                        CitizenStrings.trf(
-                          'alerts_channel',
-                          languageCode,
-                          <String, String>{'channel': alert.channel},
-                        ),
-                        style: const TextStyle(fontSize: 12),
-                      ),
                     ],
                   ),
                 ),

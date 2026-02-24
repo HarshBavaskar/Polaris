@@ -246,14 +246,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
               maxLines: compact ? 3 : null,
               overflow: compact ? TextOverflow.ellipsis : null,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Channel: ${alert.channel}',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
             if (!compact) ...[
               const SizedBox(height: 8),
               Row(

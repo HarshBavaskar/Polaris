@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -31,8 +32,11 @@ class CitizenDashboardScreen extends StatefulWidget {
 
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
+  bool _showStartupLoader = true;
   late final List<Widget> _pages;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<int>? _tabNavigationSub;
+  Timer? _startupTimer;
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -63,10 +67,21 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
       const TrustUsabilityScreen(),
     ];
     _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
+    final bool isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    _startupTimer = Timer(
+      Duration(milliseconds: isAndroidUi ? 650 : 1300),
+      () {
+        if (mounted) {
+          setState(() => _showStartupLoader = false);
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
+    _startupTimer?.cancel();
     _tabNavigationSub?.cancel();
     super.dispose();
   }
@@ -526,25 +541,37 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                     FilledButton.icon(
                       onPressed: widget.onGoReport,
                       icon: const Icon(Icons.flood),
-                      label: Text(CitizenStrings.tr('report', languageCode)),
+                      label: Text(
+                        CitizenStrings.tr('report', languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     FilledButton.icon(
                       onPressed: widget.onGoRequestHelp,
                       icon: const Icon(Icons.sos),
                       label: Text(
                         CitizenStrings.tr('request_help', languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     OutlinedButton.icon(
                       onPressed: widget.onGoAlerts,
                       icon: const Icon(Icons.notifications_active_rounded),
-                      label: Text(CitizenStrings.tr('alerts', languageCode)),
+                      label: Text(
+                        CitizenStrings.tr('alerts', languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     OutlinedButton.icon(
                       onPressed: widget.onGoSafeZones,
                       icon: const Icon(Icons.shield_outlined),
                       label: Text(
                         CitizenStrings.tr('safe_zones', languageCode),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -582,6 +609,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                             'dash_view_alerts_feed',
                             languageCode,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ),
@@ -942,21 +971,64 @@ class _HelplineTile extends StatelessWidget {
     final String languageCode = CitizenPreferencesScope.of(
       context,
     ).languageCode;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: ListTile(
-        dense: true,
-        title: Text(label),
-        subtitle: Text(number),
-        trailing: FilledButton.tonalIcon(
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool compact = constraints.maxWidth < 360;
+        final Widget callButton = FilledButton.tonalIcon(
           onPressed: onCall,
-          icon: const Icon(Icons.call),
-          label: Text(CitizenStrings.tr('call', languageCode)),
-        ),
-      ),
+          icon: const Icon(Icons.call, size: 18),
+          style: FilledButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          ),
+          label: Text(
+            CitizenStrings.tr('call', languageCode),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        );
+
+        if (compact) {
+          return Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(number, style: Theme.of(context).textTheme.bodySmall),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: callButton,
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: ListTile(
+            dense: true,
+            title: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Text(number),
+            trailing: callButton,
+          ),
+        );
+      },
     );
   }
 }
