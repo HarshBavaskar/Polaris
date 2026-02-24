@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
 import '../../core/settings/citizen_strings.dart';
+import '../../widgets/slide_option_selector.dart';
 import 'help_request.dart';
 import 'help_request_api.dart';
 import 'help_request_queue.dart';
@@ -180,17 +181,13 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                 const SizedBox(height: 8),
                 Text(CitizenStrings.tr('help_desc', languageCode)),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _categories.map((String category) {
-                    return ChoiceChip(
-                      label: Text(_categoryLabel(category, languageCode)),
-                      selected: _selectedCategory == category,
-                      onSelected: (_) =>
-                          setState(() => _selectedCategory = category),
-                    );
-                  }).toList(),
+                SlideOptionSelector<String>(
+                  options: _categories,
+                  selected: _selectedCategory,
+                  labelBuilder: (String category) =>
+                      _categoryLabel(category, languageCode),
+                  onSelected: (String category) =>
+                      setState(() => _selectedCategory = category),
                 ),
                 const SizedBox(height: 12),
                 TextField(

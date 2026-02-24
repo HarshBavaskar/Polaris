@@ -137,18 +137,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
     return RefreshIndicator(
       onRefresh: _loadAlerts,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: <Widget>[
           if (_usingCachedAlerts)
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(14),
                 child: Text(
                   CitizenStrings.tr('alerts_offline_banner', languageCode),
                   style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
+          if (_usingCachedAlerts) const SizedBox(height: 12),
           Card(
             child: ListTile(
               title: Text(
@@ -169,61 +170,67 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           ..._alerts.map((CitizenAlert alert) {
             final Color badgeColor = _severityColor(alert.severity);
-            return Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: badgeColor.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: badgeColor.withValues(alpha: 0.35),
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeColor.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: badgeColor.withValues(alpha: 0.35),
+                              ),
+                            ),
+                            child: Text(
+                              alert.severity,
+                              style: TextStyle(
+                                color: badgeColor,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                          child: Text(
-                            alert.severity,
-                            style: TextStyle(
-                              color: badgeColor,
-                              fontWeight: FontWeight.w700,
+                          const Spacer(),
+                          Text(
+                            CitizenStrings.trf(
+                              'alerts_updated',
+                              languageCode,
+                              <String, String>{
+                                'ago': _updatedAgo(
+                                  alert.timestamp,
+                                  languageCode,
+                                ),
+                              },
                             ),
                           ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          CitizenStrings.trf(
-                            'alerts_updated',
-                            languageCode,
-                            <String, String>{
-                              'ago': _updatedAgo(alert.timestamp, languageCode),
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(alert.message),
-                    const SizedBox(height: 8),
-                    Text(
-                      CitizenStrings.trf(
-                        'alerts_channel',
-                        languageCode,
-                        <String, String>{'channel': alert.channel},
+                        ],
                       ),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ],
+                      const SizedBox(height: 10),
+                      Text(alert.message),
+                      const SizedBox(height: 10),
+                      Text(
+                        CitizenStrings.trf(
+                          'alerts_channel',
+                          languageCode,
+                          <String, String>{'channel': alert.channel},
+                        ),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             );
