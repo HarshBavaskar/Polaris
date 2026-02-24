@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../core/locations/priority_area_anchors.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
 import '../../core/settings/citizen_strings.dart';
+import '../../widgets/slide_option_selector.dart';
 import 'report_api.dart';
 import 'report_history.dart';
 import 'report_offline_queue.dart';
@@ -268,6 +269,21 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
   double _toRad(double value) => value * (math.pi / 180);
 
+  Color _levelColor(String level) {
+    switch (level) {
+      case 'LOW':
+        return const Color(0xFF2F855A);
+      case 'MEDIUM':
+        return const Color(0xFF2B6CB0);
+      case 'HIGH':
+        return const Color(0xFFDD6B20);
+      case 'SEVERE':
+        return const Color(0xFFC53030);
+      default:
+        return Theme.of(context).colorScheme.primary;
+    }
+  }
+
   Future<void> _useGpsAutoFillArea() async {
     final String languageCode = _languageCode;
     if (_locatingArea) return;
@@ -486,11 +502,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   Widget build(BuildContext context) {
     final String languageCode = _languageCode;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
       children: <Widget>[
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -502,31 +518,27 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: <Widget>[
-                    ChoiceChip(
-                      key: const Key('zone-mode-area-pincode'),
-                      label: Text(
-                        CitizenStrings.tr(
-                          'report_mode_area_pincode',
-                          languageCode,
-                        ),
-                      ),
-                      selected: _zoneMode == 'AREA_PINCODE',
-                      onSelected: (_) =>
-                          setState(() => _zoneMode = 'AREA_PINCODE'),
-                    ),
-                    ChoiceChip(
-                      key: const Key('zone-mode-custom'),
-                      label: Text(
-                        CitizenStrings.tr('report_mode_custom', languageCode),
-                      ),
-                      selected: _zoneMode == 'CUSTOM',
-                      onSelected: (_) => setState(() => _zoneMode = 'CUSTOM'),
-                    ),
-                  ],
+                SlideOptionSelector<String>(
+                  options: const <String>['AREA_PINCODE', 'CUSTOM'],
+                  selected: _zoneMode,
+                  labelBuilder: (String mode) {
+                    if (mode == 'AREA_PINCODE') {
+                      return CitizenStrings.tr(
+                        'report_mode_area_pincode',
+                        languageCode,
+                      );
+                    }
+                    return CitizenStrings.tr(
+                      'report_mode_custom',
+                      languageCode,
+                    );
+                  },
+                  keyBuilder: (String mode) => Key(
+                    mode == 'AREA_PINCODE'
+                        ? 'zone-mode-area-pincode'
+                        : 'zone-mode-custom',
+                  ),
+                  onSelected: (String mode) => setState(() => _zoneMode = mode),
                 ),
                 const SizedBox(height: 8),
                 if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
@@ -737,10 +749,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -750,7 +762,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                 ),
                 const SizedBox(height: 8),
                 Wrap(
-                  spacing: 8,
+                  spacing: 10,
                   children: <Widget>[
                     OutlinedButton.icon(
                       key: const Key('pick-photo-camera'),
@@ -808,10 +820,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
@@ -823,19 +835,15 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _levels.map((String level) {
-                    return ChoiceChip(
-                      key: Key('level-$level'),
-                      label: Text(level),
-                      selected: _selectedLevel == level,
-                      onSelected: (_) {
-                        setState(() => _selectedLevel = level);
-                      },
-                    );
-                  }).toList(),
+                SlideOptionSelector<String>(
+                  options: _levels,
+                  selected: _selectedLevel,
+                  labelBuilder: (String level) => level,
+                  keyBuilder: (String level) => Key('level-$level'),
+                  optionColorBuilder: _levelColor,
+                  onSelected: (String level) {
+                    setState(() => _selectedLevel = level);
+                  },
                 ),
                 const SizedBox(height: 10),
                 FilledButton.icon(

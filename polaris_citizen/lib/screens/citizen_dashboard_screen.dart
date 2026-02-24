@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,6 +18,8 @@ import '../features/safe_zones/safe_zones_api.dart';
 import '../features/safe_zones/safe_zones_cache.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
 import '../features/settings/trust_usability_screen.dart';
+import '../widgets/citizen_top_bar.dart';
+import '../widgets/polaris_startup_loader.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
   const CitizenDashboardScreen({super.key});
@@ -26,6 +31,9 @@ class CitizenDashboardScreen extends StatefulWidget {
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  Timer? _startupTimer;
+  bool _showStartupLoader = true;
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -55,6 +63,20 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
       const MyReportsScreen(),
       const TrustUsabilityScreen(),
     ];
+    final bool isAndroidUi =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    _startupTimer = Timer(
+      Duration(milliseconds: isAndroidUi ? 1800 : 1800),
+      () {
+        if (mounted) setState(() => _showStartupLoader = false);
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _startupTimer?.cancel();
+    super.dispose();
   }
 
   void _openAlertsTab() => setState(() => _selectedIndex = 1);
@@ -76,6 +98,15 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showStartupLoader) {
+      return Scaffold(
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 260),
+          child: const Center(child: PolarisStartupLoader()),
+        ),
+      );
+    }
+
     final String languageCode = CitizenPreferencesScope.of(
       context,
     ).languageCode;
@@ -83,23 +114,72 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
       _titles[_selectedIndex],
       languageCode,
     );
+    final bool isAndroidUi =
+        Theme.of(context).platform == TargetPlatform.android;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: <Widget>[
-          IconButton(
-            key: const Key('appbar-go-language'),
-            tooltip: CitizenStrings.tr('language_tooltip', languageCode),
-            onPressed: _openTrustTab,
-            icon: const Icon(Icons.language_outlined),
-          ),
-        ],
+      key: _scaffoldKey,
+      body: SafeArea(
+        child: Column(
+          children: <Widget>[
+            CitizenTopBar(
+              title: title,
+              onMenuTap: () => _scaffoldKey.currentState?.openDrawer(),
+              onLanguageTap: _openTrustTab,
+              languageTooltip: CitizenStrings.tr(
+                'language_tooltip',
+                languageCode,
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: isAndroidUi
+                    ? const EdgeInsets.fromLTRB(10, 4, 10, 10)
+                    : const EdgeInsets.fromLTRB(12, 6, 12, 12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: IndexedStack(
+                      index: _selectedIndex,
+                      children: _pages,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      body: IndexedStack(index: _selectedIndex, children: _pages),
       drawer: Drawer(
         child: SafeArea(
           child: Column(
             children: <Widget>[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                ),
+                child: Image.asset(
+                  'assets/Polaris_Logo_Side.PNG',
+                  height: 44,
+                  fit: BoxFit.contain,
+                ),
+              ),
               ListTile(
                 title: Text(
                   CitizenStrings.tr('menu', languageCode),
@@ -431,52 +511,40 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 Text(
                   CitizenStrings.tr('dash_stay_alert_subtitle', languageCode),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 12),
+                Text(
+                  'Emergency Actions',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: <Widget>[
                     FilledButton.icon(
-                      key: const Key('dashboard-go-report'),
                       onPressed: widget.onGoReport,
                       icon: const Icon(Icons.flood),
-                      label: Text(
-                        CitizenStrings.tr('dash_btn_report', languageCode),
-                      ),
+                      label: Text(CitizenStrings.tr('report', languageCode)),
                     ),
-                    OutlinedButton.icon(
-                      key: const Key('dashboard-go-alerts'),
-                      onPressed: widget.onGoAlerts,
-                      icon: const Icon(Icons.notifications_active_rounded),
-                      label: Text(
-                        CitizenStrings.tr('dash_btn_alerts', languageCode),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      key: const Key('dashboard-go-safezones'),
-                      onPressed: widget.onGoSafeZones,
-                      icon: const Icon(Icons.map),
-                      label: Text(
-                        CitizenStrings.tr('dash_btn_safe_zones', languageCode),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      key: const Key('dashboard-go-request-help'),
+                    FilledButton.icon(
                       onPressed: widget.onGoRequestHelp,
                       icon: const Icon(Icons.sos),
                       label: Text(
-                        CitizenStrings.tr(
-                          'dash_btn_request_help',
-                          languageCode,
-                        ),
+                        CitizenStrings.tr('request_help', languageCode),
                       ),
                     ),
                     OutlinedButton.icon(
-                      key: const Key('dashboard-go-myreports'),
-                      onPressed: widget.onGoMyReports,
-                      icon: const Icon(Icons.receipt_long),
+                      onPressed: widget.onGoAlerts,
+                      icon: const Icon(Icons.notifications_active_rounded),
+                      label: Text(CitizenStrings.tr('alerts', languageCode)),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: widget.onGoSafeZones,
+                      icon: const Icon(Icons.shield_outlined),
                       label: Text(
-                        CitizenStrings.tr('dash_btn_my_reports', languageCode),
+                        CitizenStrings.tr('safe_zones', languageCode),
                       ),
                     ),
                   ],
@@ -485,6 +553,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        const _QuickGuidanceBlock(),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -694,59 +764,6 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  CitizenStrings.tr('dash_what_to_report', languageCode),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(CitizenStrings.tr('dash_report_point_1', languageCode)),
-                Text(CitizenStrings.tr('dash_report_point_2', languageCode)),
-                Text(CitizenStrings.tr('dash_report_point_3', languageCode)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr('dash_immediate_safety', languageCode),
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(CitizenStrings.tr('dash_safety_point_1', languageCode)),
-                Text(CitizenStrings.tr('dash_safety_point_2', languageCode)),
-                Text(CitizenStrings.tr('dash_safety_point_3', languageCode)),
-                const SizedBox(height: 6),
-                Text(CitizenStrings.tr('dash_safety_point_4', languageCode)),
-                Text(CitizenStrings.tr('dash_safety_point_5', languageCode)),
-                Text(
-                  CitizenStrings.trf(
-                    'dash_safety_freshness',
-                    languageCode,
-                    <String, String>{
-                      'ago': _updatedAgo(_safeZonesUpdatedAt, languageCode),
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
                   CitizenStrings.tr('dash_helplines', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
@@ -939,6 +956,160 @@ class _HelplineTile extends StatelessWidget {
           icon: const Icon(Icons.call),
           label: Text(CitizenStrings.tr('call', languageCode)),
         ),
+      ),
+    );
+  }
+}
+
+class _QuickGuidanceBlock extends StatefulWidget {
+  const _QuickGuidanceBlock();
+
+  @override
+  State<_QuickGuidanceBlock> createState() => _QuickGuidanceBlockState();
+}
+
+class _QuickGuidanceBlockState extends State<_QuickGuidanceBlock>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'Quick Guide',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 10),
+            _GuideStep(
+              icon: Icons.notifications_active_rounded,
+              title: '1. Check Alerts',
+              subtitle: 'Open Alerts to confirm current risk in your area.',
+              accent: const Color(0xFF2B6CB0),
+            ),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (BuildContext context, _) {
+                return Opacity(
+                  opacity: 0.45 + (_controller.value * 0.55),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 22 + (_controller.value * 8),
+                    ),
+                    child: Icon(
+                      Icons.arrow_downward_rounded,
+                      color: colors.primary,
+                      size: 18,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+            _GuideStep(
+              icon: Icons.flood,
+              title: '2. Report Flooding',
+              subtitle:
+                  'Submit water level and flood photo from your location.',
+              accent: const Color(0xFFDD6B20),
+            ),
+            const SizedBox(height: 8),
+            AnimatedBuilder(
+              animation: _controller,
+              builder: (BuildContext context, _) {
+                return Opacity(
+                  opacity: 0.45 + (_controller.value * 0.55),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 22 + (_controller.value * 8),
+                    ),
+                    child: Icon(
+                      Icons.arrow_downward_rounded,
+                      color: colors.primary,
+                      size: 18,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 4),
+            _GuideStep(
+              icon: Icons.sos,
+              title: '3. Request Help / Safe Zones',
+              subtitle: 'Use Help for urgent aid, Safe Zones for evacuation.',
+              accent: const Color(0xFFC53030),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GuideStep extends StatelessWidget {
+  const _GuideStep({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        color: accent.withValues(alpha: 0.1),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 2),
+                Text(subtitle, style: const TextStyle(fontSize: 12.5)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
