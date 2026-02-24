@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 
 class TrustUsabilityScreen extends StatelessWidget {
   const TrustUsabilityScreen({super.key});
@@ -7,6 +8,7 @@ class TrustUsabilityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prefs = CitizenPreferencesScope.of(context);
+    final String languageCode = prefs.languageCode;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
@@ -15,15 +17,13 @@ class TrustUsabilityScreen extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const <Widget>[
+              children: <Widget>[
                 Text(
-                  'App Language',
+                  CitizenStrings.tr('trust_title', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                 ),
-                SizedBox(height: 8),
-                Text(
-                  'Choose your preferred language for clearer instructions during emergencies.',
-                ),
+                const SizedBox(height: 8),
+                Text(CitizenStrings.tr('trust_desc', languageCode)),
               ],
             ),
           ),
@@ -35,14 +35,26 @@ class TrustUsabilityScreen extends StatelessWidget {
             child: DropdownButtonFormField<String>(
               key: const Key('trust-language-dropdown'),
               initialValue: prefs.languageCode,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'Language',
+                labelText: CitizenStrings.tr(
+                  'trust_language_label',
+                  languageCode,
+                ),
               ),
-              items: const <DropdownMenuItem<String>>[
-                DropdownMenuItem<String>(value: 'en', child: Text('English')),
-                DropdownMenuItem<String>(value: 'hi', child: Text('Hindi')),
-                DropdownMenuItem<String>(value: 'mr', child: Text('Marathi')),
+              items: <DropdownMenuItem<String>>[
+                DropdownMenuItem<String>(
+                  value: 'en',
+                  child: Text(CitizenStrings.tr('lang_english', languageCode)),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'hi',
+                  child: Text(CitizenStrings.tr('lang_hindi', languageCode)),
+                ),
+                DropdownMenuItem<String>(
+                  value: 'mr',
+                  child: Text(CitizenStrings.tr('lang_marathi', languageCode)),
+                ),
               ],
               onChanged: (String? value) {
                 if (value == null) return;

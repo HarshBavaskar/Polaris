@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 import 'report_history.dart';
 
 class MyReportsScreen extends StatefulWidget {
@@ -15,6 +17,10 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
   bool _loading = true;
   String? _errorMessage;
   List<CitizenReportRecord> _reports = <CitizenReportRecord>[];
+
+  String _languageCode(BuildContext context) {
+    return CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+  }
 
   @override
   void initState() {
@@ -35,26 +41,28 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       setState(() => _reports = data);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _errorMessage = 'Unable to load report history.');
+      final String languageCode = _languageCode(context);
+      setState(
+        () => _errorMessage = CitizenStrings.tr(
+          'myreports_load_failed',
+          languageCode,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _updatedAgo(DateTime timestamp) {
-    final Duration diff = DateTime.now().difference(timestamp);
-    if (diff.isNegative || diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hr ago';
-    return '${diff.inDays} day(s) ago';
+  String _updatedAgo(DateTime timestamp, String languageCode) {
+    return CitizenStrings.relativeTimeFromNow(timestamp, languageCode);
   }
 
-  String _typeLabel(CitizenReportType type) {
+  String _typeLabel(CitizenReportType type, String languageCode) {
     switch (type) {
       case CitizenReportType.waterLevel:
-        return 'Water Level';
+        return CitizenStrings.tr('myreports_type_water_level', languageCode);
       case CitizenReportType.floodPhoto:
-        return 'Flood Photo';
+        return CitizenStrings.tr('myreports_type_flood_photo', languageCode);
     }
   }
 
@@ -69,19 +77,20 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     }
   }
 
-  String _statusLabel(CitizenReportStatus status) {
+  String _statusLabel(CitizenReportStatus status, String languageCode) {
     switch (status) {
       case CitizenReportStatus.synced:
-        return 'SYNCED';
+        return CitizenStrings.tr('myreports_status_synced', languageCode);
       case CitizenReportStatus.pendingOffline:
-        return 'PENDING';
+        return CitizenStrings.tr('myreports_status_pending', languageCode);
       case CitizenReportStatus.failed:
-        return 'FAILED';
+        return CitizenStrings.tr('myreports_status_failed', languageCode);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _languageCode(context);
     if (_loading && _reports.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -98,7 +107,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
               FilledButton(
                 key: const Key('my-reports-retry-button'),
                 onPressed: _loadReports,
-                child: const Text('Retry'),
+                child: Text(CitizenStrings.tr('retry', languageCode)),
               ),
             ],
           ),
@@ -130,11 +139,17 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
         children: <Widget>[
           Card(
             child: ListTile(
-              title: const Text(
-                'My Reports',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              title: Text(
+                CitizenStrings.tr('myreports_title', languageCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: Text('${_reports.length} report(s)'),
+              subtitle: Text(
+                CitizenStrings.trf(
+                  'myreports_count',
+                  languageCode,
+                  <String, String>{'count': _reports.length.toString()},
+                ),
+              ),
               trailing: IconButton(
                 key: const Key('my-reports-refresh-button'),
                 onPressed: _loading ? null : _loadReports,
@@ -151,15 +166,33 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                 runSpacing: 8,
                 children: <Widget>[
                   Chip(
-                    label: Text('Synced: $syncedCount'),
+                    label: Text(
+                      CitizenStrings.trf(
+                        'myreports_synced',
+                        languageCode,
+                        <String, String>{'count': syncedCount.toString()},
+                      ),
+                    ),
                     avatar: const Icon(Icons.check_circle, size: 18),
                   ),
                   Chip(
-                    label: Text('Pending: $pendingCount'),
+                    label: Text(
+                      CitizenStrings.trf(
+                        'myreports_pending',
+                        languageCode,
+                        <String, String>{'count': pendingCount.toString()},
+                      ),
+                    ),
                     avatar: const Icon(Icons.schedule, size: 18),
                   ),
                   Chip(
-                    label: Text('Failed: $failedCount'),
+                    label: Text(
+                      CitizenStrings.trf(
+                        'myreports_failed',
+                        languageCode,
+                        <String, String>{'count': failedCount.toString()},
+                      ),
+                    ),
                     avatar: const Icon(Icons.error, size: 18),
                   ),
                 ],
@@ -168,7 +201,9 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
           ),
           if (_reports.isEmpty) ...<Widget>[
             const SizedBox(height: 120),
-            const Center(child: Text('No report history yet.')),
+            Center(
+              child: Text(CitizenStrings.tr('myreports_empty', languageCode)),
+            ),
           ] else ...<Widget>[
             const SizedBox(height: 8),
             ..._reports.map((CitizenReportRecord report) {
@@ -182,7 +217,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                       Row(
                         children: <Widget>[
                           Text(
-                            _typeLabel(report.type),
+                            _typeLabel(report.type, languageCode),
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           const Spacer(),
@@ -199,7 +234,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                               ),
                             ),
                             child: Text(
-                              _statusLabel(report.status),
+                              _statusLabel(report.status, languageCode),
                               style: TextStyle(
                                 color: statusColor,
                                 fontWeight: FontWeight.w700,
@@ -209,9 +244,21 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('Zone: ${report.zoneId}'),
+                      Text(
+                        CitizenStrings.trf(
+                          'myreports_zone',
+                          languageCode,
+                          <String, String>{'zone': report.zoneId},
+                        ),
+                      ),
                       if (report.level != null && report.level!.isNotEmpty)
-                        Text('Level: ${report.level}'),
+                        Text(
+                          CitizenStrings.trf(
+                            'myreports_level',
+                            languageCode,
+                            <String, String>{'level': report.level!},
+                          ),
+                        ),
                       if (report.note != null && report.note!.isNotEmpty)
                         Text(
                           report.note!,
@@ -219,11 +266,23 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                         ),
                       const SizedBox(height: 8),
                       Text(
-                        'Created ${_updatedAgo(report.createdAt)}',
+                        CitizenStrings.trf(
+                          'myreports_created',
+                          languageCode,
+                          <String, String>{
+                            'ago': _updatedAgo(report.createdAt, languageCode),
+                          },
+                        ),
                         style: const TextStyle(fontSize: 12),
                       ),
                       Text(
-                        'Updated ${_updatedAgo(report.updatedAt)}',
+                        CitizenStrings.trf(
+                          'myreports_updated',
+                          languageCode,
+                          <String, String>{
+                            'ago': _updatedAgo(report.updatedAt, languageCode),
+                          },
+                        ),
                         style: const TextStyle(fontSize: 12),
                       ),
                     ],

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 import '../../core/locations/priority_area_anchors.dart';
 import 'safe_zone.dart';
 import 'safe_zones_api.dart';
@@ -37,6 +39,10 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   Position? _userLocation;
   bool _loadingLocation = false;
   String? _locationError;
+
+  String _languageCode(BuildContext context) {
+    return CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+  }
 
   @override
   void initState() {
@@ -79,7 +85,13 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
       setState(() => _userLocation = p);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _locationError = 'Unable to fetch current location.');
+      final String languageCode = _languageCode(context);
+      setState(
+        () => _locationError = CitizenStrings.tr(
+          'safezones_location_fetch_failed',
+          languageCode,
+        ),
+      );
     } finally {
       if (mounted) setState(() => _loadingLocation = false);
     }
@@ -114,7 +126,13 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
           _lastUpdatedAt = updatedAt;
         });
       } else {
-        setState(() => _errorMessage = 'Failed to load safe zones.');
+        final String languageCode = _languageCode(context);
+        setState(
+          () => _errorMessage = CitizenStrings.tr(
+            'safezones_load_failed',
+            languageCode,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -160,7 +178,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
 
     final AreaAnchor? anchor = _nearestAnchor(zone);
     if (anchor != null) return '${anchor.area}, ${anchor.city}';
-    return 'Area unavailable';
+    final String languageCode = _languageCode(context);
+    return CitizenStrings.tr('safezones_area_unavailable', languageCode);
   }
 
   String _pincodeLabel(SafeZone zone) {
@@ -171,13 +190,14 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     return anchor?.pincode ?? '--';
   }
 
-  String _updatedAgo(DateTime? timestamp) {
-    if (timestamp == null) return 'Updated: unknown';
-    final Duration diff = DateTime.now().difference(timestamp.toLocal());
-    if (diff.isNegative || diff.inSeconds < 60) return 'Updated: just now';
-    if (diff.inMinutes < 60) return 'Updated: ${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return 'Updated: ${diff.inHours} hr ago';
-    return 'Updated: ${diff.inDays} day(s) ago';
+  String _updatedAgo(DateTime? timestamp, String languageCode) {
+    if (timestamp == null) {
+      return CitizenStrings.tr('time_unknown', languageCode);
+    }
+    return CitizenStrings.relativeTimeFromNow(
+      timestamp.toLocal(),
+      languageCode,
+    );
   }
 
   SafeZone? _nearestZone(List<SafeZone> zones) {
@@ -213,6 +233,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _languageCode(context);
     if (_loading && _zones.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -229,7 +250,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
               FilledButton(
                 key: const Key('safe-zones-retry'),
                 onPressed: _loadSafeZones,
-                child: const Text('Retry'),
+                child: Text(CitizenStrings.tr('retry', languageCode)),
               ),
             ],
           ),
@@ -241,9 +262,11 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
       return RefreshIndicator(
         onRefresh: _loadSafeZones,
         child: ListView(
-          children: const <Widget>[
+          children: <Widget>[
             SizedBox(height: 160),
-            Center(child: Text('No active safe zones available right now.')),
+            Center(
+              child: Text(CitizenStrings.tr('safezones_empty', languageCode)),
+            ),
           ],
         ),
       );
@@ -267,13 +290,13 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     return Column(
       children: <Widget>[
         if (_usingCachedZones)
-          const Padding(
+          Padding(
             padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Offline mode: showing last saved safe zones.',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                CitizenStrings.tr('safezones_offline_banner', languageCode),
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -292,7 +315,12 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                       )
                     : const Icon(Icons.my_location),
                 label: Text(
-                  _loadingLocation ? 'Locating...' : 'Use My Location',
+                  _loadingLocation
+                      ? CitizenStrings.tr('safezones_locating', languageCode)
+                      : CitizenStrings.tr(
+                          'safezones_use_location',
+                          languageCode,
+                        ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -300,8 +328,14 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 child: Text(
                   _locationError ??
                       (_userLocation == null
-                          ? 'Distance hidden until location is enabled.'
-                          : 'Distance now shown from your location.'),
+                          ? CitizenStrings.tr(
+                              'safezones_distance_hidden',
+                              languageCode,
+                            )
+                          : CitizenStrings.tr(
+                              'safezones_distance_shown',
+                              languageCode,
+                            )),
                 ),
               ),
             ],
@@ -312,7 +346,13 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Safe zones last updated: ${_updatedAgo(_lastUpdatedAt).replaceFirst('Updated: ', '')}',
+              CitizenStrings.trf(
+                'safezones_last_updated',
+                languageCode,
+                <String, String>{
+                  'ago': _updatedAgo(_lastUpdatedAt, languageCode),
+                },
+              ),
             ),
           ),
         ),
@@ -322,9 +362,22 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
             child: Card(
               key: const Key('safe-zones-nearest-route-card'),
               child: ListTile(
-                title: Text('Nearest safe zone: ${nearest.zoneId}'),
+                title: Text(
+                  CitizenStrings.trf(
+                    'safezones_nearest',
+                    languageCode,
+                    <String, String>{'zoneId': nearest.zoneId},
+                  ),
+                ),
                 subtitle: Text(
-                  'Distance: ${nearestKm.toStringAsFixed(1)} km | ETA: ~${_etaMinutes(nearestKm)} min',
+                  CitizenStrings.trf(
+                    'safezones_distance_eta',
+                    languageCode,
+                    <String, String>{
+                      'km': nearestKm.toStringAsFixed(1),
+                      'eta': _etaMinutes(nearestKm).toString(),
+                    },
+                  ),
                 ),
               ),
             ),
@@ -387,7 +440,10 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                   polylines: <Polyline>[
                     Polyline(
                       points: <LatLng>[
-                        LatLng(_userLocation!.latitude, _userLocation!.longitude),
+                        LatLng(
+                          _userLocation!.latitude,
+                          _userLocation!.longitude,
+                        ),
                         LatLng(nearest.lat, nearest.lng),
                       ],
                       color: Colors.blue,
@@ -407,7 +463,15 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
               itemBuilder: (BuildContext context, int index) {
                 if (index == 0) {
                   return ListTile(
-                    title: Text('Active safe zones: ${orderedZones.length}'),
+                    title: Text(
+                      CitizenStrings.trf(
+                        'safezones_active_count',
+                        languageCode,
+                        <String, String>{
+                          'count': orderedZones.length.toString(),
+                        },
+                      ),
+                    ),
                     trailing: IconButton(
                       key: const Key('safe-zones-refresh'),
                       onPressed: _loadSafeZones,
@@ -421,13 +485,18 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 return Card(
                   child: ListTile(
                     title: Text(
-                      zone.zoneId.isEmpty ? 'Unnamed Zone' : zone.zoneId,
+                      zone.zoneId.isEmpty
+                          ? CitizenStrings.tr(
+                              'safezones_unnamed_zone',
+                              languageCode,
+                            )
+                          : zone.zoneId,
                     ),
                     subtitle: Text(
-                      'Lat ${zone.lat.toStringAsFixed(4)}, Lng ${zone.lng.toStringAsFixed(4)}'
-                      '\nArea: ${_areaLabel(zone)} | Pincode: ${_pincodeLabel(zone)}'
-                      '\nSource: ${zone.source} | Confidence: ${zone.confidence}'
-                      '\n${_updatedAgo(zone.lastVerified)}',
+                      '${CitizenStrings.trf('safezones_coords', languageCode, <String, String>{'lat': zone.lat.toStringAsFixed(4), 'lng': zone.lng.toStringAsFixed(4)})}\n'
+                      '${CitizenStrings.trf('safezones_area_pincode', languageCode, <String, String>{'area': _areaLabel(zone), 'pincode': _pincodeLabel(zone)})}\n'
+                      '${CitizenStrings.trf('safezones_source_confidence', languageCode, <String, String>{'source': zone.source, 'confidence': zone.confidence.toString()})}\n'
+                      '${CitizenStrings.trf('alerts_updated', languageCode, <String, String>{'ago': _updatedAgo(zone.lastVerified, languageCode)})}',
                     ),
                     trailing: Text(
                       km == null ? '--' : '${km.toStringAsFixed(1)} km',
