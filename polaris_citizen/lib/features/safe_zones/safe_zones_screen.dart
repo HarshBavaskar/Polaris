@@ -239,21 +239,60 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     }
 
     if (_errorMessage != null && _zones.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Text(_errorMessage!),
-              const SizedBox(height: 8),
-              FilledButton(
-                key: const Key('safe-zones-retry'),
-                onPressed: _loadSafeZones,
-                child: Text(CitizenStrings.tr('retry', languageCode)),
+      return RefreshIndicator(
+        onRefresh: _loadSafeZones,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 56, 16, 16),
+          children: <Widget>[
+            Card(
+              key: const Key('safe-zones-unavailable-card'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        const Icon(Icons.cloud_off, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            CitizenStrings.tr(
+                              'safezones_unavailable_title',
+                              languageCode,
+                            ),
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(_errorMessage!),
+                    const SizedBox(height: 8),
+                    Text(
+                      CitizenStrings.tr(
+                        'safezones_unavailable_help',
+                        languageCode,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      key: const Key('safe-zones-retry'),
+                      onPressed: _loadSafeZones,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(CitizenStrings.tr('retry', languageCode)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      CitizenStrings.tr('safezones_retry_hint', languageCode),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       );
     }

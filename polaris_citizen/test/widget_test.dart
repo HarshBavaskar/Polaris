@@ -57,6 +57,23 @@ void main() {
     expect(find.text('Alerts'), findsWidgets);
   });
 
+  testWidgets('live snapshot button opens alerts tab', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const CitizenApp());
+
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('dashboard-live-view-alerts')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('dashboard-live-view-alerts')));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(AlertsScreen), findsOneWidget);
+    expect(find.text('Alerts'), findsWidgets);
+  });
+
   testWidgets('dashboard quick action opens safe zones tab', (
     WidgetTester tester,
   ) async {

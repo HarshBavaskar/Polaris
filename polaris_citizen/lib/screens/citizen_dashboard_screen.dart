@@ -4,7 +4,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/settings/citizen_preferences_scope.dart';
 import '../core/settings/citizen_strings.dart';
+import '../features/alerts/alerts_api.dart';
+import '../features/alerts/alerts_cache.dart';
 import '../features/alerts/alerts_screen.dart';
+import '../features/alerts/citizen_alert.dart';
 import '../features/help/request_help_screen.dart';
 import '../features/report/report_flood_screen.dart';
 import '../features/report/my_reports_screen.dart';
@@ -187,9 +190,13 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
 
   late final SafeZonesApi _safeZonesApi;
   late final SafeZonesCache _safeZonesCache;
+  late final CitizenAlertsApi _alertsApi;
+  late final CitizenAlertsCache _alertsCache;
   bool _loadingSummary = true;
   String? _summaryError;
   int? _activeSafeZoneCount;
+  int? _activeAlertsCount;
+  CitizenAlert? _latestAlert;
   DateTime? _safeZonesUpdatedAt;
   String _selectedArea = _priorityAreas.first;
   bool _locating = false;
@@ -201,6 +208,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     super.initState();
     _safeZonesApi = HttpSafeZonesApi();
     _safeZonesCache = SharedPrefsSafeZonesCache();
+    _alertsApi = HttpCitizenAlertsApi();
+    _alertsCache = SharedPrefsCitizenAlertsCache();
     _loadSummary();
   }
 
@@ -210,33 +219,74 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       _summaryError = null;
     });
 
+    bool safeZonesAvailable = false;
+    bool alertsAvailable = false;
+
     try {
       final zones = await _safeZonesApi.fetchSafeZones();
       await _safeZonesCache.saveZones(zones);
       final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
-      if (!mounted) return;
-      setState(() {
-        _activeSafeZoneCount = zones.length;
-        _safeZonesUpdatedAt = updatedAt;
-      });
+      _activeSafeZoneCount = zones.length;
+      _safeZonesUpdatedAt = updatedAt;
+      safeZonesAvailable = true;
     } catch (_) {
       final cachedZones = await _safeZonesCache.loadZones();
       final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
-      if (!mounted) return;
-      final String languageCode = CitizenPreferencesScope.of(
-        context,
-      ).languageCode;
-      setState(() {
-        _summaryError = cachedZones.isEmpty
-            ? CitizenStrings.tr('dash_summary_fetch_failed', languageCode)
-            : null;
-        _activeSafeZoneCount = cachedZones.length;
-        _safeZonesUpdatedAt = updatedAt;
-      });
-    } finally {
-      if (mounted) {
-        setState(() => _loadingSummary = false);
+      _activeSafeZoneCount = cachedZones.length;
+      _safeZonesUpdatedAt = updatedAt;
+      safeZonesAvailable = cachedZones.isNotEmpty;
+    }
+
+    try {
+      final List<CitizenAlert> alerts = await _alertsApi.fetchAlerts(limit: 20);
+      await _alertsCache.saveAlerts(alerts);
+      _activeAlertsCount = alerts.length;
+      _latestAlert = _latestByTimestamp(alerts);
+      alertsAvailable = true;
+    } catch (_) {
+      final List<CitizenAlert> cachedAlerts = await _alertsCache.loadAlerts();
+      _activeAlertsCount = cachedAlerts.length;
+      _latestAlert = _latestByTimestamp(cachedAlerts);
+      alertsAvailable = cachedAlerts.isNotEmpty;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      if (!safeZonesAvailable && !alertsAvailable) {
+        _summaryError = 'dash_summary_fetch_failed';
+      } else if (!alertsAvailable) {
+        _summaryError = 'dash_alerts_fetch_failed';
+      } else {
+        _summaryError = null;
       }
+      _loadingSummary = false;
+    });
+  }
+
+  CitizenAlert? _latestByTimestamp(List<CitizenAlert> alerts) {
+    if (alerts.isEmpty) return null;
+    CitizenAlert latest = alerts.first;
+    for (final CitizenAlert alert in alerts.skip(1)) {
+      if (alert.timestamp.isAfter(latest.timestamp)) {
+        latest = alert;
+      }
+    }
+    return latest;
+  }
+
+  Color _severityColor(String severity) {
+    switch (severity.toUpperCase()) {
+      case 'EMERGENCY':
+        return const Color(0xFFB71C1C);
+      case 'ALERT':
+        return const Color(0xFFDD6B20);
+      case 'WARNING':
+        return const Color(0xFFB7791F);
+      case 'WATCH':
+      case 'ADVISORY':
+        return const Color(0xFF2B6CB0);
+      default:
+        return const Color(0xFF4A5568);
     }
   }
 
@@ -444,10 +494,39 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
               children: <Widget>[
                 Text(
                   CitizenStrings.tr('dash_live_snapshot', languageCode),
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                if (_loadingSummary)
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: FilledButton.tonalIcon(
+                        key: const Key('dashboard-live-view-alerts'),
+                        onPressed: widget.onGoAlerts,
+                        icon: const Icon(Icons.notifications_active_rounded),
+                        label: Text(
+                          CitizenStrings.tr(
+                            'dash_view_alerts_feed',
+                            languageCode,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      key: const Key('dashboard-refresh-summary'),
+                      onPressed: _loadingSummary ? null : _loadSummary,
+                      icon: const Icon(Icons.refresh),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (_loadingSummary &&
+                    _activeSafeZoneCount == null &&
+                    _activeAlertsCount == null)
                   Row(
                     children: <Widget>[
                       const SizedBox(
@@ -461,32 +540,123 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       ),
                     ],
                   )
-                else if (_summaryError != null)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(_summaryError!),
-                      const SizedBox(height: 8),
-                      OutlinedButton(
-                        key: const Key('dashboard-retry-summary'),
-                        onPressed: _loadSummary,
-                        child: Text(CitizenStrings.tr('retry', languageCode)),
-                      ),
-                    ],
-                  )
                 else
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text(
-                        CitizenStrings.trf(
-                          'dash_active_safe_zones',
-                          languageCode,
-                          <String, String>{
-                            'count': (_activeSafeZoneCount ?? 0).toString(),
-                          },
-                        ),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          Chip(
+                            avatar: const Icon(Icons.shield_outlined, size: 16),
+                            label: Text(
+                              CitizenStrings.trf(
+                                'dash_active_safe_zones',
+                                languageCode,
+                                <String, String>{
+                                  'count': (_activeSafeZoneCount ?? 0)
+                                      .toString(),
+                                },
+                              ),
+                            ),
+                          ),
+                          Chip(
+                            avatar: const Icon(
+                              Icons.notifications_active_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              CitizenStrings.trf(
+                                'dash_active_alerts',
+                                languageCode,
+                                <String, String>{
+                                  'count': (_activeAlertsCount ?? 0).toString(),
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                      const SizedBox(height: 8),
+                      if (_latestAlert != null)
+                        Container(
+                          key: const Key('dashboard-latest-alert-card'),
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: <Widget>[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _severityColor(
+                                        _latestAlert!.severity,
+                                      ).withValues(alpha: 0.14),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: _severityColor(
+                                          _latestAlert!.severity,
+                                        ).withValues(alpha: 0.35),
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _latestAlert!.severity,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: _severityColor(
+                                          _latestAlert!.severity,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    CitizenStrings.trf(
+                                      'alerts_updated',
+                                      languageCode,
+                                      <String, String>{
+                                        'ago': _updatedAgo(
+                                          _latestAlert!.timestamp,
+                                          languageCode,
+                                        ),
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                _latestAlert!.message,
+                                key: const Key(
+                                  'dashboard-latest-alert-message',
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Text(
+                          CitizenStrings.tr(
+                            'dash_no_live_alerts',
+                            languageCode,
+                          ),
+                        ),
                       const SizedBox(height: 4),
                       Text(
                         CitizenStrings.trf(
@@ -500,6 +670,16 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                           },
                         ),
                       ),
+                      if (_summaryError != null) ...<Widget>[
+                        const SizedBox(height: 8),
+                        Text(CitizenStrings.tr(_summaryError!, languageCode)),
+                        const SizedBox(height: 8),
+                        OutlinedButton(
+                          key: const Key('dashboard-retry-summary'),
+                          onPressed: _loadSummary,
+                          child: Text(CitizenStrings.tr('retry', languageCode)),
+                        ),
+                      ],
                     ],
                   ),
               ],
