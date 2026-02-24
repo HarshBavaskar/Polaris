@@ -72,16 +72,19 @@ The README now reflects the latest change set on this branch:
 
 ---
 
-## Dashboard UI
+## App UI Demos
 
 <div align="center">
-  <img src="misc/Polaris Dashboard Demo.gif"/>
-</div>
-
-## Citizen App UI
-
-<div align="center">
-  <img src="misc/Polaris Citizen App Demo.gif"/>
+  <table>
+    <tr>
+      <td align="center"><b>Dashboard App</b></td>
+      <td align="center"><b>Citizen App</b></td>
+    </tr>
+    <tr>
+      <td><img src="misc/Polaris Dashboard Demo.gif" width="480"/></td>
+      <td><img src="misc/Polaris Citizen App Demo.gif" width="300"/></td>
+    </tr>
+  </table>
 </div>
 
 ---
