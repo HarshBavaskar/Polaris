@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -22,7 +21,9 @@ import '../widgets/citizen_top_bar.dart';
 import '../widgets/polaris_startup_loader.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
-  const CitizenDashboardScreen({super.key});
+  final Stream<int>? tabNavigationStream;
+
+  const CitizenDashboardScreen({super.key, this.tabNavigationStream});
 
   @override
   State<CitizenDashboardScreen> createState() => _CitizenDashboardScreenState();
@@ -31,9 +32,7 @@ class CitizenDashboardScreen extends StatefulWidget {
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  Timer? _startupTimer;
-  bool _showStartupLoader = true;
+  StreamSubscription<int>? _tabNavigationSub;
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -63,19 +62,12 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
       const MyReportsScreen(),
       const TrustUsabilityScreen(),
     ];
-    final bool isAndroidUi =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    _startupTimer = Timer(
-      Duration(milliseconds: isAndroidUi ? 1800 : 1800),
-      () {
-        if (mounted) setState(() => _showStartupLoader = false);
-      },
-    );
+    _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
   }
 
   @override
   void dispose() {
-    _startupTimer?.cancel();
+    _tabNavigationSub?.cancel();
     super.dispose();
   }
 
@@ -90,6 +82,14 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   void _openMyReportsTab() => setState(() => _selectedIndex = 5);
 
   void _openTrustTab() => setState(() => _selectedIndex = 6);
+
+  void _openFromSignal(int index) {
+    if (!mounted) return;
+    final int bounded = index < 0
+        ? 0
+        : (index >= _pages.length ? _pages.length - 1 : index);
+    setState(() => _selectedIndex = bounded);
+  }
 
   void _openFromDrawer(int index) {
     setState(() => _selectedIndex = index);

@@ -38,6 +38,11 @@ Included now:
 - mobile platform permissions:
   - Android `INTERNET`, `CAMERA`, `ACCESS_FINE_LOCATION`, `ACCESS_COARSE_LOCATION`
   - iOS `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSLocationWhenInUseUsageDescription`
+- push notification flow (FCM):
+  - app requests notification permission on startup (Android/iOS)
+  - app fetches FCM token and registers it to backend `POST /alert/register-token`
+  - app listens for foreground/background push
+  - tapping notification opens Alerts tab directly in citizen app
 
 Run:
 
@@ -59,3 +64,18 @@ Android run (emulator/device):
 flutter devices
 flutter run -d <android-device-id> --dart-define=POLARIS_API_BASE_URL=http://<YOUR_LAN_IP>:8000
 ```
+
+Push notification setup required (one-time):
+
+1. Firebase app config files for `polaris_citizen`:
+   - Android: place Firebase `google-services.json` at `polaris_citizen/android/app/google-services.json`
+   - iOS: place Firebase `GoogleService-Info.plist` at `polaris_citizen/ios/Runner/GoogleService-Info.plist` and add it to Runner target in Xcode
+2. iOS Xcode capability:
+   - enable `Push Notifications` for Runner target
+3. Backend `.env` must include:
+   - `FCM_PROJECT_ID`
+   - `FCM_SERVICE_ACCOUNT_FILE`
+4. Verify backend config:
+   - `GET /alert/debug-status`
+5. Send test push:
+   - `POST /alert/test-token` with citizen app token
