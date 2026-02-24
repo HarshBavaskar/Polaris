@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -17,7 +19,9 @@ import '../features/safe_zones/safe_zones_screen.dart';
 import '../features/settings/trust_usability_screen.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
-  const CitizenDashboardScreen({super.key});
+  final Stream<int>? tabNavigationStream;
+
+  const CitizenDashboardScreen({super.key, this.tabNavigationStream});
 
   @override
   State<CitizenDashboardScreen> createState() => _CitizenDashboardScreenState();
@@ -26,6 +30,7 @@ class CitizenDashboardScreen extends StatefulWidget {
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
   late final List<Widget> _pages;
+  StreamSubscription<int>? _tabNavigationSub;
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -55,6 +60,13 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
       const MyReportsScreen(),
       const TrustUsabilityScreen(),
     ];
+    _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
+  }
+
+  @override
+  void dispose() {
+    _tabNavigationSub?.cancel();
+    super.dispose();
   }
 
   void _openAlertsTab() => setState(() => _selectedIndex = 1);
@@ -68,6 +80,14 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   void _openMyReportsTab() => setState(() => _selectedIndex = 5);
 
   void _openTrustTab() => setState(() => _selectedIndex = 6);
+
+  void _openFromSignal(int index) {
+    if (!mounted) return;
+    final int bounded = index < 0
+        ? 0
+        : (index >= _pages.length ? _pages.length - 1 : index);
+    setState(() => _selectedIndex = bounded);
+  }
 
   void _openFromDrawer(int index) {
     setState(() => _selectedIndex = index);

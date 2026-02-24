@@ -1,10 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'core/settings/citizen_preferences.dart';
 import 'core/settings/citizen_preferences_scope.dart';
+import 'features/notifications/citizen_notification_service.dart';
 import 'screens/citizen_dashboard_screen.dart';
 
 class CitizenApp extends StatefulWidget {
-  const CitizenApp({super.key});
+  final CitizenNotificationService? notificationService;
+
+  const CitizenApp({super.key, this.notificationService});
 
   @override
   State<CitizenApp> createState() => _CitizenAppState();
@@ -12,12 +17,29 @@ class CitizenApp extends StatefulWidget {
 
 class _CitizenAppState extends State<CitizenApp> {
   late final CitizenPreferencesController _preferences;
+  final StreamController<int> _tabNavigationController =
+      StreamController<int>.broadcast();
+  StreamSubscription<int>? _notificationNavigationSub;
 
   @override
   void initState() {
     super.initState();
     _preferences = CitizenPreferencesController();
     _preferences.load();
+    _notificationNavigationSub = widget.notificationService?.tabOpenRequests
+        .listen((int tabIndex) {
+          if (!_tabNavigationController.isClosed) {
+            _tabNavigationController.add(tabIndex);
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _notificationNavigationSub?.cancel();
+    _tabNavigationController.close();
+    widget.notificationService?.dispose();
+    super.dispose();
   }
 
   @override
@@ -79,7 +101,9 @@ class _CitizenAppState extends State<CitizenApp> {
             debugShowCheckedModeBanner: false,
             locale: Locale(_preferences.languageCode),
             theme: theme,
-            home: const CitizenDashboardScreen(),
+            home: CitizenDashboardScreen(
+              tabNavigationStream: _tabNavigationController.stream,
+            ),
           ),
         );
       },

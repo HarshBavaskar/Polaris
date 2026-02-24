@@ -32,6 +32,10 @@
 	<string>Polaris Citizen needs photo library access to upload flood images.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Polaris Citizen uses your location to suggest nearest safe zones.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
