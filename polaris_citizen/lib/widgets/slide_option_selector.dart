@@ -35,12 +35,17 @@ class SlideOptionSelector<T> extends StatelessWidget {
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
         final double segmentWidth = (width - 8) / options.length;
+        const double thumbInset = 1.5;
+        final double thumbWidth = (segmentWidth - (thumbInset * 2)).clamp(
+          0,
+          segmentWidth,
+        );
 
         return GestureDetector(
           onHorizontalDragEnd: (DragEndDetails details) {
             final double velocity = details.primaryVelocity ?? 0;
             if (velocity.abs() < 120) return;
-            final int next = velocity < 0
+            final int next = velocity > 0
                 ? selectedIndex + 1
                 : selectedIndex - 1;
             if (next >= 0 && next < options.length) onSelected(options[next]);
@@ -58,10 +63,10 @@ class SlideOptionSelector<T> extends StatelessWidget {
                 AnimatedPositioned(
                   duration: const Duration(milliseconds: 200),
                   curve: Curves.easeOutCubic,
-                  left: selectedIndex * segmentWidth,
+                  left: (selectedIndex * segmentWidth) + thumbInset,
                   top: 0,
                   bottom: 0,
-                  width: segmentWidth,
+                  width: thumbWidth,
                   child: Container(
                     decoration: BoxDecoration(
                       color: selectedTone.withValues(alpha: 0.16),

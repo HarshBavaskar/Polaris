@@ -82,7 +82,7 @@ class CitizenNotificationService {
     );
 
     await _localNotifications.initialize(
-      settings,
+      settings: settings,
       onDidReceiveNotificationResponse: (_) => _openAlertsTab(),
     );
 
@@ -170,10 +170,10 @@ class CitizenNotificationService {
     );
 
     await _localNotifications.show(
-      message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-      title,
-      body,
-      details,
+      id: message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
+      title: title,
+      body: body,
+      notificationDetails: details,
       payload: 'open_alerts',
     );
   }

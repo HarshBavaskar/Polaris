@@ -44,10 +44,11 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final bool isAndroidUi = theme.platform == TargetPlatform.android;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 10, 10, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      margin: EdgeInsets.fromLTRB(10, isAndroidUi ? 8 : 10, 10, 8),
+      padding: EdgeInsets.symmetric(horizontal: isAndroidUi ? 10 : 12, vertical: isAndroidUi ? 10 : 12),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -63,42 +64,49 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: colors.outlineVariant),
             ),
-            child: SizedBox(
-              height: 72,
-              child: Row(
-                children: <Widget>[
-                  IconButton(
-                    tooltip: 'Open navigation menu',
-                    onPressed: widget.onMenuTap,
-                    icon: const Icon(Icons.menu_rounded),
-                  ),
-                  Expanded(
-                    child: Center(
-                      child: SizedBox(
-                        height: double.infinity,
-                        child: Image.asset(
-                          'assets/Polaris_Logo_Side.PNG',
-                          fit: BoxFit.fitHeight,
-                          alignment: Alignment.center,
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool compact = constraints.maxWidth < 360;
+                return SizedBox(
+                  height: compact ? 62 : 72,
+                  child: Row(
+                    children: <Widget>[
+                      IconButton(
+                        tooltip: 'Open navigation menu',
+                        visualDensity: VisualDensity.compact,
+                        onPressed: widget.onMenuTap,
+                        icon: const Icon(Icons.menu_rounded),
+                      ),
+                      Expanded(
+                        child: Center(
+                          child: SizedBox(
+                            height: compact ? 38 : double.infinity,
+                            child: Image.asset(
+                              'assets/Polaris_Logo_Side.PNG',
+                              fit: BoxFit.fitHeight,
+                              alignment: Alignment.center,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      IconButton(
+                        key: const Key('appbar-go-language'),
+                        tooltip: widget.languageTooltip,
+                        visualDensity: VisualDensity.compact,
+                        onPressed: widget.onLanguageTap,
+                        icon: const Icon(Icons.language_outlined),
+                      ),
+                    ],
                   ),
-                  IconButton(
-                    key: const Key('appbar-go-language'),
-                    tooltip: widget.languageTooltip,
-                    onPressed: widget.onLanguageTap,
-                    icon: const Icon(Icons.language_outlined),
-                  ),
-                ],
-              ),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: isAndroidUi ? 8 : 10),
           AnimatedContainer(
             duration: const Duration(milliseconds: 280),
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: isAndroidUi ? 12 : 14, vertical: isAndroidUi ? 10 : 12),
             decoration: BoxDecoration(
               color: colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
