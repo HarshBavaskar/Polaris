@@ -289,222 +289,262 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
 
     return Column(
       children: <Widget>[
-        if (_usingCachedZones)
-          Padding(
-            padding: EdgeInsets.fromLTRB(12, 10, 12, 0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                CitizenStrings.tr('safezones_offline_banner', languageCode),
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-          child: Row(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 10),
+          child: Column(
             children: <Widget>[
-              FilledButton.icon(
-                key: const Key('safe-zones-location-btn'),
-                onPressed: _loadingLocation ? null : _fetchUserLocation,
-                icon: _loadingLocation
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.my_location),
-                label: Text(
-                  _loadingLocation
-                      ? CitizenStrings.tr('safezones_locating', languageCode)
-                      : CitizenStrings.tr(
-                          'safezones_use_location',
+              if (_usingCachedZones)
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        CitizenStrings.tr(
+                          'safezones_offline_banner',
                           languageCode,
                         ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  _locationError ??
-                      (_userLocation == null
-                          ? CitizenStrings.tr(
-                              'safezones_distance_hidden',
-                              languageCode,
-                            )
-                          : CitizenStrings.tr(
-                              'safezones_distance_shown',
-                              languageCode,
-                            )),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              CitizenStrings.trf(
-                'safezones_last_updated',
-                languageCode,
-                <String, String>{
-                  'ago': _updatedAgo(_lastUpdatedAt, languageCode),
-                },
-              ),
-            ),
-          ),
-        ),
-        if (nearest != null && nearestKm != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: Card(
-              key: const Key('safe-zones-nearest-route-card'),
-              child: ListTile(
-                title: Text(
-                  CitizenStrings.trf(
-                    'safezones_nearest',
-                    languageCode,
-                    <String, String>{'zoneId': nearest.zoneId},
-                  ),
-                ),
-                subtitle: Text(
-                  CitizenStrings.trf(
-                    'safezones_distance_eta',
-                    languageCode,
-                    <String, String>{
-                      'km': nearestKm.toStringAsFixed(1),
-                      'eta': _etaMinutes(nearestKm).toString(),
-                    },
-                  ),
-                ),
-              ),
-            ),
-          ),
-        Expanded(
-          flex: 3,
-          child: FlutterMap(
-            options: MapOptions(initialCenter: center, initialZoom: 12),
-            children: <Widget>[
-              TileLayer(
-                urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const <String>['a', 'b', 'c', 'd'],
-              ),
-              CircleLayer(
-                circles: orderedZones
-                    .map(
-                      (SafeZone zone) => CircleMarker(
-                        point: LatLng(zone.lat, zone.lng),
-                        radius: 12,
-                        color: Colors.green.withValues(alpha: 0.22),
-                        borderColor: Colors.green.shade700,
-                        borderStrokeWidth: 2,
-                      ),
-                    )
-                    .toList(),
-              ),
-              MarkerLayer(
-                markers: orderedZones
-                    .map(
-                      (SafeZone zone) => Marker(
-                        width: 36,
-                        height: 36,
-                        point: LatLng(zone.lat, zone.lng),
-                        child: const Icon(Icons.shield, color: Colors.green),
-                      ),
-                    )
-                    .toList(),
-              ),
-              if (_userLocation != null)
-                MarkerLayer(
-                  markers: <Marker>[
-                    Marker(
-                      width: 44,
-                      height: 44,
-                      point: LatLng(
-                        _userLocation!.latitude,
-                        _userLocation!.longitude,
-                      ),
-                      child: const Icon(
-                        Icons.person_pin_circle,
-                        color: Colors.blue,
-                        size: 28,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              if (_userLocation != null && nearest != null)
-                PolylineLayer(
-                  polylines: <Polyline>[
-                    Polyline(
-                      points: <LatLng>[
-                        LatLng(
-                          _userLocation!.latitude,
-                          _userLocation!.longitude,
+              if (_usingCachedZones) const SizedBox(height: 10),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: <Widget>[
+                      Row(
+                        children: <Widget>[
+                          FilledButton.icon(
+                            key: const Key('safe-zones-location-btn'),
+                            onPressed: _loadingLocation
+                                ? null
+                                : _fetchUserLocation,
+                            icon: _loadingLocation
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.my_location),
+                            label: Text(
+                              _loadingLocation
+                                  ? CitizenStrings.tr(
+                                      'safezones_locating',
+                                      languageCode,
+                                    )
+                                  : CitizenStrings.tr(
+                                      'safezones_use_location',
+                                      languageCode,
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _locationError ??
+                                  (_userLocation == null
+                                      ? CitizenStrings.tr(
+                                          'safezones_distance_hidden',
+                                          languageCode,
+                                        )
+                                      : CitizenStrings.tr(
+                                          'safezones_distance_shown',
+                                          languageCode,
+                                        )),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          CitizenStrings.trf(
+                            'safezones_last_updated',
+                            languageCode,
+                            <String, String>{
+                              'ago': _updatedAgo(_lastUpdatedAt, languageCode),
+                            },
+                          ),
                         ),
-                        LatLng(nearest.lat, nearest.lng),
-                      ],
-                      color: Colors.blue,
-                      strokeWidth: 3,
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
-            ],
-          ),
-        ),
-        Expanded(
-          flex: 2,
-          child: RefreshIndicator(
-            onRefresh: _loadSafeZones,
-            child: ListView.builder(
-              itemCount: orderedZones.length + 1,
-              itemBuilder: (BuildContext context, int index) {
-                if (index == 0) {
-                  return ListTile(
+              ),
+              if (nearest != null && nearestKm != null) ...<Widget>[
+                const SizedBox(height: 10),
+                Card(
+                  key: const Key('safe-zones-nearest-route-card'),
+                  child: ListTile(
                     title: Text(
                       CitizenStrings.trf(
-                        'safezones_active_count',
+                        'safezones_nearest',
+                        languageCode,
+                        <String, String>{'zoneId': nearest.zoneId},
+                      ),
+                    ),
+                    subtitle: Text(
+                      CitizenStrings.trf(
+                        'safezones_distance_eta',
                         languageCode,
                         <String, String>{
-                          'count': orderedZones.length.toString(),
+                          'km': nearestKm.toStringAsFixed(1),
+                          'eta': _etaMinutes(nearestKm).toString(),
                         },
                       ),
                     ),
-                    trailing: IconButton(
-                      key: const Key('safe-zones-refresh'),
-                      onPressed: _loadSafeZones,
-                      icon: const Icon(Icons.refresh),
-                    ),
-                  );
-                }
-
-                final SafeZone zone = orderedZones[index - 1];
-                final double? km = _distanceKm(zone);
-                return Card(
-                  child: ListTile(
-                    title: Text(
-                      zone.zoneId.isEmpty
-                          ? CitizenStrings.tr(
-                              'safezones_unnamed_zone',
-                              languageCode,
-                            )
-                          : zone.zoneId,
-                    ),
-                    subtitle: Text(
-                      '${CitizenStrings.trf('safezones_coords', languageCode, <String, String>{'lat': zone.lat.toStringAsFixed(4), 'lng': zone.lng.toStringAsFixed(4)})}\n'
-                      '${CitizenStrings.trf('safezones_area_pincode', languageCode, <String, String>{'area': _areaLabel(zone), 'pincode': _pincodeLabel(zone)})}\n'
-                      '${CitizenStrings.trf('safezones_source_confidence', languageCode, <String, String>{'source': zone.source, 'confidence': zone.confidence.toString()})}\n'
-                      '${CitizenStrings.trf('alerts_updated', languageCode, <String, String>{'ago': _updatedAgo(zone.lastVerified, languageCode)})}',
-                    ),
-                    trailing: Text(
-                      km == null ? '--' : '${km.toStringAsFixed(1)} km',
-                      key: const Key('safe-zone-distance-label'),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Card(
+                child: SizedBox(
+                  height: 250,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: FlutterMap(
+                      options: MapOptions(
+                        initialCenter: center,
+                        initialZoom: 12,
+                      ),
+                      children: <Widget>[
+                        TileLayer(
+                          urlTemplate:
+                              'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                          subdomains: const <String>['a', 'b', 'c', 'd'],
+                        ),
+                        CircleLayer(
+                          circles: orderedZones
+                              .map(
+                                (SafeZone zone) => CircleMarker(
+                                  point: LatLng(zone.lat, zone.lng),
+                                  radius: 12,
+                                  color: Colors.green.withValues(alpha: 0.22),
+                                  borderColor: Colors.green.shade700,
+                                  borderStrokeWidth: 2,
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        MarkerLayer(
+                          markers: orderedZones
+                              .map(
+                                (SafeZone zone) => Marker(
+                                  width: 36,
+                                  height: 36,
+                                  point: LatLng(zone.lat, zone.lng),
+                                  child: const Icon(
+                                    Icons.shield,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                        if (_userLocation != null)
+                          MarkerLayer(
+                            markers: <Marker>[
+                              Marker(
+                                width: 44,
+                                height: 44,
+                                point: LatLng(
+                                  _userLocation!.latitude,
+                                  _userLocation!.longitude,
+                                ),
+                                child: const Icon(
+                                  Icons.person_pin_circle,
+                                  color: Colors.blue,
+                                  size: 28,
+                                ),
+                              ),
+                            ],
+                          ),
+                        if (_userLocation != null && nearest != null)
+                          PolylineLayer(
+                            polylines: <Polyline>[
+                              Polyline(
+                                points: <LatLng>[
+                                  LatLng(
+                                    _userLocation!.latitude,
+                                    _userLocation!.longitude,
+                                  ),
+                                  LatLng(nearest.lat, nearest.lng),
+                                ],
+                                color: Colors.blue,
+                                strokeWidth: 3,
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                   ),
-                );
-              },
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Card(
+              child: RefreshIndicator(
+                onRefresh: _loadSafeZones,
+                child: ListView.builder(
+                  itemCount: orderedZones.length + 1,
+                  itemBuilder: (BuildContext context, int index) {
+                    if (index == 0) {
+                      return ListTile(
+                        title: Text(
+                          CitizenStrings.trf(
+                            'safezones_active_count',
+                            languageCode,
+                            <String, String>{
+                              'count': orderedZones.length.toString(),
+                            },
+                          ),
+                        ),
+                        trailing: IconButton(
+                          key: const Key('safe-zones-refresh'),
+                          onPressed: _loadSafeZones,
+                          icon: const Icon(Icons.refresh),
+                        ),
+                      );
+                    }
+
+                    final SafeZone zone = orderedZones[index - 1];
+                    final double? km = _distanceKm(zone);
+                    return Card(
+                      margin: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+                      child: ListTile(
+                        title: Text(
+                          zone.zoneId.isEmpty
+                              ? CitizenStrings.tr(
+                                  'safezones_unnamed_zone',
+                                  languageCode,
+                                )
+                              : zone.zoneId,
+                        ),
+                        subtitle: Text(
+                          '${CitizenStrings.trf('safezones_coords', languageCode, <String, String>{'lat': zone.lat.toStringAsFixed(4), 'lng': zone.lng.toStringAsFixed(4)})}\n'
+                          '${CitizenStrings.trf('safezones_area_pincode', languageCode, <String, String>{'area': _areaLabel(zone), 'pincode': _pincodeLabel(zone)})}\n'
+                          '${CitizenStrings.trf('safezones_source_confidence', languageCode, <String, String>{'source': zone.source, 'confidence': zone.confidence.toString()})}\n'
+                          '${CitizenStrings.trf('alerts_updated', languageCode, <String, String>{'ago': _updatedAgo(zone.lastVerified, languageCode)})}',
+                        ),
+                        trailing: Text(
+                          km == null ? '--' : '${km.toStringAsFixed(1)} km',
+                          key: const Key('safe-zone-distance-label'),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ),
         ),
