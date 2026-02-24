@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../core/locations/priority_area_anchors.dart';
+import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 import 'report_api.dart';
 import 'report_history.dart';
 import 'report_offline_queue.dart';
@@ -94,6 +96,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   bool _syncingPending = false;
   bool _locatingArea = false;
   int _pendingWaterLevelCount = 0;
+  String _languageCodeValue = 'en';
+
+  String get _languageCode => _languageCodeValue;
 
   @override
   void initState() {
@@ -114,6 +119,13 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _languageCodeValue =
+        CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+  }
+
+  @override
   void dispose() {
     _zoneIdController.dispose();
     _localityController.dispose();
@@ -128,9 +140,12 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   Future<Position> _defaultPositionProvider() async {
+    final String languageCode = _languageCode;
     final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location service disabled');
+      throw Exception(
+        CitizenStrings.tr('report_loc_service_disabled', languageCode),
+      );
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
@@ -139,7 +154,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw Exception('Location permission denied');
+      throw Exception(
+        CitizenStrings.tr('report_loc_permission_denied', languageCode),
+      );
     }
 
     return Geolocator.getCurrentPosition(
@@ -182,6 +199,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   Future<void> _syncPendingWaterLevels({bool showEmptyMessage = true}) async {
+    final String languageCode = _languageCode;
     if (_syncingPending) return;
     setState(() => _syncingPending = true);
     try {
@@ -189,14 +207,22 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           .syncPendingWaterLevels();
       if (summary.synced == 0 && summary.failed == 0 && summary.pending == 0) {
         if (showEmptyMessage) {
-          _showMessage('No pending offline reports to sync.');
+          _showMessage(CitizenStrings.tr('report_sync_none', languageCode));
         }
         return;
       }
       await _refreshPendingCount();
       if (showEmptyMessage || summary.synced > 0 || summary.pending > 0) {
         _showMessage(
-          'Synced ${summary.synced} report(s), failed ${summary.failed}, pending ${summary.pending}.',
+          CitizenStrings.trf(
+            'report_sync_summary',
+            languageCode,
+            <String, String>{
+              'synced': summary.synced.toString(),
+              'failed': summary.failed.toString(),
+              'pending': summary.pending.toString(),
+            },
+          ),
         );
       }
     } finally {
@@ -205,16 +231,17 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   bool _validateZoneId() {
+    final String languageCode = _languageCode;
     if (_zoneMode == 'AREA_PINCODE') {
       final String pin = _pincodeController.text.trim();
       if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
-        _showMessage('Please enter a valid 6-digit pincode.');
+        _showMessage(CitizenStrings.tr('report_invalid_pincode', languageCode));
         return false;
       }
     }
 
     if (_zoneMode == 'CUSTOM' && _zoneIdController.text.trim().isEmpty) {
-      _showMessage('Please enter a custom zone ID.');
+      _showMessage(CitizenStrings.tr('report_enter_custom_zone', languageCode));
       return false;
     }
     return true;
@@ -242,6 +269,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   double _toRad(double value) => value * (math.pi / 180);
 
   Future<void> _useGpsAutoFillArea() async {
+    final String languageCode = _languageCode;
     if (_locatingArea) return;
     setState(() => _locatingArea = true);
     try {
@@ -275,7 +303,15 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           _pincodeController.text = nearest.pincode;
         });
         _showMessage(
-          'Detected area: ${nearest.city}, ${nearest.area} (${nearest.pincode})',
+          CitizenStrings.trf(
+            'report_detected_area',
+            languageCode,
+            <String, String>{
+              'city': nearest.city,
+              'area': nearest.area,
+              'pincode': nearest.pincode,
+            },
+          ),
         );
       } else {
         final String lat = pos.latitude.toStringAsFixed(4);
@@ -285,18 +321,21 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           _zoneIdController.text = 'GPS-$lat-$lng';
         });
         _showMessage(
-          'Could not map to known region. Custom GPS zone ID created.',
+          CitizenStrings.tr('report_gps_custom_created', languageCode),
         );
       }
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Unable to detect current location.');
+      _showMessage(
+        CitizenStrings.tr('report_unable_detect_location', languageCode),
+      );
     } finally {
       if (mounted) setState(() => _locatingArea = false);
     }
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
+    final String languageCode = _languageCode;
     try {
       final XFile? image = await _picker.pickImage(
         source: source,
@@ -307,11 +346,14 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       setState(() => _selectedImage = image);
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Unable to access camera/gallery.');
+      _showMessage(
+        CitizenStrings.tr('report_unable_access_camera_gallery', languageCode),
+      );
     }
   }
 
   Future<void> _submitWaterLevel() async {
+    final String languageCode = _languageCode;
     if (!_validateZoneId()) return;
     setState(() => _sendingLevel = true);
     final String zoneId = _normalizedZoneId();
@@ -350,7 +392,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
         ),
       );
       if (!mounted) return;
-      _showMessage('Failed to submit water level.');
+      _showMessage(
+        CitizenStrings.tr('report_submission_failed_water', languageCode),
+      );
     } catch (_) {
       await _offlineQueue.enqueueWaterLevel(
         PendingWaterLevelReport(
@@ -375,7 +419,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       await _refreshPendingCount();
       if (!mounted) return;
       _showMessage(
-        'No network. Water level saved offline. Pending: $_pendingWaterLevelCount.',
+        CitizenStrings.trf(
+          'report_saved_offline_pending',
+          languageCode,
+          <String, String>{'count': _pendingWaterLevelCount.toString()},
+        ),
       );
     } finally {
       if (mounted) setState(() => _sendingLevel = false);
@@ -383,9 +431,10 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   }
 
   Future<void> _submitFloodPhoto() async {
+    final String languageCode = _languageCode;
     if (!_validateZoneId()) return;
     if (_selectedImage == null) {
-      _showMessage('Please capture or choose a flood photo.');
+      _showMessage(CitizenStrings.tr('report_photo_required', languageCode));
       return;
     }
 
@@ -425,7 +474,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
         ),
       );
       if (!mounted) return;
-      _showMessage('Failed to submit flood photo.');
+      _showMessage(
+        CitizenStrings.tr('report_submission_failed_photo', languageCode),
+      );
     } finally {
       if (mounted) setState(() => _sendingPhoto = false);
     }
@@ -433,6 +484,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _languageCode;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
@@ -442,8 +494,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Location Zone',
+                Text(
+                  CitizenStrings.tr(
+                    'report_section_location_zone',
+                    languageCode,
+                  ),
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -453,14 +508,21 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                   children: <Widget>[
                     ChoiceChip(
                       key: const Key('zone-mode-area-pincode'),
-                      label: const Text('Area + Pincode'),
+                      label: Text(
+                        CitizenStrings.tr(
+                          'report_mode_area_pincode',
+                          languageCode,
+                        ),
+                      ),
                       selected: _zoneMode == 'AREA_PINCODE',
                       onSelected: (_) =>
                           setState(() => _zoneMode = 'AREA_PINCODE'),
                     ),
                     ChoiceChip(
                       key: const Key('zone-mode-custom'),
-                      label: const Text('Custom ID'),
+                      label: Text(
+                        CitizenStrings.tr('report_mode_custom', languageCode),
+                      ),
                       selected: _zoneMode == 'CUSTOM',
                       onSelected: (_) => setState(() => _zoneMode = 'CUSTOM'),
                     ),
@@ -480,15 +542,24 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                         : const Icon(Icons.my_location),
                     label: Text(
                       _locatingArea
-                          ? 'Detecting location...'
-                          : 'Use GPS to Auto Detect Area',
+                          ? CitizenStrings.tr(
+                              'report_detecting_location',
+                              languageCode,
+                            )
+                          : CitizenStrings.tr(
+                              'report_use_gps_autodetect',
+                              languageCode,
+                            ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   InputDecorator(
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'City / District',
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: CitizenStrings.tr(
+                        'report_city_district',
+                        languageCode,
+                      ),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -516,10 +587,13 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     const SizedBox(height: 8),
                     Row(
                       children: <Widget>[
-                        const Expanded(
+                        Expanded(
                           child: Text(
-                            'Area Suggestions',
-                            style: TextStyle(fontWeight: FontWeight.w600),
+                            CitizenStrings.tr(
+                              'report_area_suggestions',
+                              languageCode,
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
                         TextButton.icon(
@@ -531,17 +605,27 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                             });
                           },
                           icon: const Icon(Icons.clear),
-                          label: const Text('Clear selected area'),
+                          label: Text(
+                            CitizenStrings.tr(
+                              'report_clear_selected_area',
+                              languageCode,
+                            ),
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     InputDecorator(
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        labelText: 'Suggested Areas',
-                        helperText:
-                            'Pick from list, or type your own region below.',
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: CitizenStrings.tr(
+                          'report_suggested_areas',
+                          languageCode,
+                        ),
+                        helperText: CitizenStrings.tr(
+                          'report_suggested_helper',
+                          languageCode,
+                        ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -554,7 +638,12 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                                   )
                               ? _selectedAreaSuggestion
                               : null,
-                          hint: const Text('Select area (optional)'),
+                          hint: Text(
+                            CitizenStrings.tr(
+                              'report_select_area_optional',
+                              languageCode,
+                            ),
+                          ),
                           items: <DropdownMenuItem<String>>[
                             ..._areaSuggestions().map((String area) {
                               return DropdownMenuItem<String>(
@@ -582,12 +671,20 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                   TextField(
                     key: const Key('area-locality-input'),
                     controller: _localityController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Region / Locality (manual optional)',
-                      hintText: 'Enter your region, area, or neighborhood',
-                      helperText:
-                          'Use this if your region is not in the dropdown.',
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: CitizenStrings.tr(
+                        'report_locality_label',
+                        languageCode,
+                      ),
+                      hintText: CitizenStrings.tr(
+                        'report_locality_hint',
+                        languageCode,
+                      ),
+                      helperText: CitizenStrings.tr(
+                        'report_locality_helper',
+                        languageCode,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -595,25 +692,45 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                     key: const Key('area-pincode-input'),
                     controller: _pincodeController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Pincode',
-                      hintText: '6-digit pincode',
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: CitizenStrings.tr(
+                        'report_pincode_label',
+                        languageCode,
+                      ),
+                      hintText: CitizenStrings.tr(
+                        'report_pincode_hint',
+                        languageCode,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Generated zone ID: ${_normalizedZoneId().isEmpty ? '--' : _normalizedZoneId()}',
+                    CitizenStrings.trf(
+                      'report_generated_zone_id',
+                      languageCode,
+                      <String, String>{
+                        'zone': _normalizedZoneId().isEmpty
+                            ? '--'
+                            : _normalizedZoneId(),
+                      },
+                    ),
                   ),
                 ],
                 if (_zoneMode == 'CUSTOM')
                   TextField(
                     key: const Key('custom-zone-id-input'),
                     controller: _zoneIdController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Custom Zone ID',
-                      hintText: 'Example: WARD-12 or GPS-19.0178-72.8478',
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: CitizenStrings.tr(
+                        'report_custom_zone_id_label',
+                        languageCode,
+                      ),
+                      hintText: CitizenStrings.tr(
+                        'report_custom_zone_id_hint',
+                        languageCode,
+                      ),
                     ),
                   ),
               ],
@@ -627,8 +744,8 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Flood Photo',
+                Text(
+                  CitizenStrings.tr('report_section_flood_photo', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -641,7 +758,9 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                           ? null
                           : () => _pickPhoto(ImageSource.camera),
                       icon: const Icon(Icons.photo_camera_outlined),
-                      label: const Text('Camera'),
+                      label: Text(
+                        CitizenStrings.tr('report_camera', languageCode),
+                      ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('pick-photo-gallery'),
@@ -649,13 +768,21 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                           ? null
                           : () => _pickPhoto(ImageSource.gallery),
                       icon: const Icon(Icons.photo_library_outlined),
-                      label: const Text('Gallery'),
+                      label: Text(
+                        CitizenStrings.tr('report_gallery', languageCode),
+                      ),
                     ),
                   ],
                 ),
                 if (_selectedImage != null) ...<Widget>[
                   const SizedBox(height: 8),
-                  Text('Selected: ${_selectedImage!.name}'),
+                  Text(
+                    CitizenStrings.trf(
+                      'report_selected_file',
+                      languageCode,
+                      <String, String>{'name': _selectedImage!.name},
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 10),
                 FilledButton.icon(
@@ -669,7 +796,12 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                         )
                       : const Icon(Icons.cloud_upload_outlined),
                   label: Text(
-                    _sendingPhoto ? 'Submitting...' : 'Submit Flood Photo',
+                    _sendingPhoto
+                        ? CitizenStrings.tr('report_submitting', languageCode)
+                        : CitizenStrings.tr(
+                            'report_submit_flood_photo',
+                            languageCode,
+                          ),
                   ),
                 ),
               ],
@@ -683,8 +815,11 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Flooding Level',
+                Text(
+                  CitizenStrings.tr(
+                    'report_section_flooding_level',
+                    languageCode,
+                  ),
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
@@ -714,7 +849,12 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                         )
                       : const Icon(Icons.send_rounded),
                   label: Text(
-                    _sendingLevel ? 'Submitting...' : 'Submit Water Level',
+                    _sendingLevel
+                        ? CitizenStrings.tr('report_submitting', languageCode)
+                        : CitizenStrings.tr(
+                            'report_submit_water_level',
+                            languageCode,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -730,8 +870,17 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                       : const Icon(Icons.sync),
                   label: Text(
                     _syncingPending
-                        ? 'Syncing pending...'
-                        : 'Sync Pending Water Reports ($_pendingWaterLevelCount)',
+                        ? CitizenStrings.tr(
+                            'report_syncing_pending',
+                            languageCode,
+                          )
+                        : CitizenStrings.trf(
+                            'report_sync_pending_button',
+                            languageCode,
+                            <String, String>{
+                              'count': _pendingWaterLevelCount.toString(),
+                            },
+                          ),
                   ),
                 ),
               ],

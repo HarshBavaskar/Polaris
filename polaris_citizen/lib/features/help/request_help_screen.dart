@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 import 'help_request.dart';
 import 'help_request_api.dart';
 import 'help_request_queue.dart';
@@ -38,6 +40,10 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   bool _locating = false;
   bool _sending = false;
 
+  String _languageCode(BuildContext context) {
+    return CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,9 +59,12 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   }
 
   Future<Position> _defaultLocationProvider() async {
+    final String languageCode = _languageCode(context);
     final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      throw Exception('Location service disabled');
+      throw Exception(
+        CitizenStrings.tr('help_location_service_disabled', languageCode),
+      );
     }
 
     LocationPermission permission = await Geolocator.checkPermission();
@@ -64,7 +73,9 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw Exception('Location permission denied');
+      throw Exception(
+        CitizenStrings.tr('help_location_permission_denied', languageCode),
+      );
     }
 
     return Geolocator.getCurrentPosition(
@@ -79,15 +90,20 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   }
 
   Future<void> _detectLocation() async {
+    final String languageCode = _languageCode(context);
     setState(() => _locating = true);
     try {
       final Position p = await _locationProvider();
       if (!mounted) return;
       setState(() => _position = p);
-      _showMessage('Live location attached.');
+      _showMessage(
+        CitizenStrings.tr('help_live_location_attached', languageCode),
+      );
     } catch (_) {
       if (!mounted) return;
-      _showMessage('Could not fetch live location.');
+      _showMessage(
+        CitizenStrings.tr('help_live_location_fetch_failed', languageCode),
+      );
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -96,9 +112,10 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   String _newRequestId() => 'help-${DateTime.now().microsecondsSinceEpoch}';
 
   Future<void> _submitRequest() async {
+    final String languageCode = _languageCode(context);
     final String contact = _contactController.text.trim();
     if (!RegExp(r'^[0-9+\-\s]{8,15}$').hasMatch(contact)) {
-      _showMessage('Enter a valid contact number.');
+      _showMessage(CitizenStrings.tr('help_invalid_contact', languageCode));
       return;
     }
 
@@ -115,21 +132,35 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
     try {
       await _api.submitHelpRequest(request);
       if (!mounted) return;
-      _showMessage('Help request sent successfully.');
+      _showMessage(CitizenStrings.tr('help_sent_success', languageCode));
     } on HelpRequestHttpException {
       if (!mounted) return;
-      _showMessage('Help request was rejected by server.');
+      _showMessage(CitizenStrings.tr('help_rejected', languageCode));
     } catch (_) {
       await _queue.enqueue(request);
       if (!mounted) return;
-      _showMessage('No network. Help request saved offline.');
+      _showMessage(CitizenStrings.tr('help_saved_offline', languageCode));
     } finally {
       if (mounted) setState(() => _sending = false);
     }
   }
 
+  String _categoryLabel(String category, String languageCode) {
+    switch (category) {
+      case 'Medical':
+        return CitizenStrings.tr('help_category_medical', languageCode);
+      case 'Evacuation':
+        return CitizenStrings.tr('help_category_evacuation', languageCode);
+      case 'Food/Water':
+        return CitizenStrings.tr('help_category_food_water', languageCode);
+      default:
+        return category;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _languageCode(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
@@ -139,21 +170,22 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Request Help',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                Text(
+                  CitizenStrings.tr('help_title', languageCode),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'One-tap flow for urgent support. Select category, add contact number, and optional location.',
-                ),
+                Text(CitizenStrings.tr('help_desc', languageCode)),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   children: _categories.map((String category) {
                     return ChoiceChip(
-                      label: Text(category),
+                      label: Text(_categoryLabel(category, languageCode)),
                       selected: _selectedCategory == category,
                       onSelected: (_) =>
                           setState(() => _selectedCategory = category),
@@ -165,10 +197,16 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                   key: const Key('help-contact-input'),
                   controller: _contactController,
                   keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Contact Number',
-                    hintText: 'Example: 9876543210',
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr(
+                      'help_contact_label',
+                      languageCode,
+                    ),
+                    hintText: CitizenStrings.tr(
+                      'help_contact_hint',
+                      languageCode,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -184,15 +222,24 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                       : const Icon(Icons.my_location),
                   label: Text(
                     _locating
-                        ? 'Detecting...'
-                        : 'Attach Live Location (optional)',
+                        ? CitizenStrings.tr('help_detecting', languageCode)
+                        : CitizenStrings.tr(
+                            'help_attach_location_optional',
+                            languageCode,
+                          ),
                   ),
                 ),
                 if (_position != null) ...<Widget>[
                   const SizedBox(height: 6),
                   Text(
-                    'Lat ${_position!.latitude.toStringAsFixed(5)}, '
-                    'Lng ${_position!.longitude.toStringAsFixed(5)}',
+                    CitizenStrings.trf(
+                      'dash_lat_lng',
+                      languageCode,
+                      <String, String>{
+                        'lat': _position!.latitude.toStringAsFixed(5),
+                        'lng': _position!.longitude.toStringAsFixed(5),
+                      },
+                    ),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -206,7 +253,11 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.sos),
-                  label: Text(_sending ? 'Sending...' : 'Send Help Request'),
+                  label: Text(
+                    _sending
+                        ? CitizenStrings.tr('help_sending', languageCode)
+                        : CitizenStrings.tr('help_send', languageCode),
+                  ),
                 ),
               ],
             ),

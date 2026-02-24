@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/settings/citizen_preferences_scope.dart';
+import '../../core/settings/citizen_strings.dart';
 import 'alerts_api.dart';
 import 'alerts_cache.dart';
 import 'citizen_alert.dart';
@@ -20,6 +22,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
   bool _usingCachedAlerts = false;
   String? _errorMessage;
   List<CitizenAlert> _alerts = <CitizenAlert>[];
+
+  String _languageCode(BuildContext context) {
+    return CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+  }
 
   @override
   void initState() {
@@ -54,19 +60,21 @@ class _AlertsScreenState extends State<AlertsScreen> {
           _errorMessage = null;
         });
       } else {
-        setState(() => _errorMessage = 'Failed to load alerts.');
+        final String languageCode = _languageCode(context);
+        setState(
+          () => _errorMessage = CitizenStrings.tr(
+            'alerts_load_failed',
+            languageCode,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  String _updatedAgo(DateTime timestamp) {
-    final Duration diff = DateTime.now().difference(timestamp);
-    if (diff.isNegative || diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hr ago';
-    return '${diff.inDays} day(s) ago';
+  String _updatedAgo(DateTime timestamp, String languageCode) {
+    return CitizenStrings.relativeTimeFromNow(timestamp, languageCode);
   }
 
   Color _severityColor(String severity) {
@@ -87,6 +95,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = _languageCode(context);
     if (_loading && _alerts.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -103,7 +112,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
               FilledButton(
                 key: const Key('alerts-retry-button'),
                 onPressed: _loadAlerts,
-                child: const Text('Retry'),
+                child: Text(CitizenStrings.tr('retry', languageCode)),
               ),
             ],
           ),
@@ -115,9 +124,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       return RefreshIndicator(
         onRefresh: _loadAlerts,
         child: ListView(
-          children: const <Widget>[
+          children: <Widget>[
             SizedBox(height: 140),
-            Center(child: Text('No alerts available right now.')),
+            Center(
+              child: Text(CitizenStrings.tr('alerts_empty', languageCode)),
+            ),
           ],
         ),
       );
@@ -129,22 +140,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
         padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
         children: <Widget>[
           if (_usingCachedAlerts)
-            const Card(
+            Card(
               child: Padding(
-                padding: EdgeInsets.all(12),
+                padding: const EdgeInsets.all(12),
                 child: Text(
-                  'Offline mode: showing last saved alerts.',
-                  style: TextStyle(fontWeight: FontWeight.w600),
+                  CitizenStrings.tr('alerts_offline_banner', languageCode),
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
           Card(
             child: ListTile(
-              title: const Text(
-                'Alerts Feed',
-                style: TextStyle(fontWeight: FontWeight.w700),
+              title: Text(
+                CitizenStrings.tr('alerts_feed_title', languageCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
               ),
-              subtitle: Text('${_alerts.length} alert(s)'),
+              subtitle: Text(
+                CitizenStrings.trf(
+                  'alerts_count',
+                  languageCode,
+                  <String, String>{'count': _alerts.length.toString()},
+                ),
+              ),
               trailing: IconButton(
                 key: const Key('alerts-refresh-button'),
                 onPressed: _loading ? null : _loadAlerts,
@@ -184,14 +201,26 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           ),
                         ),
                         const Spacer(),
-                        Text('Updated ${_updatedAgo(alert.timestamp)}'),
+                        Text(
+                          CitizenStrings.trf(
+                            'alerts_updated',
+                            languageCode,
+                            <String, String>{
+                              'ago': _updatedAgo(alert.timestamp, languageCode),
+                            },
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Text(alert.message),
                     const SizedBox(height: 8),
                     Text(
-                      'Channel: ${alert.channel}',
+                      CitizenStrings.trf(
+                        'alerts_channel',
+                        languageCode,
+                        <String, String>{'channel': alert.channel},
+                      ),
                       style: const TextStyle(fontSize: 12),
                     ),
                   ],

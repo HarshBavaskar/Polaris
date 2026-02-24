@@ -86,7 +86,7 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
         actions: <Widget>[
           IconButton(
             key: const Key('appbar-go-language'),
-            tooltip: 'Language',
+            tooltip: CitizenStrings.tr('language_tooltip', languageCode),
             onPressed: _openTrustTab,
             icon: const Icon(Icons.language_outlined),
           ),
@@ -223,9 +223,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       final cachedZones = await _safeZonesCache.loadZones();
       final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
       if (!mounted) return;
+      final String languageCode = CitizenPreferencesScope.of(
+        context,
+      ).languageCode;
       setState(() {
         _summaryError = cachedZones.isEmpty
-            ? 'Could not fetch live summary.'
+            ? CitizenStrings.tr('dash_summary_fetch_failed', languageCode)
             : null;
         _activeSafeZoneCount = cachedZones.length;
         _safeZonesUpdatedAt = updatedAt;
@@ -237,27 +240,42 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     }
   }
 
-  String _updatedAgo(DateTime? timestamp) {
-    if (timestamp == null) return 'unknown';
-    final Duration diff = DateTime.now().difference(timestamp.toLocal());
-    if (diff.isNegative || diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours} hr ago';
-    return '${diff.inDays} day(s) ago';
+  String _updatedAgo(DateTime? timestamp, String languageCode) {
+    if (timestamp == null) {
+      return CitizenStrings.tr('time_unknown', languageCode);
+    }
+    return CitizenStrings.relativeTimeFromNow(
+      timestamp.toLocal(),
+      languageCode,
+    );
   }
 
   Future<void> _callHelpline(String number) async {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     final Uri uri = Uri(scheme: 'tel', path: number);
     final bool launched = await launchUrl(uri);
     if (!mounted) return;
     if (!launched) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not place call to $number')),
+        SnackBar(
+          content: Text(
+            CitizenStrings.trf(
+              'dash_call_failed',
+              languageCode,
+              <String, String>{'number': number},
+            ),
+          ),
+        ),
       );
     }
   }
 
   Future<void> _fetchLiveLocation() async {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     setState(() {
       _locating = true;
       _locationError = null;
@@ -266,7 +284,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     try {
       final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        setState(() => _locationError = 'Location service is disabled.');
+        setState(() {
+          _locationError = CitizenStrings.tr(
+            'dash_location_service_disabled',
+            languageCode,
+          );
+        });
         return;
       }
 
@@ -276,7 +299,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       }
       if (permission == LocationPermission.denied ||
           permission == LocationPermission.deniedForever) {
-        setState(() => _locationError = 'Location permission denied.');
+        setState(() {
+          _locationError = CitizenStrings.tr(
+            'dash_location_permission_denied',
+            languageCode,
+          );
+        });
         return;
       }
 
@@ -290,7 +318,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       setState(() => _livePosition = position);
     } catch (_) {
       if (!mounted) return;
-      setState(() => _locationError = 'Unable to fetch live location.');
+      setState(() {
+        _locationError = CitizenStrings.tr(
+          'dash_location_fetch_failed',
+          languageCode,
+        );
+      });
     } finally {
       if (mounted) {
         setState(() => _locating = false);
@@ -299,6 +332,9 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
   }
 
   Future<void> _copyLocationForHelp() async {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     final Position? p = _livePosition;
     if (p == null) return;
 
@@ -308,7 +344,9 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     await Clipboard.setData(ClipboardData(text: message));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Location copied for sharing.')),
+      SnackBar(
+        content: Text(CitizenStrings.tr('dash_location_copied', languageCode)),
+      ),
     );
   }
 
@@ -323,6 +361,9 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: <Widget>[
@@ -332,13 +373,13 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Stay Alert. Report Flooding Fast.',
+                Text(
+                  CitizenStrings.tr('dash_stay_alert_title', languageCode),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Use this app to submit flood photos, share water level, and find safe zones nearby.',
+                Text(
+                  CitizenStrings.tr('dash_stay_alert_subtitle', languageCode),
                 ),
                 const SizedBox(height: 14),
                 Wrap(
@@ -349,31 +390,44 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       key: const Key('dashboard-go-report'),
                       onPressed: widget.onGoReport,
                       icon: const Icon(Icons.flood),
-                      label: const Text('Report Flooding Now'),
+                      label: Text(
+                        CitizenStrings.tr('dash_btn_report', languageCode),
+                      ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('dashboard-go-alerts'),
                       onPressed: widget.onGoAlerts,
                       icon: const Icon(Icons.notifications_active_rounded),
-                      label: const Text('View Alerts'),
+                      label: Text(
+                        CitizenStrings.tr('dash_btn_alerts', languageCode),
+                      ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('dashboard-go-safezones'),
                       onPressed: widget.onGoSafeZones,
                       icon: const Icon(Icons.map),
-                      label: const Text('Open Safe Zones Map'),
+                      label: Text(
+                        CitizenStrings.tr('dash_btn_safe_zones', languageCode),
+                      ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('dashboard-go-request-help'),
                       onPressed: widget.onGoRequestHelp,
                       icon: const Icon(Icons.sos),
-                      label: const Text('Request Help'),
+                      label: Text(
+                        CitizenStrings.tr(
+                          'dash_btn_request_help',
+                          languageCode,
+                        ),
+                      ),
                     ),
                     OutlinedButton.icon(
                       key: const Key('dashboard-go-myreports'),
                       onPressed: widget.onGoMyReports,
                       icon: const Icon(Icons.receipt_long),
-                      label: const Text('My Report History'),
+                      label: Text(
+                        CitizenStrings.tr('dash_btn_my_reports', languageCode),
+                      ),
                     ),
                   ],
                 ),
@@ -388,21 +442,23 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Live Snapshot',
+                Text(
+                  CitizenStrings.tr('dash_live_snapshot', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
                 if (_loadingSummary)
-                  const Row(
+                  Row(
                     children: <Widget>[
-                      SizedBox(
+                      const SizedBox(
                         width: 14,
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      SizedBox(width: 8),
-                      Text('Loading live information...'),
+                      const SizedBox(width: 8),
+                      Text(
+                        CitizenStrings.tr('dash_loading_live', languageCode),
+                      ),
                     ],
                   )
                 else if (_summaryError != null)
@@ -414,7 +470,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       OutlinedButton(
                         key: const Key('dashboard-retry-summary'),
                         onPressed: _loadSummary,
-                        child: const Text('Retry'),
+                        child: Text(CitizenStrings.tr('retry', languageCode)),
                       ),
                     ],
                   )
@@ -423,11 +479,26 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        'Active safe zones available now: ${_activeSafeZoneCount ?? 0}',
+                        CitizenStrings.trf(
+                          'dash_active_safe_zones',
+                          languageCode,
+                          <String, String>{
+                            'count': (_activeSafeZoneCount ?? 0).toString(),
+                          },
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Safe zones data last updated: ${_updatedAgo(_safeZonesUpdatedAt)}',
+                        CitizenStrings.trf(
+                          'dash_safe_zones_updated',
+                          languageCode,
+                          <String, String>{
+                            'ago': _updatedAgo(
+                              _safeZonesUpdatedAt,
+                              languageCode,
+                            ),
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -436,22 +507,23 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
           ),
         ),
         const SizedBox(height: 12),
-        const Card(
+        Card(
           child: Padding(
-            padding: EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  'What To Report',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  CitizenStrings.tr('dash_what_to_report', languageCode),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
                 ),
-                SizedBox(height: 8),
-                Text('1. Capture clear photos of roads and water movement.'),
-                Text(
-                  '2. Select the closest zone ID and send current water level.',
-                ),
-                Text('3. Submit updates again if flooding worsens.'),
+                const SizedBox(height: 8),
+                Text(CitizenStrings.tr('dash_report_point_1', languageCode)),
+                Text(CitizenStrings.tr('dash_report_point_2', languageCode)),
+                Text(CitizenStrings.tr('dash_report_point_3', languageCode)),
               ],
             ),
           ),
@@ -463,23 +535,25 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Immediate Safety',
+                Text(
+                  CitizenStrings.tr('dash_immediate_safety', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                const Text('Avoid low-lying roads and underpasses.'),
-                const Text('Move to marked safe zones and stay updated.'),
-                const Text('Call local emergency services for urgent danger.'),
+                Text(CitizenStrings.tr('dash_safety_point_1', languageCode)),
+                Text(CitizenStrings.tr('dash_safety_point_2', languageCode)),
+                Text(CitizenStrings.tr('dash_safety_point_3', languageCode)),
                 const SizedBox(height: 6),
-                const Text(
-                  'Keep phone battery above 50% when heavy rain starts.',
-                ),
-                const Text(
-                  'Share verified location with family before moving.',
-                ),
+                Text(CitizenStrings.tr('dash_safety_point_4', languageCode)),
+                Text(CitizenStrings.tr('dash_safety_point_5', languageCode)),
                 Text(
-                  'Safe zone data freshness: updated ${_updatedAgo(_safeZonesUpdatedAt)}.',
+                  CitizenStrings.trf(
+                    'dash_safety_freshness',
+                    languageCode,
+                    <String, String>{
+                      'ago': _updatedAgo(_safeZonesUpdatedAt, languageCode),
+                    },
+                  ),
                 ),
               ],
             ),
@@ -492,19 +566,22 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Emergency Helplines',
+                Text(
+                  CitizenStrings.tr('dash_helplines', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                const Text('Select your area for district-wise guidance:'),
+                Text(CitizenStrings.tr('dash_select_area', languageCode)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   key: const Key('helpline-area-dropdown'),
                   initialValue: _selectedArea,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Area',
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr(
+                      'dash_area_label',
+                      languageCode,
+                    ),
                   ),
                   items: _priorityAreas.map((String area) {
                     return DropdownMenuItem<String>(
@@ -520,34 +597,44 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 const SizedBox(height: 12),
                 _HelplineTile(
                   key: const Key('helpline-112'),
-                  label: 'National Emergency Response',
+                  label: CitizenStrings.tr(
+                    'dash_helpline_national',
+                    languageCode,
+                  ),
                   number: '112',
                   onCall: () => _callHelpline('112'),
                 ),
                 const SizedBox(height: 8),
                 _HelplineTile(
                   key: const Key('helpline-101'),
-                  label: 'Fire Brigade',
+                  label: CitizenStrings.tr('dash_helpline_fire', languageCode),
                   number: '101',
                   onCall: () => _callHelpline('101'),
                 ),
                 const SizedBox(height: 8),
                 _HelplineTile(
                   key: const Key('helpline-108'),
-                  label: 'Ambulance / Medical Emergency',
+                  label: CitizenStrings.tr(
+                    'dash_helpline_ambulance',
+                    languageCode,
+                  ),
                   number: '108',
                   onCall: () => _callHelpline('108'),
                 ),
                 const SizedBox(height: 8),
                 _HelplineTile(
                   key: const Key('helpline-1077'),
-                  label: '$_selectedArea Emergency Support',
+                  label: CitizenStrings.trf(
+                    'dash_helpline_area_support',
+                    languageCode,
+                    <String, String>{'area': _selectedArea},
+                  ),
                   number: '1077',
                   onCall: () => _callHelpline('1077'),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Tip: Share your exact area while calling for faster response.',
+                  CitizenStrings.tr('dash_helpline_tip', languageCode),
                   style: TextStyle(fontSize: 12),
                 ),
               ],
@@ -561,13 +648,13 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                const Text(
-                  'Live Location for Help',
+                Text(
+                  CitizenStrings.tr('dash_live_location_title', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Use this only when needed to quickly share your exact location with responders or family.',
+                Text(
+                  CitizenStrings.tr('dash_live_location_desc', languageCode),
                 ),
                 const SizedBox(height: 10),
                 FilledButton.icon(
@@ -581,7 +668,15 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                         )
                       : const Icon(Icons.my_location),
                   label: Text(
-                    _locating ? 'Fetching location...' : 'Get Live Location',
+                    _locating
+                        ? CitizenStrings.tr(
+                            'dash_fetching_location',
+                            languageCode,
+                          )
+                        : CitizenStrings.tr(
+                            'dash_get_live_location',
+                            languageCode,
+                          ),
                   ),
                 ),
                 if (_locationError != null) ...<Widget>[
@@ -591,8 +686,14 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 if (_livePosition != null) ...<Widget>[
                   const SizedBox(height: 10),
                   Text(
-                    'Lat ${_livePosition!.latitude.toStringAsFixed(6)}, '
-                    'Lng ${_livePosition!.longitude.toStringAsFixed(6)}',
+                    CitizenStrings.trf(
+                      'dash_lat_lng',
+                      languageCode,
+                      <String, String>{
+                        'lat': _livePosition!.latitude.toStringAsFixed(6),
+                        'lng': _livePosition!.longitude.toStringAsFixed(6),
+                      },
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -603,13 +704,17 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                         key: const Key('dashboard-copy-location'),
                         onPressed: _copyLocationForHelp,
                         icon: const Icon(Icons.copy),
-                        label: const Text('Copy Help Message'),
+                        label: Text(
+                          CitizenStrings.tr('dash_copy_help', languageCode),
+                        ),
                       ),
                       OutlinedButton.icon(
                         key: const Key('dashboard-open-maps'),
                         onPressed: _openLocationInMap,
                         icon: const Icon(Icons.open_in_new),
-                        label: const Text('Open in Maps'),
+                        label: Text(
+                          CitizenStrings.tr('dash_open_maps', languageCode),
+                        ),
                       ),
                     ],
                   ),
@@ -637,6 +742,9 @@ class _HelplineTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
@@ -649,7 +757,7 @@ class _HelplineTile extends StatelessWidget {
         trailing: FilledButton.tonalIcon(
           onPressed: onCall,
           icon: const Icon(Icons.call),
-          label: const Text('Call'),
+          label: Text(CitizenStrings.tr('call', languageCode)),
         ),
       ),
     );
