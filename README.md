@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="misc/Polaris_Logo_Side.PNG" height="250"/>
+<img src="misc/Polaris_Logo_Dark.png" height="250"/>
 
-| **Current Version** | `v0.9: Stable Notifications, Web Push Stabilization, and Android Dashboard Revamp` |
+| **Current Version** | `v0.9+: Citizen App UX Revamp, Shared Branding, and Mobile Usability Improvements` |
 | --- | --- |
 
 </div>
@@ -29,19 +29,19 @@ The result is a safety-first, explainable system built for operational decision 
 
 ---
 
-## Latest Branch Updates (v0.9)
+## Latest Branch Updates (Compared to v0.9)
 
-The README now reflects the latest commit series on this branch:
+The README now reflects the latest change set on this branch:
 
 | Commit | Summary |
 | --- | --- |
-| `f5702c8` | Notification reliability upgrades, web push stabilization, Android UI/branding revamp |
-| `a80a954` | Failed-alert retry worker and retry configuration support |
-| `542a153` | Firebase Cloud Messaging (web + app), service worker and token flow integration |
-| `eb5de51` | Firebase hosting configuration and deployment workflow scaffolding |
-| `13251b8` | Removed Firebase service account JSON from version control |
+| `post-v0.9-ui-01` | Citizen app visual system migrated to dashboard-aligned theme tokens and spacing |
+| `post-v0.9-ui-02` | Navigation shell refactor: branded top bar, simplified emergency dashboard hierarchy |
+| `post-v0.9-ui-03` | Flood severity input upgraded to color-coded sliding selector control |
+| `post-v0.9-ui-04` | Android branding parity: launcher icons, splash assets, and startup loader alignment |
+| `post-v0.9-ui-05` | My Reports UX update: status filtering, spacing normalization, and stronger state affordance |
 
-### v0.9 Highlights
+### Post-v0.9 Highlights
 
 #### Notification Reliability
 
@@ -58,12 +58,12 @@ The README now reflects the latest commit series on this branch:
 - Service worker logic avoids duplicate manual notifications for notification payloads.
 - Token registration diagnostics were improved for non-2xx backend responses.
 
-#### Android Dashboard Revamp
+#### Citizen App UX Revamp
 
-- Compact navigation flow was refined for smoother mobile operations.
-- Screen switching now uses `IndexedStack` for state-preserving transitions.
-- Polaris branding/icons were refreshed for Android launcher and app shell.
-- Foreground local notifications are enabled through `flutter_local_notifications`.
+- Citizen app now uses dashboard-aligned theme primitives for consistent cross-app UX.
+- Dashboard information architecture was reduced to emergency-critical actions and live status.
+- Report severity selection now exposes explicit visual severity coding via sliding segmented control.
+- Android app entry experience now has branding parity across launcher, splash, and in-app startup loader.
 
 #### Deployment and Tooling
 
@@ -76,6 +76,12 @@ The README now reflects the latest commit series on this branch:
 
 <div align="center">
   <img src="misc/Polaris Dashboard Demo.gif"/>
+</div>
+
+## Citizen App UI
+
+<div align="center">
+  <img src="misc/Polaris Citizen App Demo.gif"/>
 </div>
 
 ---
