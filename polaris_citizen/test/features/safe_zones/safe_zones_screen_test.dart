@@ -73,6 +73,11 @@ void main() {
     await tester.pumpWidget(_buildScreen(api, cache: cache));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('safe-zones-unavailable-card')), findsOneWidget);
+    expect(
+      find.text('Safe zones are temporarily unavailable.'),
+      findsOneWidget,
+    );
     expect(find.text('Failed to load safe zones.'), findsOneWidget);
     expect(find.byKey(const Key('safe-zones-retry')), findsOneWidget);
   });

@@ -40,7 +40,11 @@ class CitizenStrings {
       'dash_live_snapshot': 'Live Snapshot',
       'dash_loading_live': 'Loading live information...',
       'dash_active_safe_zones': 'Active safe zones available now: {count}',
+      'dash_active_alerts': 'Live alerts now: {count}',
       'dash_safe_zones_updated': 'Safe zones data last updated: {ago}',
+      'dash_alerts_fetch_failed': 'Could not fetch live alerts.',
+      'dash_no_live_alerts': 'No live alerts right now.',
+      'dash_view_alerts_feed': 'View Alerts Feed',
       'dash_what_to_report': 'What To Report',
       'dash_report_point_1':
           '1. Capture clear photos of roads and water movement.',
@@ -152,6 +156,11 @@ class CitizenStrings {
       'alerts_updated': 'Updated: {ago}',
       'alerts_channel': 'Channel: {channel}',
       'safezones_load_failed': 'Failed to load safe zones.',
+      'safezones_unavailable_title': 'Safe zones are temporarily unavailable.',
+      'safezones_unavailable_help':
+          'Check network and retry. You can also pull down to refresh this page.',
+      'safezones_retry_hint':
+          'If saved safe zones are available, they will show automatically.',
       'safezones_empty': 'No active safe zones available right now.',
       'safezones_offline_banner':
           'Offline mode: showing last saved safe zones.',
@@ -233,7 +242,11 @@ class CitizenStrings {
       'dash_live_snapshot': 'लाइव स्नैपशॉट',
       'dash_loading_live': 'लाइव जानकारी लोड हो रही है...',
       'dash_active_safe_zones': 'अभी उपलब्ध सुरक्षित क्षेत्र: {count}',
+      'dash_active_alerts': 'अभी लाइव अलर्ट: {count}',
       'dash_safe_zones_updated': 'सुरक्षित क्षेत्र डेटा अंतिम अपडेट: {ago}',
+      'dash_alerts_fetch_failed': 'लाइव अलर्ट नहीं मिल सके।',
+      'dash_no_live_alerts': 'अभी कोई लाइव अलर्ट नहीं है।',
+      'dash_view_alerts_feed': 'अलर्ट फीड देखें',
       'dash_what_to_report': 'क्या रिपोर्ट करें',
       'dash_report_point_1': '1. सड़कों और पानी की गति की स्पष्ट फोटो लें।',
       'dash_report_point_2':
@@ -348,6 +361,11 @@ class CitizenStrings {
       'alerts_updated': 'अपडेट: {ago}',
       'alerts_channel': 'चैनल: {channel}',
       'safezones_load_failed': 'सुरक्षित क्षेत्र लोड नहीं हो सके।',
+      'safezones_unavailable_title': 'सुरक्षित क्षेत्र फिलहाल उपलब्ध नहीं हैं।',
+      'safezones_unavailable_help':
+          'नेटवर्क जांचें और फिर से प्रयास करें। इस पेज को नीचे खींचकर रिफ्रेश भी कर सकते हैं।',
+      'safezones_retry_hint':
+          'अगर सेव किए हुए सुरक्षित क्षेत्र उपलब्ध होंगे, तो वे अपने आप दिख जाएंगे।',
       'safezones_empty': 'अभी कोई सक्रिय सुरक्षित क्षेत्र उपलब्ध नहीं है।',
       'safezones_offline_banner':
           'ऑफलाइन मोड: आखिरी सेव किए हुए सुरक्षित क्षेत्र दिख रहे हैं।',
@@ -429,7 +447,11 @@ class CitizenStrings {
       'dash_live_snapshot': 'लाइव्ह स्नॅपशॉट',
       'dash_loading_live': 'लाइव्ह माहिती लोड होत आहे...',
       'dash_active_safe_zones': 'सध्या उपलब्ध सुरक्षित क्षेत्रे: {count}',
+      'dash_active_alerts': 'आताचे लाइव्ह अलर्ट: {count}',
       'dash_safe_zones_updated': 'सुरक्षित क्षेत्र डेटा शेवटचा अपडेट: {ago}',
+      'dash_alerts_fetch_failed': 'लाइव्ह अलर्ट मिळाले नाहीत.',
+      'dash_no_live_alerts': 'सध्या कोणतेही लाइव्ह अलर्ट नाहीत.',
+      'dash_view_alerts_feed': 'अलर्ट फीड पहा',
       'dash_what_to_report': 'काय नोंदवायचे',
       'dash_report_point_1':
           '1. रस्ते आणि पाण्याच्या हालचालींचे स्पष्ट फोटो घ्या.',
@@ -545,6 +567,11 @@ class CitizenStrings {
       'alerts_updated': 'अपडेट: {ago}',
       'alerts_channel': 'चॅनेल: {channel}',
       'safezones_load_failed': 'सुरक्षित क्षेत्रे लोड करता आली नाहीत.',
+      'safezones_unavailable_title': 'सुरक्षित क्षेत्रे सध्या उपलब्ध नाहीत.',
+      'safezones_unavailable_help':
+          'नेटवर्क तपासा आणि पुन्हा प्रयत्न करा. हे पेज खाली ओढून रिफ्रेश करू शकता.',
+      'safezones_retry_hint':
+          'सेव्ह केलेली सुरक्षित क्षेत्रे उपलब्ध असतील तर ती आपोआप दाखवली जातील.',
       'safezones_empty': 'सध्या सक्रिय सुरक्षित क्षेत्र उपलब्ध नाहीत.',
       'safezones_offline_banner':
           'ऑफलाइन मोड: शेवटची सेव केलेली सुरक्षित क्षेत्रे दाखवत आहोत.',
