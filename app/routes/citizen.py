@@ -6,7 +6,7 @@ import shutil
 from datetime import datetime
 from bson import ObjectId
 
-from app.database import citizen_reports_collection
+from app.database import citizen_reports_collection, help_requests_collection
 
 router = APIRouter(prefix="/input/citizen", tags=["Citizen Inputs"])
 
@@ -71,6 +71,41 @@ async def citizen_water_level(
         "message": "Water level report received",
         "zone_id": zone_id,
         "level": level
+    }
+
+
+@router.post("/help-request")
+async def citizen_help_request(
+    category: str = Form(...),
+    contact_number: str = Form(...),
+    lat: float | None = Form(None),
+    lng: float | None = Form(None),
+):
+    normalized_category = category.strip()
+    normalized_contact = contact_number.strip()
+
+    if not normalized_category:
+        return {"status": "error", "message": "category is required"}
+    if not normalized_contact:
+        return {"status": "error", "message": "contact_number is required"}
+
+    timestamp = datetime.now()
+    doc = {
+        "category": normalized_category,
+        "contact_number": normalized_contact,
+        "lat": lat,
+        "lng": lng,
+        "status": "OPEN",
+        "source": "CITIZEN_APP",
+        "created_at": timestamp,
+        "updated_at": timestamp,
+    }
+
+    result = help_requests_collection.insert_one(doc)
+    return {
+        "status": "submitted",
+        "request_id": str(result.inserted_id),
+        "created_at": timestamp,
     }
 
 
