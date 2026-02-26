@@ -65,6 +65,15 @@ The README now reflects the latest change set on this branch:
 - Report severity selection now exposes explicit visual severity coding via sliding segmented control.
 - Android app entry experience now has branding parity across launcher, splash, and in-app startup loader.
 
+#### Help Request and Rescue Team Operations
+
+- Citizen app help requests now persist through `POST /input/citizen/help-request`.
+- Dashboard now includes a dedicated **Teams** tab for rescue operations.
+- Authorities can assign teams to open help requests from dashboard workflows.
+- Teams can be tracked on the map with live request overlays.
+- Nearby-team notification workflow is available for open requests with location.
+- Team operations include counts, responders, assignment state, and notification stats.
+
 #### Deployment and Tooling
 
 - Firebase hosting config files were added (`firebase.json`, `.firebaserc`, workflows).
@@ -131,6 +140,7 @@ Camera / Images
 - live status, risk, confidence, and ETA trends
 - map overlays for live risk, safe zones, and historical events
 - mobile-friendly UI updates for compact Android usage
+- rescue-team operations tab with assignment + nearby notifications + team stats
 
 ---
 
@@ -204,8 +214,14 @@ Camera / Images
 
 - `POST /input/citizen/image`
 - `POST /input/citizen/water-level`
+- `POST /input/citizen/help-request`
 - `GET /input/citizen/pending`
 - `POST /input/citizen/review`
+- `GET /dashboard/help-requests`
+- `GET /dashboard/teams/snapshot`
+- `POST /dashboard/teams/upsert`
+- `POST /dashboard/help-requests/{request_id}/assign-team`
+- `POST /dashboard/help-requests/{request_id}/notify-nearby`
 - `POST /override/set`
 - `POST /override/clear`
 - `GET /override/history`

@@ -13,6 +13,7 @@ import '../screens/citizen_verification_screen.dart';
 import '../screens/map_screen.dart';
 import '../screens/overview_screen.dart';
 import '../screens/settings_screen.dart';
+import '../screens/teams_screen.dart';
 import '../screens/trends_screen.dart';
 import '../widgets/polaris_startup_loader.dart';
 import 'side_nav.dart';
@@ -33,6 +34,7 @@ class _AppShellState extends State<AppShell> {
     'Trends',
     'Citizen Verification',
     'Authority',
+    'Teams',
     'Settings',
   ];
 
@@ -45,6 +47,7 @@ class _AppShellState extends State<AppShell> {
     TrendsScreen(),
     CitizenVerificationScreen(),
     AuthorityScreen(),
+    TeamsScreen(),
     SettingsScreen(),
   ];
 
@@ -316,6 +319,7 @@ class _AppShellState extends State<AppShell> {
                 NavigationDestination(icon: Icon(Icons.stacked_line_chart_rounded), label: 'Trends'),
                 NavigationDestination(icon: Icon(Icons.fact_check_rounded), label: 'Verify'),
                 NavigationDestination(icon: Icon(Icons.admin_panel_settings_rounded), label: 'Authority'),
+                NavigationDestination(icon: Icon(Icons.groups_rounded), label: 'Teams'),
                 NavigationDestination(icon: Icon(Icons.settings_rounded), label: 'Settings'),
               ],
             )
