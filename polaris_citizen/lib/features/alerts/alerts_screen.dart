@@ -26,6 +26,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   bool _usingCachedAlerts = false;
   String? _errorMessage;
   List<CitizenAlert> _alerts = <CitizenAlert>[];
+  DateTime? _lastUpdatedAt;
   bool _isAutoRefreshing = false;
 
   String _languageCode(BuildContext context) {
@@ -63,20 +64,24 @@ class _AlertsScreenState extends State<AlertsScreen> {
     try {
       final List<CitizenAlert> alerts = await _api.fetchAlerts();
       await _cache.saveAlerts(alerts);
+      final DateTime? updatedAt = await _cache.lastUpdatedAt();
       if (!mounted) return;
       setState(() {
         _alerts = alerts;
         _usingCachedAlerts = false;
+        _lastUpdatedAt = updatedAt;
       });
     } catch (e) {
       debugPrint('Alerts fetch failed (${_api.runtimeType}): $e');
       final List<CitizenAlert> cached = await _cache.loadAlerts();
+      final DateTime? updatedAt = await _cache.lastUpdatedAt();
       if (!mounted) return;
       if (cached.isNotEmpty) {
         setState(() {
           _alerts = cached;
           _usingCachedAlerts = true;
           _errorMessage = null;
+          _lastUpdatedAt = updatedAt;
         });
       } else {
         final String languageCode = _languageCode(context);
@@ -92,6 +97,16 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
+  String _updatedAgo(DateTime? timestamp, String languageCode) {
+    if (timestamp == null) {
+      return CitizenStrings.tr('time_unknown', languageCode);
+    }
+    return CitizenStrings.relativeTimeFromNow(
+      timestamp.toLocal(),
+      languageCode,
+    );
+  }
+
   Future<void> _autoRefresh() async {
     if (!mounted || _loading || _isAutoRefreshing) return;
     if (_isDataSaverEnabled()) return;
@@ -101,10 +116,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
     } finally {
       _isAutoRefreshing = false;
     }
-  }
-
-  String _updatedAgo(DateTime timestamp, String languageCode) {
-    return CitizenStrings.relativeTimeFromNow(timestamp, languageCode);
   }
 
   Color _severityColor(String severity) {
@@ -139,6 +150,23 @@ class _AlertsScreenState extends State<AlertsScreen> {
             children: <Widget>[
               Text(_errorMessage!),
               const SizedBox(height: 8),
+              Text(
+                CitizenStrings.tr('alerts_next_steps_title', languageCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                CitizenStrings.tr('alerts_step_check_connection', languageCode),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                CitizenStrings.tr('alerts_step_open_safezones', languageCode),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                CitizenStrings.tr('alerts_step_call_helpline', languageCode),
+              ),
+              const SizedBox(height: 10),
               FilledButton(
                 key: const Key('alerts-retry-button'),
                 onPressed: _loadAlerts,
@@ -156,8 +184,42 @@ class _AlertsScreenState extends State<AlertsScreen> {
         child: ListView(
           children: <Widget>[
             SizedBox(height: 140),
-            Center(
-              child: Text(CitizenStrings.tr('alerts_empty', languageCode)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(CitizenStrings.tr('alerts_empty', languageCode)),
+                      const SizedBox(height: 8),
+                      Text(
+                        CitizenStrings.tr(
+                          'alerts_next_steps_title',
+                          languageCode,
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        CitizenStrings.tr(
+                          'alerts_step_check_connection',
+                          languageCode,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        CitizenStrings.tr(
+                          'alerts_step_open_safezones',
+                          languageCode,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -187,11 +249,8 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
-                CitizenStrings.trf(
-                  'alerts_count',
-                  languageCode,
-                  <String, String>{'count': _alerts.length.toString()},
-                ),
+                '${CitizenStrings.trf('alerts_count', languageCode, <String, String>{'count': _alerts.length.toString()})}\n'
+                '${CitizenStrings.trf('alerts_last_synced', languageCode, <String, String>{'ago': _updatedAgo(_lastUpdatedAt, languageCode)})}',
               ),
               trailing: IconButton(
                 key: const Key('alerts-refresh-button'),

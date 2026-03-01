@@ -27,5 +27,6 @@ void main() {
     expect(loaded.first.id, 'a1');
     expect(loaded.first.severity, 'WARNING');
     expect(loaded.first.message, 'Heavy rainfall watch');
+    expect(await cache.lastUpdatedAt(), isNotNull);
   });
 }
