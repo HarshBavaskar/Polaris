@@ -34,8 +34,7 @@ class ReportSyncService {
 
     int synced = 0;
     int failed = 0;
-    final List<PendingWaterLevelReport> remaining =
-        <PendingWaterLevelReport>[];
+    final List<PendingWaterLevelReport> remaining = <PendingWaterLevelReport>[];
     for (final PendingWaterLevelReport report in pending) {
       try {
         await api.submitWaterLevel(zoneId: report.zoneId, level: report.level);

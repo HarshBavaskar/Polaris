@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
 import '../../core/settings/citizen_strings.dart';
@@ -19,6 +21,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
   late final CitizenAlertsApi _api;
   late final CitizenAlertsCache _cache;
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
+  Timer? _autoRefreshTimer;
   bool _loading = true;
   bool _usingCachedAlerts = false;
   String? _errorMessage;
@@ -35,13 +38,19 @@ class _AlertsScreenState extends State<AlertsScreen> {
     _api = widget.api ?? HttpCitizenAlertsApi();
     _cache = widget.cache ?? SharedPrefsCitizenAlertsCache();
     _loadAlerts();
-    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
+    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (Timer _) {
+      _autoRefresh();
+    });
   }
 
-  void _scheduleAutoRefresh() {
-    if (!mounted) return;
-    _autoRefresh();
-    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _isDataSaverEnabled() {
+    return CitizenPreferencesScope.maybeOf(context)?.dataSaverEnabled ?? false;
   }
 
   Future<void> _loadAlerts() async {
@@ -85,6 +94,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   Future<void> _autoRefresh() async {
     if (!mounted || _loading || _isAutoRefreshing) return;
+    if (_isDataSaverEnabled()) return;
     _isAutoRefreshing = true;
     try {
       await _loadAlerts();

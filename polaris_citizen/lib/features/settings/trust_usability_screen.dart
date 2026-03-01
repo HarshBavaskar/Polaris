@@ -63,6 +63,24 @@ class TrustUsabilityScreen extends StatelessWidget {
             ),
           ),
         ),
+        const SizedBox(height: 12),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: SwitchListTile(
+              key: const Key('trust-data-saver-toggle'),
+              value: prefs.dataSaverEnabled,
+              onChanged: (bool value) => prefs.setDataSaverEnabled(value),
+              title: Text(
+                CitizenStrings.tr('trust_data_saver_title', languageCode),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text(
+                CitizenStrings.tr('trust_data_saver_desc', languageCode),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

@@ -32,7 +32,10 @@ class HelpRequest {
     final DateTime? createdAt = DateTime.tryParse(
       value['created_at']?.toString() ?? '',
     );
-    if (id.isEmpty || category.isEmpty || contact.isEmpty || createdAt == null) {
+    if (id.isEmpty ||
+        category.isEmpty ||
+        contact.isEmpty ||
+        createdAt == null) {
       return null;
     }
     return HelpRequest(

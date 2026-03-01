@@ -48,7 +48,10 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
 
     return Container(
       margin: EdgeInsets.fromLTRB(10, isAndroidUi ? 8 : 10, 10, 8),
-      padding: EdgeInsets.symmetric(horizontal: isAndroidUi ? 10 : 12, vertical: isAndroidUi ? 10 : 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: isAndroidUi ? 10 : 12,
+        vertical: isAndroidUi ? 10 : 12,
+      ),
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -106,7 +109,10 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 280),
             width: double.infinity,
-            padding: EdgeInsets.symmetric(horizontal: isAndroidUi ? 12 : 14, vertical: isAndroidUi ? 10 : 12),
+            padding: EdgeInsets.symmetric(
+              horizontal: isAndroidUi ? 12 : 14,
+              vertical: isAndroidUi ? 10 : 12,
+            ),
             decoration: BoxDecoration(
               color: colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),

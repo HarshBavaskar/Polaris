@@ -77,7 +77,10 @@ class _CitizenAppState extends State<CitizenApp> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       inputDecorationTheme: base.inputDecorationTheme.copyWith(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         isDense: true,
       ),
       chipTheme: base.chipTheme.copyWith(
@@ -88,7 +91,9 @@ class _CitizenAppState extends State<CitizenApp> {
         style: FilledButton.styleFrom(
           minimumSize: const Size(0, 42),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: t.labelLarge?.copyWith(fontWeight: FontWeight.w700),
         ),
       ),
