@@ -9,6 +9,7 @@ import 'models/safe_zone.dart';
 import 'models/historical_incident.dart';
 import 'models/prediction.dart';
 import 'models/citizen_report.dart';
+import 'models/teams_snapshot.dart';
 
 class ApiService {
 
@@ -230,6 +231,91 @@ static Future<void> reviewCitizenReport({
 
   if (r.statusCode != 200) {
     throw Exception("Failed to review citizen report");
+  }
+}
+
+static Future<TeamsSnapshot> fetchTeamsSnapshot() async {
+  final r = await http.get(
+    Uri.parse("${ApiConfig.baseUrl}/dashboard/teams/snapshot"),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to fetch teams snapshot");
+  }
+
+  return TeamsSnapshot.fromJson(json.decode(r.body));
+}
+
+static Future<void> assignTeamToHelpRequest({
+  required String requestId,
+  required String teamId,
+  String author = "Authority",
+  String? notes,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/dashboard/help-requests/$requestId/assign-team"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "team_id": teamId,
+      "author": author,
+      "notes": notes,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to assign team");
+  }
+}
+
+static Future<int> notifyNearbyTeams({
+  required String requestId,
+  double radiusKm = 5,
+  String author = "Authority",
+  String? message,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/dashboard/help-requests/$requestId/notify-nearby"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "radius_km": radiusKm,
+      "author": author,
+      "message": message,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to notify nearby teams");
+  }
+
+  final Map<String, dynamic> data = json.decode(r.body);
+  return (data["notified_count"] as num?)?.toInt() ?? 0;
+}
+
+static Future<void> upsertRescueTeam({
+  required String teamId,
+  required String name,
+  required int membersCount,
+  required String status,
+  required double lat,
+  required double lng,
+  String? contactNumber,
+}) async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/dashboard/teams/upsert"),
+    headers: {"Content-Type": "application/json"},
+    body: json.encode({
+      "team_id": teamId,
+      "name": name,
+      "members_count": membersCount,
+      "status": status,
+      "lat": lat,
+      "lng": lng,
+      "contact_number": contactNumber,
+    }),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to save rescue team");
   }
 }
 }
