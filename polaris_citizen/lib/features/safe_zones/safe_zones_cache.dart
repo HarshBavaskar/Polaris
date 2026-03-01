@@ -46,7 +46,10 @@ class SharedPrefsSafeZonesCache implements SafeZonesCache {
           .toList(),
     );
     await prefs.setString(_zonesKey, payload);
-    await prefs.setString(_updatedAtKey, DateTime.now().toUtc().toIso8601String());
+    await prefs.setString(
+      _updatedAtKey,
+      DateTime.now().toUtc().toIso8601String(),
+    );
   }
 
   @override

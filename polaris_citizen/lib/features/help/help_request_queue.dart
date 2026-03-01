@@ -32,7 +32,10 @@ class SharedPrefsHelpRequestQueue implements HelpRequestQueue {
     try {
       final dynamic decoded = jsonDecode(raw);
       if (decoded is! List<dynamic>) return <HelpRequest>[];
-      return decoded.map(HelpRequest.fromJson).whereType<HelpRequest>().toList();
+      return decoded
+          .map(HelpRequest.fromJson)
+          .whereType<HelpRequest>()
+          .toList();
     } catch (_) {
       return <HelpRequest>[];
     }

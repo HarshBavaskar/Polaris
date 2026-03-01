@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
 import '../../core/settings/citizen_strings.dart';
 import '../../core/locations/priority_area_anchors.dart';
@@ -32,6 +35,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   late final UserLocationProvider _locationProvider;
   late final SafeZonesCache _cache;
   static const Duration _autoRefreshInterval = Duration(seconds: 20);
+  Timer? _autoRefreshTimer;
   bool _loading = true;
   String? _errorMessage;
   List<SafeZone> _zones = <SafeZone>[];
@@ -53,13 +57,19 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     _locationProvider = widget.userLocationProvider ?? _defaultLocationProvider;
     _cache = widget.cache ?? SharedPrefsSafeZonesCache();
     _loadSafeZones();
-    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
+    _autoRefreshTimer = Timer.periodic(_autoRefreshInterval, (Timer _) {
+      _autoRefresh();
+    });
   }
 
-  void _scheduleAutoRefresh() {
-    if (!mounted) return;
-    _autoRefresh();
-    Future<void>.delayed(_autoRefreshInterval, _scheduleAutoRefresh);
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _isDataSaverEnabled() {
+    return CitizenPreferencesScope.maybeOf(context)?.dataSaverEnabled ?? false;
   }
 
   Future<Position> _defaultLocationProvider() async {
@@ -151,6 +161,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
 
   Future<void> _autoRefresh() async {
     if (!mounted || _loading || _isAutoRefreshing) return;
+    if (_isDataSaverEnabled()) return;
     _isAutoRefreshing = true;
     try {
       await _loadSafeZones();
@@ -249,6 +260,27 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     final double walkingKmph = 4.5;
     final double mins = (km / walkingKmph) * 60;
     return mins.ceil().clamp(1, 999);
+  }
+
+  Future<void> _openRouteToZone(SafeZone zone) async {
+    final Position? user = _userLocation;
+    final String languageCode = _languageCode(context);
+    if (user == null) return;
+    final Uri uri = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1'
+      '&origin=${user.latitude},${user.longitude}'
+      '&destination=${zone.lat},${zone.lng}'
+      '&travelmode=walking',
+    );
+    final bool launched = await launchUrl(uri);
+    if (!mounted || launched) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          CitizenStrings.tr('safezones_route_open_failed', languageCode),
+        ),
+      ),
+    );
   }
 
   @override
@@ -361,10 +393,7 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    CitizenStrings.tr(
-                      'safezones_offline_banner',
-                      languageCode,
-                    ),
+                    CitizenStrings.tr('safezones_offline_banner', languageCode),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -385,13 +414,21 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                             ? const SizedBox(
                                 width: 14,
                                 height: 14,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.my_location),
                         label: Text(
                           _loadingLocation
-                              ? CitizenStrings.tr('safezones_locating', languageCode)
-                              : CitizenStrings.tr('safezones_use_location', languageCode),
+                              ? CitizenStrings.tr(
+                                  'safezones_locating',
+                                  languageCode,
+                                )
+                              : CitizenStrings.tr(
+                                  'safezones_use_location',
+                                  languageCode,
+                                ),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -432,23 +469,44 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
             const SizedBox(height: 10),
             Card(
               key: const Key('safe-zones-nearest-route-card'),
-              child: ListTile(
-                title: Text(
-                  CitizenStrings.trf(
-                    'safezones_nearest',
-                    languageCode,
-                    <String, String>{'zoneId': nearest.zoneId},
-                  ),
-                ),
-                subtitle: Text(
-                  CitizenStrings.trf(
-                    'safezones_distance_eta',
-                    languageCode,
-                    <String, String>{
-                      'km': nearestKm.toStringAsFixed(1),
-                      'eta': _etaMinutes(nearestKm).toString(),
-                    },
-                  ),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      CitizenStrings.trf(
+                        'safezones_nearest',
+                        languageCode,
+                        <String, String>{'zoneId': nearest.zoneId},
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      CitizenStrings.trf(
+                        'safezones_distance_eta',
+                        languageCode,
+                        <String, String>{
+                          'km': nearestKm.toStringAsFixed(1),
+                          'eta': _etaMinutes(nearestKm).toString(),
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      CitizenStrings.tr('safezones_route_tip', languageCode),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      key: const Key('safe-zones-open-route'),
+                      onPressed: () => _openRouteToZone(nearest),
+                      icon: const Icon(Icons.route),
+                      label: Text(
+                        CitizenStrings.tr('safezones_open_route', languageCode),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -487,7 +545,10 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                               width: 36,
                               height: 36,
                               point: LatLng(zone.lat, zone.lng),
-                              child: const Icon(Icons.shield, color: Colors.green),
+                              child: const Icon(
+                                Icons.shield,
+                                color: Colors.green,
+                              ),
                             ),
                           )
                           .toList(),
@@ -556,7 +617,10 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
               child: ListTile(
                 title: Text(
                   zone.zoneId.isEmpty
-                      ? CitizenStrings.tr('safezones_unnamed_zone', languageCode)
+                      ? CitizenStrings.tr(
+                          'safezones_unnamed_zone',
+                          languageCode,
+                        )
                       : zone.zoneId,
                 ),
                 subtitle: Text(

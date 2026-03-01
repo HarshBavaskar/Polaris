@@ -69,14 +69,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
     final bool isAndroidUi =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    _startupTimer = Timer(
-      Duration(milliseconds: isAndroidUi ? 650 : 1300),
-      () {
-        if (mounted) {
-          setState(() => _showStartupLoader = false);
-        }
-      },
-    );
+    _startupTimer = Timer(Duration(milliseconds: isAndroidUi ? 650 : 1300), () {
+      if (mounted) {
+        setState(() => _showStartupLoader = false);
+      }
+    });
   }
 
   @override
@@ -483,9 +480,13 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     final Position? p = _livePosition;
     if (p == null) return;
 
-    final String message =
-        'Emergency help needed. Current location: '
-        'https://maps.google.com/?q=${p.latitude},${p.longitude}';
+    final String message = CitizenStrings.trf(
+      'dash_help_message_template',
+      languageCode,
+      <String, String>{
+        'url': 'https://maps.google.com/?q=${p.latitude},${p.longitude}',
+      },
+    );
     await Clipboard.setData(ClipboardData(text: message));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -528,7 +529,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Emergency Actions',
+                  CitizenStrings.tr('dash_emergency_actions', languageCode),
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -992,7 +993,9 @@ class _HelplineTile extends StatelessWidget {
         if (compact) {
           return Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               borderRadius: BorderRadius.circular(10),
             ),
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -1003,10 +1006,7 @@ class _HelplineTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(number, style: Theme.of(context).textTheme.bodySmall),
                 const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: callButton,
-                ),
+                Align(alignment: Alignment.centerRight, child: callButton),
               ],
             ),
           );
@@ -1014,16 +1014,14 @@ class _HelplineTile extends StatelessWidget {
 
         return Container(
           decoration: BoxDecoration(
-            border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: ListTile(
             dense: true,
-            title: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+            title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(number),
             trailing: callButton,
           ),
@@ -1033,35 +1031,14 @@ class _HelplineTile extends StatelessWidget {
   }
 }
 
-class _QuickGuidanceBlock extends StatefulWidget {
+class _QuickGuidanceBlock extends StatelessWidget {
   const _QuickGuidanceBlock();
 
   @override
-  State<_QuickGuidanceBlock> createState() => _QuickGuidanceBlockState();
-}
-
-class _QuickGuidanceBlockState extends State<_QuickGuidanceBlock>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1400),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final ColorScheme colors = Theme.of(context).colorScheme;
+    final String languageCode = CitizenPreferencesScope.of(
+      context,
+    ).languageCode;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1069,7 +1046,7 @@ class _QuickGuidanceBlockState extends State<_QuickGuidanceBlock>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Text(
-              'Quick Guide',
+              CitizenStrings.tr('dash_quick_guide_title', languageCode),
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -1077,61 +1054,31 @@ class _QuickGuidanceBlockState extends State<_QuickGuidanceBlock>
             const SizedBox(height: 10),
             _GuideStep(
               icon: Icons.notifications_active_rounded,
-              title: '1. Check Alerts',
-              subtitle: 'Open Alerts to confirm current risk in your area.',
+              title: CitizenStrings.tr('dash_quick_step_1_title', languageCode),
+              subtitle: CitizenStrings.tr(
+                'dash_quick_step_1_subtitle',
+                languageCode,
+              ),
               accent: const Color(0xFF2B6CB0),
             ),
             const SizedBox(height: 8),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (BuildContext context, _) {
-                return Opacity(
-                  opacity: 0.45 + (_controller.value * 0.55),
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 22 + (_controller.value * 8),
-                    ),
-                    child: Icon(
-                      Icons.arrow_downward_rounded,
-                      color: colors.primary,
-                      size: 18,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 4),
             _GuideStep(
               icon: Icons.flood,
-              title: '2. Report Flooding',
-              subtitle:
-                  'Submit water level and flood photo from your location.',
+              title: CitizenStrings.tr('dash_quick_step_2_title', languageCode),
+              subtitle: CitizenStrings.tr(
+                'dash_quick_step_2_subtitle',
+                languageCode,
+              ),
               accent: const Color(0xFFDD6B20),
             ),
             const SizedBox(height: 8),
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (BuildContext context, _) {
-                return Opacity(
-                  opacity: 0.45 + (_controller.value * 0.55),
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      left: 22 + (_controller.value * 8),
-                    ),
-                    child: Icon(
-                      Icons.arrow_downward_rounded,
-                      color: colors.primary,
-                      size: 18,
-                    ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 4),
             _GuideStep(
               icon: Icons.sos,
-              title: '3. Request Help / Safe Zones',
-              subtitle: 'Use Help for urgent aid, Safe Zones for evacuation.',
+              title: CitizenStrings.tr('dash_quick_step_3_title', languageCode),
+              subtitle: CitizenStrings.tr(
+                'dash_quick_step_3_subtitle',
+                languageCode,
+              ),
               accent: const Color(0xFFC53030),
             ),
           ],

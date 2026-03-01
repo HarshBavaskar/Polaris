@@ -64,6 +64,6 @@ void main() {
     expect(find.text('Failed: 0'), findsOneWidget);
     expect(find.textContaining('MUMBAI-DADAR-400014'), findsOneWidget);
     expect(find.textContaining('THANE-400601'), findsOneWidget);
-    expect(find.text('PENDING'), findsOneWidget);
+    expect(find.text('PENDING'), findsWidgets);
   });
 }

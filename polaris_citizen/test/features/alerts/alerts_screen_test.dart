@@ -71,7 +71,7 @@ void main() {
       find.textContaining('Flood alert for low-lying roads'),
       findsOneWidget,
     );
-    expect(find.textContaining('Channel: FCM'), findsOneWidget);
+    expect(find.textContaining('Updated:'), findsOneWidget);
   });
 
   testWidgets('uses cached alerts when API fails', (WidgetTester tester) async {

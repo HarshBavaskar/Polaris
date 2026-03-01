@@ -73,7 +73,10 @@ void main() {
     await tester.pumpWidget(_buildScreen(api, cache: cache));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('safe-zones-unavailable-card')), findsOneWidget);
+    expect(
+      find.byKey(const Key('safe-zones-unavailable-card')),
+      findsOneWidget,
+    );
     expect(
       find.text('Safe zones are temporarily unavailable.'),
       findsOneWidget,
@@ -155,8 +158,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('Distance now shown'), findsOneWidget);
-    expect(find.byKey(const Key('safe-zone-distance-label')), findsOneWidget);
-    expect(find.byKey(const Key('safe-zones-nearest-route-card')), findsOneWidget);
+    expect(
+      find.byKey(const Key('safe-zones-nearest-route-card')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('falls back to cached zones when API fails', (

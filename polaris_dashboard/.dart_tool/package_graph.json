@@ -223,7 +223,7 @@
     },
     {
       "name": "test_api",
-      "version": "0.7.9",
+      "version": "0.7.8",
       "dependencies": [
         "async",
         "boolean_selector",

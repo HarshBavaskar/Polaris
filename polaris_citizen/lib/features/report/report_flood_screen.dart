@@ -98,6 +98,7 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   bool _locatingArea = false;
   int _pendingWaterLevelCount = 0;
   String _languageCodeValue = 'en';
+  bool _loadedPreferredArea = false;
 
   String get _languageCode => _languageCodeValue;
 
@@ -122,8 +123,24 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _languageCodeValue =
-        CitizenPreferencesScope.maybeOf(context)?.languageCode ?? 'en';
+    final prefs = CitizenPreferencesScope.maybeOf(context);
+    _languageCodeValue = prefs?.languageCode ?? 'en';
+    if (!_loadedPreferredArea && prefs != null) {
+      _loadedPreferredArea = true;
+      if (_zoneMode == 'AREA_PINCODE') {
+        _selectedCity = _cities.contains(prefs.defaultCity)
+            ? prefs.defaultCity
+            : 'Other';
+        if (_localityController.text.trim().isEmpty &&
+            prefs.defaultLocality.trim().isNotEmpty) {
+          _localityController.text = prefs.defaultLocality.trim();
+        }
+        if (_pincodeController.text.trim().isEmpty &&
+            prefs.defaultPincode.trim().isNotEmpty) {
+          _pincodeController.text = prefs.defaultPincode.trim();
+        }
+      }
+    }
   }
 
   @override
@@ -368,6 +385,50 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
   }
 
+  Future<void> _saveMyAreaDefaults() async {
+    final String languageCode = _languageCode;
+    if (_zoneMode != 'AREA_PINCODE') return;
+    final prefs = CitizenPreferencesScope.maybeOf(context);
+    if (prefs == null) return;
+    await prefs.setDefaultArea(
+      city: _selectedCity,
+      locality: _localityController.text,
+      pincode: _pincodeController.text,
+    );
+    if (!mounted) return;
+    _showMessage(CitizenStrings.tr('report_my_area_saved', languageCode));
+  }
+
+  void _useMyAreaDefaults() {
+    final String languageCode = _languageCode;
+    final prefs = CitizenPreferencesScope.maybeOf(context);
+    if (prefs == null) return;
+    if (prefs.defaultLocality.trim().isEmpty &&
+        prefs.defaultPincode.trim().isEmpty) {
+      _showMessage(CitizenStrings.tr('report_my_area_missing', languageCode));
+      return;
+    }
+    setState(() {
+      _zoneMode = 'AREA_PINCODE';
+      _selectedCity = _cities.contains(prefs.defaultCity)
+          ? prefs.defaultCity
+          : 'Other';
+      _selectedAreaSuggestion = null;
+      _localityController.text = prefs.defaultLocality.trim();
+      _pincodeController.text = prefs.defaultPincode.trim();
+    });
+    _showMessage(CitizenStrings.tr('report_my_area_applied', languageCode));
+  }
+
+  Future<void> _clearMyAreaDefaults() async {
+    final String languageCode = _languageCode;
+    final prefs = CitizenPreferencesScope.maybeOf(context);
+    if (prefs == null) return;
+    await prefs.clearDefaultArea();
+    if (!mounted) return;
+    _showMessage(CitizenStrings.tr('report_my_area_cleared', languageCode));
+  }
+
   Future<void> _submitWaterLevel() async {
     final String languageCode = _languageCode;
     if (!_validateZoneId()) return;
@@ -542,6 +603,24 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                 ),
                 const SizedBox(height: 8),
                 if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          key: const Key('report-use-my-area'),
+                          onPressed: _useMyAreaDefaults,
+                          icon: const Icon(Icons.bookmark_outline),
+                          label: Text(
+                            CitizenStrings.tr(
+                              'report_my_area_use',
+                              languageCode,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
                   OutlinedButton.icon(
                     key: const Key('area-gps-autofill-button'),
                     onPressed: _locatingArea ? null : _useGpsAutoFillArea,
@@ -715,6 +794,35 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                         languageCode,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        key: const Key('report-save-my-area'),
+                        onPressed: _saveMyAreaDefaults,
+                        icon: const Icon(Icons.bookmark_add_outlined),
+                        label: Text(
+                          CitizenStrings.tr(
+                            'report_my_area_save',
+                            languageCode,
+                          ),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        key: const Key('report-clear-my-area'),
+                        onPressed: _clearMyAreaDefaults,
+                        icon: const Icon(Icons.delete_outline),
+                        label: Text(
+                          CitizenStrings.tr(
+                            'report_my_area_clear_saved',
+                            languageCode,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
