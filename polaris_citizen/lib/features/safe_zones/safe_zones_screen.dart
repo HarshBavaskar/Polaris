@@ -283,6 +283,11 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
     );
   }
 
+  Future<void> _callEmergencyHelpline() async {
+    final Uri uri = Uri(scheme: 'tel', path: '112');
+    await launchUrl(uri);
+  }
+
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode(context);
@@ -328,12 +333,55 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                         languageCode,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    Text(
+                      CitizenStrings.tr(
+                        'safezones_next_steps_title',
+                        languageCode,
+                      ),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      CitizenStrings.tr(
+                        'safezones_step_check_connection',
+                        languageCode,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      CitizenStrings.tr(
+                        'safezones_step_enable_location',
+                        languageCode,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      CitizenStrings.tr(
+                        'safezones_step_call_helpline',
+                        languageCode,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     FilledButton.icon(
                       key: const Key('safe-zones-retry'),
                       onPressed: _loadSafeZones,
                       icon: const Icon(Icons.refresh),
                       label: Text(CitizenStrings.tr('retry', languageCode)),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      key: const Key('safe-zones-call-112'),
+                      onPressed: _callEmergencyHelpline,
+                      icon: const Icon(Icons.call),
+                      label: Text(
+                        CitizenStrings.tr(
+                          'safezones_call_helpline',
+                          languageCode,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -355,8 +403,48 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
         child: ListView(
           children: <Widget>[
             SizedBox(height: 160),
-            Center(
-              child: Text(CitizenStrings.tr('safezones_empty', languageCode)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(CitizenStrings.tr('safezones_empty', languageCode)),
+                      const SizedBox(height: 8),
+                      Text(
+                        CitizenStrings.tr(
+                          'safezones_next_steps_title',
+                          languageCode,
+                        ),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        CitizenStrings.tr(
+                          'safezones_step_check_connection',
+                          languageCode,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        CitizenStrings.tr(
+                          'safezones_step_enable_location',
+                          languageCode,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        key: const Key('safe-zones-empty-retry'),
+                        onPressed: _loadSafeZones,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(CitizenStrings.tr('retry', languageCode)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),

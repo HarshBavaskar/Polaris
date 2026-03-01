@@ -19,6 +19,7 @@ class _FakeAlertsApi implements CitizenAlertsApi {
 
 class _MemoryAlertsCache implements CitizenAlertsCache {
   List<CitizenAlert> alerts = <CitizenAlert>[];
+  DateTime? updatedAt;
 
   @override
   Future<List<CitizenAlert>> loadAlerts() async {
@@ -28,6 +29,12 @@ class _MemoryAlertsCache implements CitizenAlertsCache {
   @override
   Future<void> saveAlerts(List<CitizenAlert> value) async {
     alerts = List<CitizenAlert>.from(value);
+    updatedAt = DateTime.now();
+  }
+
+  @override
+  Future<DateTime?> lastUpdatedAt() async {
+    return updatedAt;
   }
 }
 
@@ -101,6 +108,7 @@ void main() {
       find.textContaining('Flood alert for low-lying roads'),
       findsOneWidget,
     );
+    expect(find.textContaining('Alerts last synced:'), findsOneWidget);
     expect(find.textContaining('Updated:'), findsOneWidget);
   });
 
@@ -127,6 +135,23 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Cached warning alert'), findsOneWidget);
+  });
+
+  testWidgets('shows actionable guidance when alerts fail to load', (
+    WidgetTester tester,
+  ) async {
+    final CitizenAlertsApi api = _FakeAlertsApi(() async {
+      throw Exception('network');
+    });
+    final _MemoryAlertsCache cache = _MemoryAlertsCache();
+
+    await tester.pumpWidget(_buildScreen(api, cache));
+    await tester.pumpAndSettle();
+
+    expect(find.text('What to do next'), findsOneWidget);
+    expect(find.textContaining('Check internet'), findsOneWidget);
+    expect(find.textContaining('Safe Zones'), findsOneWidget);
+    expect(find.byKey(const Key('alerts-retry-button')), findsOneWidget);
   });
 
   testWidgets('data saver blocks auto-refresh but allows manual refresh', (

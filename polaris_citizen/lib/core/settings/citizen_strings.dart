@@ -125,6 +125,7 @@ class CitizenStrings {
       'help_track_created': 'Created {ago}',
       'help_pending_title': 'Pending Offline Help Requests',
       'help_pending_count': 'Pending requests: {count}',
+      'help_pending_last_synced': 'Help queue last synced: {ago}',
       'help_sync_pending_button': 'Sync Pending Requests ({count})',
       'help_syncing': 'Syncing...',
       'help_sync_none': 'No pending help requests to sync.',
@@ -190,8 +191,15 @@ class CitizenStrings {
       'alerts_offline_banner': 'Offline mode: showing last saved alerts.',
       'alerts_feed_title': 'Alerts Feed',
       'alerts_count': '{count} alert(s)',
+      'alerts_last_synced': 'Alerts last synced: {ago}',
       'alerts_updated': 'Updated: {ago}',
       'alerts_channel': 'Channel: {channel}',
+      'alerts_next_steps_title': 'What to do next',
+      'alerts_step_check_connection': 'Check internet and retry in a moment.',
+      'alerts_step_open_safezones':
+          'Open Safe Zones from menu for nearby evacuation points.',
+      'alerts_step_call_helpline':
+          'If situation is urgent, call emergency helpline 112.',
       'safezones_load_failed': 'Failed to load safe zones.',
       'safezones_unavailable_title': 'Safe zones are temporarily unavailable.',
       'safezones_unavailable_help':
@@ -199,6 +207,13 @@ class CitizenStrings {
       'safezones_retry_hint':
           'If saved safe zones are available, they will show automatically.',
       'safezones_empty': 'No active safe zones available right now.',
+      'safezones_next_steps_title': 'What to do next',
+      'safezones_step_check_connection': 'Check internet and retry.',
+      'safezones_step_enable_location':
+          'Enable location to view nearest safe zone distance.',
+      'safezones_step_call_helpline':
+          'For urgent evacuation support, call 112.',
+      'safezones_call_helpline': 'Call Emergency Helpline (112)',
       'safezones_offline_banner':
           'Offline mode: showing last saved safe zones.',
       'safezones_locating': 'Locating...',
@@ -371,6 +386,7 @@ class CitizenStrings {
       'help_track_created': 'बनाया गया {ago}',
       'help_pending_title': 'ऑफलाइन लंबित मदद अनुरोध',
       'help_pending_count': 'लंबित अनुरोध: {count}',
+      'help_pending_last_synced': 'मदद कतार अंतिम सिंक: {ago}',
       'help_sync_pending_button': 'लंबित अनुरोध सिंक करें ({count})',
       'help_syncing': 'सिंक हो रहा है...',
       'help_sync_none': 'सिंक के लिए कोई लंबित मदद अनुरोध नहीं है।',
@@ -438,8 +454,16 @@ class CitizenStrings {
           'ऑफलाइन मोड: आखिरी सेव किए हुए अलर्ट दिख रहे हैं।',
       'alerts_feed_title': 'अलर्ट फीड',
       'alerts_count': '{count} अलर्ट',
+      'alerts_last_synced': 'अलर्ट अंतिम सिंक: {ago}',
       'alerts_updated': 'अपडेट: {ago}',
       'alerts_channel': 'चैनल: {channel}',
+      'alerts_next_steps_title': 'अगले कदम',
+      'alerts_step_check_connection':
+          'इंटरनेट जांचें और थोड़ी देर बाद फिर प्रयास करें।',
+      'alerts_step_open_safezones':
+          'निकटतम निकासी बिंदुओं के लिए मेनू से सुरक्षित क्षेत्र खोलें।',
+      'alerts_step_call_helpline':
+          'स्थिति गंभीर हो तो तुरंत आपात हेल्पलाइन 112 पर कॉल करें।',
       'safezones_load_failed': 'सुरक्षित क्षेत्र लोड नहीं हो सके।',
       'safezones_unavailable_title': 'सुरक्षित क्षेत्र फिलहाल उपलब्ध नहीं हैं।',
       'safezones_unavailable_help':
@@ -447,6 +471,13 @@ class CitizenStrings {
       'safezones_retry_hint':
           'अगर सेव किए हुए सुरक्षित क्षेत्र उपलब्ध होंगे, तो वे अपने आप दिख जाएंगे।',
       'safezones_empty': 'अभी कोई सक्रिय सुरक्षित क्षेत्र उपलब्ध नहीं है।',
+      'safezones_next_steps_title': 'अगले कदम',
+      'safezones_step_check_connection': 'इंटरनेट जांचें और फिर प्रयास करें।',
+      'safezones_step_enable_location':
+          'सबसे नज़दीकी सुरक्षित क्षेत्र दूरी देखने के लिए लोकेशन चालू करें।',
+      'safezones_step_call_helpline':
+          'तुरंत निकासी सहायता के लिए 112 पर कॉल करें।',
+      'safezones_call_helpline': 'आपात हेल्पलाइन कॉल करें (112)',
       'safezones_offline_banner':
           'ऑफलाइन मोड: आखिरी सेव किए हुए सुरक्षित क्षेत्र दिख रहे हैं।',
       'safezones_locating': 'लोकेशन खोजी जा रही है...',
@@ -622,6 +653,7 @@ class CitizenStrings {
       'help_track_created': 'तयार {ago}',
       'help_pending_title': 'ऑफलाइन प्रलंबित मदत विनंत्या',
       'help_pending_count': 'प्रलंबित विनंत्या: {count}',
+      'help_pending_last_synced': 'मदत रांग शेवटची सिंक: {ago}',
       'help_sync_pending_button': 'प्रलंबित विनंत्या सिंक करा ({count})',
       'help_syncing': 'सिंक होत आहे...',
       'help_sync_none': 'सिंक करण्यासाठी प्रलंबित मदत विनंत्या नाहीत.',
@@ -688,8 +720,16 @@ class CitizenStrings {
           'ऑफलाइन मोड: शेवटचे सेव केलेले अलर्ट दाखवत आहोत.',
       'alerts_feed_title': 'अलर्ट फीड',
       'alerts_count': '{count} अलर्ट',
+      'alerts_last_synced': 'अलर्ट शेवटचे सिंक: {ago}',
       'alerts_updated': 'अपडेट: {ago}',
       'alerts_channel': 'चॅनेल: {channel}',
+      'alerts_next_steps_title': 'पुढे काय करावे',
+      'alerts_step_check_connection':
+          'इंटरनेट तपासा आणि थोड्या वेळाने पुन्हा प्रयत्न करा.',
+      'alerts_step_open_safezones':
+          'जवळचे स्थलांतर बिंदू पाहण्यासाठी मेनूमधून सुरक्षित क्षेत्रे उघडा.',
+      'alerts_step_call_helpline':
+          'स्थिती तातडीची असल्यास आपत्कालीन हेल्पलाइन 112 वर कॉल करा.',
       'safezones_load_failed': 'सुरक्षित क्षेत्रे लोड करता आली नाहीत.',
       'safezones_unavailable_title': 'सुरक्षित क्षेत्रे सध्या उपलब्ध नाहीत.',
       'safezones_unavailable_help':
@@ -697,6 +737,14 @@ class CitizenStrings {
       'safezones_retry_hint':
           'सेव्ह केलेली सुरक्षित क्षेत्रे उपलब्ध असतील तर ती आपोआप दाखवली जातील.',
       'safezones_empty': 'सध्या सक्रिय सुरक्षित क्षेत्र उपलब्ध नाहीत.',
+      'safezones_next_steps_title': 'पुढे काय करावे',
+      'safezones_step_check_connection':
+          'इंटरनेट तपासा आणि पुन्हा प्रयत्न करा.',
+      'safezones_step_enable_location':
+          'जवळच्या सुरक्षित क्षेत्राचे अंतर पाहण्यासाठी लोकेशन चालू करा.',
+      'safezones_step_call_helpline':
+          'तातडीच्या स्थलांतर मदतीसाठी 112 वर कॉल करा.',
+      'safezones_call_helpline': 'आपत्कालीन हेल्पलाइनला कॉल करा (112)',
       'safezones_offline_banner':
           'ऑफलाइन मोड: शेवटची सेव केलेली सुरक्षित क्षेत्रे दाखवत आहोत.',
       'safezones_locating': 'लोकेशन शोधत आहे...',

@@ -49,6 +49,7 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   bool _refreshingTracking = false;
   bool _syncingPending = false;
   int _pendingQueueCount = 0;
+  DateTime? _lastHelpSyncAt;
   List<TrackedHelpRequest> _trackedRequests = <TrackedHelpRequest>[];
 
   String _languageCode(BuildContext context) {
@@ -221,6 +222,7 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
     setState(() => _syncingPending = true);
     try {
       final HelpRequestSyncSummary summary = await _syncService.syncPending();
+      _lastHelpSyncAt = DateTime.now().toUtc();
       await _loadPendingQueueCount();
       await _loadTracking();
       if (!mounted) return;
@@ -244,6 +246,16 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
         setState(() => _syncingPending = false);
       }
     }
+  }
+
+  String _updatedAgo(DateTime? timestamp, String languageCode) {
+    if (timestamp == null) {
+      return CitizenStrings.tr('time_unknown', languageCode);
+    }
+    return CitizenStrings.relativeTimeFromNow(
+      timestamp.toLocal(),
+      languageCode,
+    );
   }
 
   Future<void> _submitRequest() async {
@@ -454,6 +466,16 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                     'help_pending_count',
                     languageCode,
                     <String, String>{'count': _pendingQueueCount.toString()},
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  CitizenStrings.trf(
+                    'help_pending_last_synced',
+                    languageCode,
+                    <String, String>{
+                      'ago': _updatedAgo(_lastHelpSyncAt, languageCode),
+                    },
                   ),
                 ),
                 const SizedBox(height: 8),
