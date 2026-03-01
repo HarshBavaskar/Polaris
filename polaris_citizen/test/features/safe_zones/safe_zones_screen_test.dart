@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:polaris_citizen/core/settings/citizen_preferences.dart';
+import 'package:polaris_citizen/core/settings/citizen_preferences_scope.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zone.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_api.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_cache.dart';
 import 'package:polaris_citizen/features/safe_zones/safe_zones_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeSafeZonesApi implements SafeZonesApi {
   final Future<List<SafeZone>> Function() _handler;
@@ -29,6 +32,38 @@ Widget _buildScreen(
       ),
     ),
   );
+}
+
+Widget _buildScreenWithPreferences({
+  required SafeZonesApi api,
+  UserLocationProvider? locationProvider,
+  SafeZonesCache? cache,
+  required CitizenPreferencesController preferences,
+}) {
+  return MaterialApp(
+    home: CitizenPreferencesScope(
+      controller: preferences,
+      child: Scaffold(
+        body: SafeZonesScreen(
+          api: api,
+          userLocationProvider: locationProvider,
+          cache: cache,
+        ),
+      ),
+    ),
+  );
+}
+
+Future<CitizenPreferencesController> _loadPreferences({
+  required bool dataSaverEnabled,
+}) async {
+  SharedPreferences.setMockInitialValues(<String, Object>{
+    'citizen.pref.data_saver.v1': dataSaverEnabled,
+  });
+  final CitizenPreferencesController controller =
+      CitizenPreferencesController();
+  await controller.load();
+  return controller;
 }
 
 class _MemorySafeZonesCache implements SafeZonesCache {
@@ -191,5 +226,47 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('SZ-CACHED'), findsOneWidget);
+  });
+
+  testWidgets('data saver blocks auto-refresh but allows manual refresh', (
+    WidgetTester tester,
+  ) async {
+    int calls = 0;
+    final SafeZonesApi api = _FakeSafeZonesApi(() async {
+      calls += 1;
+      return <SafeZone>[
+        SafeZone(
+          zoneId: 'SZ-DS-1',
+          lat: 19.076,
+          lng: 72.8777,
+          radius: 300,
+          confidence: 'HIGH',
+          active: true,
+          source: 'AUTO',
+        ),
+      ];
+    });
+    final _MemorySafeZonesCache cache = _MemorySafeZonesCache();
+    final CitizenPreferencesController preferences = await _loadPreferences(
+      dataSaverEnabled: true,
+    );
+
+    await tester.pumpWidget(
+      _buildScreenWithPreferences(
+        api: api,
+        cache: cache,
+        preferences: preferences,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(calls, 1);
+
+    await tester.pump(const Duration(seconds: 21));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(calls, 1);
+
+    await tester.tap(find.byKey(const Key('safe-zones-refresh')));
+    await tester.pumpAndSettle();
+    expect(calls, 2);
   });
 }
