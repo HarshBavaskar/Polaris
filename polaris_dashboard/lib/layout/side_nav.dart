@@ -20,6 +20,7 @@ class SideNav extends StatelessWidget {
     _NavItem('Trends', Icons.stacked_line_chart_rounded),
     _NavItem('Citizen Verify', Icons.fact_check_rounded),
     _NavItem('Authority', Icons.admin_panel_settings_rounded),
+    _NavItem('Teams', Icons.groups_rounded),
     _NavItem('Settings', Icons.settings_rounded),
   ];
 
