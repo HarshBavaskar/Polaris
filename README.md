@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris_Logo_Dark.png" height="250"/>
 
-| **Current Version** | `v0.9+: Citizen App UX Revamp, Shared Branding, and Mobile Usability Improvements` |
+| **Current Version** | `v0.9.A: Citizen App UX Revamp, Shared Branding, and Mobile Usability Improvements` |
 | --- | --- |
 
 </div>
@@ -40,6 +40,7 @@ The README now reflects the latest change set on this branch:
 | `post-v0.9-ui-03` | Flood severity input upgraded to color-coded sliding selector control |
 | `post-v0.9-ui-04` | Android branding parity: launcher icons, splash assets, and startup loader alignment |
 | `post-v0.9-ui-05` | My Reports UX update: status filtering, spacing normalization, and stronger state affordance |
+| `post-v0.9-ui-06` | Citizen app API config now auto-maps localhost loopback for Android emulator networking |
 
 ### Post-v0.9 Highlights
 
@@ -64,6 +65,12 @@ The README now reflects the latest change set on this branch:
 - Dashboard information architecture was reduced to emergency-critical actions and live status.
 - Report severity selection now exposes explicit visual severity coding via sliding segmented control.
 - Android app entry experience now has branding parity across launcher, splash, and in-app startup loader.
+
+#### Citizen API Connectivity
+
+- Citizen app API configuration supports `POLARIS_API_BASE_URL` via compile-time env.
+- Android emulator flow auto-resolves loopback hosts (`127.0.0.1` / `localhost`) to `10.0.2.2`.
+- Web and non-Android runtime behavior keeps the configured base URL unchanged.
 
 #### Help Request and Rescue Team Operations
 
@@ -258,6 +265,16 @@ flutter pub get
 flutter run -d chrome --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+### Flutter Citizen App
+
+```bash
+cd polaris_citizen
+flutter pub get
+flutter run --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
+```
+
+> On Android emulator, loopback API hosts are mapped internally to `10.0.2.2`.
+
 ---
 
 ## Project Structure
@@ -337,4 +354,3 @@ It is intended to assist disaster response with faster, hyperlocal insights.
 ---
 
 > *Polaris aims to detect danger early, when response still matters.*
-
