@@ -60,6 +60,9 @@ from app.database import (
     ensure_safezone_indexes,
     ensure_active_learning_indexes,
     ensure_fcm_token_indexes,
+    ensure_help_request_indexes,
+    ensure_rescue_team_indexes,
+    ensure_team_notification_indexes,
 )
 from app.routes.safezones import router as safezones_router
 from app.database import safe_zones_collection, fcm_tokens_collection
@@ -81,6 +84,9 @@ async def lifespan(app: FastAPI):
     ensure_safezone_indexes()
     ensure_active_learning_indexes()
     ensure_fcm_token_indexes()
+    ensure_help_request_indexes()
+    ensure_rescue_team_indexes()
+    ensure_team_notification_indexes()
     retry_stop_event = None
     retry_thread = None
     if ALERT_RETRY_ENABLED:
