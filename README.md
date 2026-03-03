@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="misc/Polaris_Logo_Dark.png" height="250"/>
+<img src="misc/Polaris_Logo_Dark.png" width="600"/>
 
 | **Current Version** | `v0.9.A: Citizen App UX Revamp, Shared Branding, and Mobile Usability Improvements` |
 | --- | --- |
@@ -97,8 +97,8 @@ The README now reflects the latest change set on this branch:
       <td align="center"><b>Citizen App</b></td>
     </tr>
     <tr>
-      <td><img src="misc/Polaris Dashboard Demo.gif" width="480"/></td>
-      <td><img src="misc/Polaris Citizen App Demo.gif" width="300"/></td>
+      <td><img src="misc/Polaris Dashboard Demo.gif"/></td>
+      <td><img src="misc/Polaris Citizen App Demo.gif" width="250"/></td>
     </tr>
   </table>
 </div>
@@ -334,6 +334,13 @@ Polaris/
 - [x] FCM-based web/mobile notifications integrated
 - [x] Alert dedup + retry reliability controls implemented
 
+[PHASE 2]
+- IOS Integration
+- Hardware InTegration
+- Cloud Deployment
+- Login System Integration
+
+
 ---
 
 ## Future Roadmap
@@ -341,7 +348,6 @@ Polaris/
 - automated safe-zone verification and confidence decay
 - hyperlocal sensor fusion
 - multi-camera zone mapping
-- mobile apps for citizens and field authorities
 - pilot deployments with local authorities
 
 ---
