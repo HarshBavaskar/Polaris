@@ -1,6 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from datetime import datetime
-from app.database import overrides_collection, alerts_collection
+from app.database import (
+    overrides_collection,
+    alerts_collection,
+    predictions_collection,
+)
 from app.notifications.alert_engine import build_alert_payload
 from app.notifications.deliver import deliver
 from app.notifications.valkey_pub import publish_decision
@@ -118,6 +122,14 @@ def clear_override():
         }
     )
 
+    latest_prediction = predictions_collection.find_one({}, sort=[("timestamp", -1)])
+    latest_final_decision = (
+        latest_prediction.get("final_decision")
+        if latest_prediction else None
+    )
+    if isinstance(latest_final_decision, dict):
+        publish_decision(latest_final_decision)
+
     return {"status": "override_cleared"}
 
 
@@ -138,4 +150,6 @@ def get_active_override():
         {"active": True},
         {"_id": 0}
     )
+    if not override:
+        raise HTTPException(status_code=404, detail="No active override")
     return override
