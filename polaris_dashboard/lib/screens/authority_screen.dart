@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../core/api.dart';
 import '../core/api_service.dart';
+import '../core/models/override_state.dart';
 import '../core/models/safe_zone.dart';
 
 class AuthorityScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   bool submitting = false;
 
   Map<String, dynamic>? latestDecision;
+  OverrideState? activeOverride;
   List<dynamic> overrideHistory = [];
   List<SafeZone> manualSafeZones = [];
   String? disablingZoneId;
@@ -59,6 +61,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
     try {
       final decisionRes = await http.get(Uri.parse('$baseUrl/decision/latest'));
       final historyRes = await http.get(Uri.parse('$baseUrl/override/history'));
+      final active = await ApiService.fetchActiveOverride();
       final safeZones = await ApiService.fetchSafeZones();
       final manual = safeZones
           .where((z) => z.active && z.source.toUpperCase() == 'MANUAL')
@@ -67,6 +70,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
       if (!mounted) return;
       setState(() {
         latestDecision = jsonDecode(decisionRes.body);
+        activeOverride = active;
         overrideHistory = jsonDecode(historyRes.body);
         manualSafeZones = manual;
         loading = false;
@@ -78,8 +82,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   }
 
   bool get isOverrideActive {
-    if (latestDecision == null) return false;
-    return latestDecision!['decision_mode'] == 'MANUAL_OVERRIDE';
+    return activeOverride?.active ?? false;
   }
 
   Future<void> submitOverride() async {
@@ -106,10 +109,23 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
 
   Future<void> clearOverride() async {
     setState(() => submitting = true);
-    await http.post(Uri.parse('$baseUrl/override/clear'));
-    await loadAll();
-    if (!mounted) return;
-    setState(() => submitting = false);
+    try {
+      await ApiService.clearOverride();
+      await loadAll();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Manual override cleared.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to clear manual override.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => submitting = false);
+      }
+    }
   }
 
   Future<void> submitManualSafeZone() async {

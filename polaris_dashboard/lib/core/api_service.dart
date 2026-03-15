@@ -67,7 +67,7 @@ class ApiService {
   return data.map((e) => AlertEvent.fromJson(e)).toList();
  }
  // Active override
-  static Future<OverrideState?> fetchActiveOverride() async {
+ static Future<OverrideState?> fetchActiveOverride() async {
   final r = await http.get(
     Uri.parse("${ApiConfig.baseUrl}/override/active"),
   );
@@ -80,7 +80,12 @@ class ApiService {
     throw Exception("Failed to fetch active override");
   }
 
-  return OverrideState.fromJson(json.decode(r.body));
+  final data = json.decode(r.body);
+  if (data == null) {
+    return null;
+  }
+
+  return OverrideState.fromJson(data as Map<String, dynamic>);
   }
 
   // Set override
@@ -104,6 +109,16 @@ class ApiService {
   if (r.statusCode != 200) {
     throw Exception("Failed to set override");
     }
+  }
+
+  static Future<void> clearOverride() async {
+  final r = await http.post(
+    Uri.parse("${ApiConfig.baseUrl}/override/clear"),
+  );
+
+  if (r.statusCode != 200) {
+    throw Exception("Failed to clear override");
+  }
   }
 
   // History
