@@ -61,16 +61,23 @@ class _TopBarState extends State<TopBar> {
       final responses = await Future.wait([
         http.get(Uri.parse('$base/alerts/history?limit=20')),
         http.get(Uri.parse('$base/input/citizen/pending')),
+        http.get(Uri.parse('$base/decision/latest')),
       ]);
 
       if (responses[0].statusCode != 200 || responses[1].statusCode != 200) return;
 
       final alertsJson = jsonDecode(responses[0].body);
       final pendingReports = jsonDecode(responses[1].body) as List<dynamic>;
+      final decisionJson = responses[2].statusCode == 200
+          ? jsonDecode(responses[2].body)
+          : null;
 
       final messages = <String>[];
       var tone = _MarqueeTone.neutral;
       var highestSeverityRank = -1;
+      final latestRisk = decisionJson is Map<String, dynamic>
+          ? decisionJson['final_risk_level']?.toString().toUpperCase() ?? 'SAFE'
+          : 'SAFE';
 
       if (pendingReports.isNotEmpty) {
         messages.add('[REVIEW] ${pendingReports.length} citizen report(s) pending authority review');
@@ -93,6 +100,15 @@ class _TopBarState extends State<TopBar> {
         tone = _MarqueeTone.alert;
       } else if (highestSeverityRank >= 1 && tone == _MarqueeTone.neutral) {
         tone = _MarqueeTone.advisory;
+      }
+
+      if (latestRisk == 'SAFE' &&
+          pendingReports.isEmpty &&
+          highestSeverityRank <= 1) {
+        messages
+          ..clear()
+          ..add('[SAFE] System stable. Monitoring is active.');
+        tone = _MarqueeTone.neutral;
       }
 
       final next = messages.isEmpty
