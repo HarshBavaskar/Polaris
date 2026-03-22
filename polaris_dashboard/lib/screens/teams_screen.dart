@@ -199,79 +199,100 @@ class _TeamsScreenState extends State<TeamsScreen> {
 
     final isAndroidUi =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    final compact = MediaQuery.sizeOf(context).width < 1020 || isAndroidUi;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final compact = screenWidth < 1020 || isAndroidUi;
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         padding: EdgeInsets.all(compact ? 12 : 24),
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
+          if (compact)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
                   'Rescue Teams',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-              ),
-              FilledButton.icon(
-                onPressed: () => _load(),
-                icon: const Icon(Icons.refresh_rounded),
-                label: const Text('Refresh'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Assign teams to citizen help requests, track locations, and notify nearby units.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _statChip('Teams', data.stats.totalTeams),
-              _statChip('Available', data.stats.availableTeams),
-              _statChip('Deployed', data.stats.deployedTeams),
-              _statChip('Offline', data.stats.offlineTeams),
-              _statChip('Responders', data.stats.totalMembers),
-              _statChip('Open Requests', data.stats.openHelpRequests),
-              _statChip('Assigned Requests', data.stats.assignedHelpRequests),
-              _statChip('Notifications', data.stats.notificationsSent),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _mapCard(data),
-          const SizedBox(height: 12),
-          if (compact) ...[
-            _requestCard(data),
-            const SizedBox(height: 12),
-            _teamFormCard(),
-            const SizedBox(height: 12),
-            _teamsListCard(data),
-          ] else
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 6, child: _requestCard(data)),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 5,
-                  child: Column(
-                    children: [
-                      _teamFormCard(),
-                      const SizedBox(height: 12),
-                      _teamsListCard(data),
-                    ],
+                const SizedBox(height: 4),
+                Text(
+                  'Assign teams to citizen help requests, track locations, and notify nearby units.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: FilledButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Refresh'),
                   ),
                 ),
               ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Rescue Teams',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Assign teams to citizen help requests, track locations, and notify nearby units.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Refresh'),
+                ),
+              ],
             ),
+          const SizedBox(height: 16),
+          if (compact) ...[
+            _mapCard(data),
+            const SizedBox(height: 16),
+            _requestCard(data),
+            const SizedBox(height: 16),
+            _teamFormCard(),
+            const SizedBox(height: 16),
+            _teamsListCard(data),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 7, child: _mapCard(data)),
+                const SizedBox(width: 16),
+                Expanded(flex: 5, child: _requestCard(data)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 4, child: _teamFormCard()),
+                const SizedBox(width: 16),
+                Expanded(flex: 8, child: _teamsListCard(data)),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -381,7 +402,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (openFirst.isEmpty)
               Text(
                 'No open or assigned help requests right now.',
@@ -397,12 +418,17 @@ class _TeamsScreenState extends State<TeamsScreen> {
                     r.assignedTeamId ??
                     _firstOrNull(availableTeams.map((t) => t.teamId));
                 return Container(
-                  margin: const EdgeInsets.only(top: 10),
+                  margin: const EdgeInsets.only(top: 12),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
+                    color: _requestStatusColor(
+                      r.status,
+                    ).withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
+                      color: _requestStatusColor(
+                        r.status,
+                      ).withValues(alpha: 0.32),
                     ),
                   ),
                   child: Column(
@@ -412,12 +438,18 @@ class _TeamsScreenState extends State<TeamsScreen> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          Chip(label: Text('ID: ${r.requestId}')),
-                          Chip(label: Text('Status: ${r.status}')),
-                          Chip(label: Text('Category: ${r.category}')),
+                          _requestBadge('ID: ${r.requestId}'),
+                          _requestBadge(
+                            'Status: ${r.status}',
+                            accent: _requestStatusColor(r.status),
+                          ),
+                          _requestBadge(
+                            'Category: ${r.category}',
+                            accent: _requestCategoryColor(r.category),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Text('Contact: ${r.contactNumber}'),
                       if (r.lat != null && r.lng != null)
                         Text(
@@ -425,7 +457,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                         ),
                       if (r.createdAt != null)
                         Text('Opened: ${r.createdAt}'),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       if (r.status == 'OPEN') ...[
                         DropdownButtonFormField<String>(
                           initialValue: currentSelection,
@@ -445,7 +477,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                             labelText: 'Assign Team',
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
                       ],
                       Wrap(
                         spacing: 8,
@@ -496,23 +528,23 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextField(
               controller: _teamIdController,
               decoration: const InputDecoration(labelText: 'Team ID'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(labelText: 'Team Name'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             TextField(
               controller: _membersController,
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(labelText: 'Members'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -525,7 +557,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                     decoration: const InputDecoration(labelText: 'Latitude'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: TextField(
                     controller: _lngController,
@@ -538,14 +570,14 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             TextField(
               controller: _contactController,
               decoration: const InputDecoration(
                 labelText: 'Team Contact (Optional)',
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _teamStatus,
               items: const [
@@ -559,17 +591,20 @@ class _TeamsScreenState extends State<TeamsScreen> {
               },
               decoration: const InputDecoration(labelText: 'Status'),
             ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: savingTeam ? null : _saveTeam,
-              icon: savingTeam
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_rounded),
-              label: const Text('Save Team'),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: savingTeam ? null : _saveTeam,
+                icon: savingTeam
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.save_rounded),
+                label: const Text('Save Team'),
+              ),
             ),
           ],
         ),
@@ -590,7 +625,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             if (data.teams.isEmpty)
               Text(
                 'No teams available.',
@@ -599,7 +634,32 @@ class _TeamsScreenState extends State<TeamsScreen> {
                 ),
               )
             else
-              ...data.teams.map(_teamTile),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final columns = width >= 1320
+                      ? 3
+                      : width >= 760
+                      ? 2
+                      : 1;
+                  final itemWidth = columns == 1
+                      ? width
+                      : (width - ((columns - 1) * 16)) / columns;
+
+                  return Wrap(
+                    spacing: 16,
+                    runSpacing: 16,
+                    children: data.teams
+                        .map(
+                          (team) => SizedBox(
+                            width: itemWidth,
+                            child: _teamTile(team),
+                          ),
+                        )
+                        .toList(),
+                  );
+                },
+              ),
           ],
         ),
       ),
@@ -607,42 +667,160 @@ class _TeamsScreenState extends State<TeamsScreen> {
   }
 
   Widget _teamTile(RescueTeam team) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final statusColor = _teamStatusColor(team.status);
+
     return Container(
-      margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        color: colorScheme.surfaceContainerHigh.withValues(alpha: 0.32),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Chip(label: Text(team.teamId)),
-              Chip(label: Text(team.status)),
-              Chip(label: Text('Members: ${team.membersCount}')),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      team.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      team.teamId,
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  team.status,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: statusColor,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(team.name),
+          const SizedBox(height: 12),
+          _teamDetail(Icons.people_alt_rounded, '${team.membersCount} responders'),
           if (team.lat != null && team.lng != null)
-            Text(
-              'Location: ${team.lat!.toStringAsFixed(5)}, ${team.lng!.toStringAsFixed(5)}',
+            _teamDetail(
+              Icons.place_rounded,
+              '${team.lat!.toStringAsFixed(5)}, ${team.lng!.toStringAsFixed(5)}',
             ),
           if ((team.contactNumber ?? '').isNotEmpty)
-            Text('Contact: ${team.contactNumber}'),
+            _teamDetail(Icons.phone_rounded, team.contactNumber!),
           if ((team.assignedRequestId ?? '').isNotEmpty)
-            Text('Assigned Request: ${team.assignedRequestId}'),
+            _teamDetail(
+              Icons.assignment_turned_in_rounded,
+              'Assigned ${team.assignedRequestId}',
+            ),
         ],
       ),
     );
   }
 
-  Widget _statChip(String label, int value) {
-    return Chip(label: Text('$label: $value'));
+  Widget _requestBadge(String label, {Color? accent}) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final badgeColor = accent ?? colorScheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: accent == null ? 0.08 : 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: badgeColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+
+  Widget _teamDetail(IconData icon, String value) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _teamStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'AVAILABLE':
+        return const Color(0xFF2F855A);
+      case 'DEPLOYED':
+        return const Color(0xFFDD6B20);
+      case 'OFFLINE':
+        return const Color(0xFF4A5568);
+      default:
+        return Theme.of(context).colorScheme.onSurfaceVariant;
+    }
+  }
+
+  Color _requestStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'OPEN':
+        return const Color(0xFFC53030);
+      case 'ASSIGNED':
+        return const Color(0xFFB7791F);
+      case 'RESOLVED':
+      case 'CLOSED':
+        return const Color(0xFF2F855A);
+      default:
+        return Theme.of(context).colorScheme.onSurfaceVariant;
+    }
+  }
+
+  Color _requestCategoryColor(String category) {
+    final normalized = category.toUpperCase();
+    if (normalized.contains('MEDICAL')) {
+      return const Color(0xFFC53030);
+    }
+    if (normalized.contains('FIRE')) {
+      return const Color(0xFFDD6B20);
+    }
+    if (normalized.contains('FLOOD') || normalized.contains('WATER')) {
+      return const Color(0xFF1D4ED8);
+    }
+    if (normalized.contains('EVAC') || normalized.contains('SHELTER')) {
+      return const Color(0xFF2F855A);
+    }
+    return Theme.of(context).colorScheme.primary;
   }
 }
 
