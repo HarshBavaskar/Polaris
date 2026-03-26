@@ -58,4 +58,32 @@ void main() {
 
     expect(find.byKey(const Key('dashboard-live-view-alerts')), findsNothing);
   });
+
+  testWidgets('drawer can return from my reports to dashboard', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1080, 2200);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(const CitizenApp());
+    await tester.pump(const Duration(milliseconds: 2100));
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('drawer-nav-myreports')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('My Reports'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('drawer-nav-dashboard')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('What do you need right now?'), findsOneWidget);
+  });
 }
