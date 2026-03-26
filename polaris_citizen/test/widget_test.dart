@@ -15,17 +15,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 2100));
 
     expect(find.text('Citizen Dashboard'), findsOneWidget);
-    expect(find.text('Stay Alert. Report Flooding Fast.'), findsOneWidget);
+    expect(find.text('What do you need right now?'), findsOneWidget);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    expect(find.text('Emergency Call (112)'), findsOneWidget);
+    expect(find.byKey(const Key('dashboard-toggle-helplines')), findsOneWidget);
 
-    await tester.scrollUntilVisible(
-      find.text('Emergency Helplines'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.tap(find.byKey(const Key('dashboard-toggle-helplines')));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Emergency Helplines'), findsOneWidget);
-    expect(find.byKey(const Key('helpline-112')), findsOneWidget);
     expect(find.byKey(const Key('helpline-101')), findsOneWidget);
     expect(find.byKey(const Key('helpline-area-dropdown')), findsOneWidget);
 
