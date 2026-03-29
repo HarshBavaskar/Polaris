@@ -28,7 +28,7 @@ void main() {
     await tester.pumpWidget(
       _buildShell(tabNavigationStream: controller.stream),
     );
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
     expect(find.text('Citizen Dashboard'), findsOneWidget);
 
     controller.add(1);

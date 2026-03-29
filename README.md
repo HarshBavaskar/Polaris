@@ -254,7 +254,7 @@ Camera / Images
 python -m venv .venv
 # activate venv for your shell
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 ### Flutter Dashboard
@@ -274,6 +274,7 @@ flutter run --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 ```
 
 > On Android emulator, loopback API hosts are mapped internally to `10.0.2.2`.
+> On a physical Android phone, use your laptop LAN IP instead, for example `http://192.168.29.26:8000`, and make sure the backend is started with `--host 0.0.0.0`.
 
 ---
 

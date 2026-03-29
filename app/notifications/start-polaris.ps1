@@ -9,6 +9,8 @@ $pythonw = Join-Path $repoRoot ".venv\Scripts\pythonw.exe"
 $python = Join-Path $repoRoot ".venv\Scripts\python.exe"
 $runtimeDir = Join-Path $repoRoot "app\runtime"
 $backendPidFile = Join-Path $runtimeDir "backend_pid.txt"
+$apiHost = if ([string]::IsNullOrWhiteSpace($env:POLARIS_API_HOST)) { "0.0.0.0" } else { $env:POLARIS_API_HOST }
+$apiPort = if ([string]::IsNullOrWhiteSpace($env:POLARIS_API_PORT)) { "8000" } else { $env:POLARIS_API_PORT }
 
 if (-not (Test-Path $runtimeDir)) {
     New-Item -ItemType Directory -Path $runtimeDir | Out-Null
@@ -22,7 +24,7 @@ if (-not (Test-Path $python)) {
 }
 
 $enableReload = $env:POLARIS_UVICORN_RELOAD -eq "1"
-$uvicornArgs = @("-m", "uvicorn", "app.main:app")
+$uvicornArgs = @("-m", "uvicorn", "app.main:app", "--host", $apiHost, "--port", $apiPort)
 if ($enableReload) {
     $uvicornArgs += "--reload"
 }
@@ -41,7 +43,7 @@ if (-not $valkeyRunning) {
 
 # 2. Start backend (no visible shell)
 if ($ShowTerminal) {
-    $cmdParts = @("Set-Location '$repoRoot';", "& '$python'", "-m uvicorn app.main:app")
+    $cmdParts = @("Set-Location '$repoRoot';", "& '$python'", "-m uvicorn app.main:app --host $apiHost --port $apiPort")
     if ($enableReload) {
         $cmdParts += "--reload"
     }

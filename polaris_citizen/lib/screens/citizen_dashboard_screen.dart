@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/settings/citizen_preferences_scope.dart';
 import '../core/settings/citizen_strings.dart';
 import '../features/alerts/alerts_api.dart';
+import '../features/alerts/alert_severity_palette.dart';
 import '../features/alerts/alerts_cache.dart';
 import '../features/alerts/alerts_screen.dart';
 import '../features/alerts/citizen_alert.dart';
@@ -19,7 +20,6 @@ import '../features/safe_zones/safe_zones_cache.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
 import '../features/settings/trust_usability_screen.dart';
 import '../widgets/citizen_top_bar.dart';
-import '../widgets/polaris_startup_loader.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
   final Stream<int>? tabNavigationStream;
@@ -32,11 +32,9 @@ class CitizenDashboardScreen extends StatefulWidget {
 
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
-  bool _showStartupLoader = true;
-  late final List<Widget> _pages;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<int>? _tabNavigationSub;
-  Timer? _startupTimer;
+  final Map<int, Widget> _pageCache = <int, Widget>{};
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -51,34 +49,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _pages = <Widget>[
-      _DashboardHomeTab(
-        onGoAlerts: _openAlertsTab,
-        onGoReport: _openReportTab,
-        onGoSafeZones: _openSafeZonesTab,
-        onGoRequestHelp: _openRequestHelpTab,
-        onGoMyReports: _openMyReportsTab,
-      ),
-      const AlertsScreen(),
-      const ReportFloodScreen(),
-      const SafeZonesScreen(),
-      const RequestHelpScreen(),
-      const MyReportsScreen(),
-      const TrustUsabilityScreen(),
-    ];
     _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
-    final bool isAndroidUi =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    _startupTimer = Timer(Duration(milliseconds: isAndroidUi ? 650 : 1300), () {
-      if (mounted) {
-        setState(() => _showStartupLoader = false);
-      }
-    });
   }
 
   @override
   void dispose() {
-    _startupTimer?.cancel();
     _tabNavigationSub?.cancel();
     super.dispose();
   }
@@ -99,7 +74,7 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     if (!mounted) return;
     final int bounded = index < 0
         ? 0
-        : (index >= _pages.length ? _pages.length - 1 : index);
+        : (index >= _titles.length ? _titles.length - 1 : index);
     setState(() => _selectedIndex = bounded);
   }
 
@@ -108,19 +83,38 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     Navigator.of(context).pop();
   }
 
-  void _openPrimaryTab(int index) => setState(() => _selectedIndex = index);
+  Widget _buildPage(int index) {
+    return _pageCache.putIfAbsent(index, () {
+      switch (index) {
+        case 0:
+          return _DashboardHomeTab(
+            onGoAlerts: _openAlertsTab,
+            onGoReport: _openReportTab,
+            onGoSafeZones: _openSafeZonesTab,
+            onGoRequestHelp: _openRequestHelpTab,
+            onGoMyReports: _openMyReportsTab,
+          );
+        case 1:
+          return const AlertsScreen();
+        case 2:
+          return const ReportFloodScreen();
+        case 3:
+          return const SafeZonesScreen();
+        case 4:
+          return const RequestHelpScreen();
+        case 5:
+          return const MyReportsScreen();
+        case 6:
+          return const TrustUsabilityScreen();
+        default:
+          return const SizedBox.shrink();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (_showStartupLoader) {
-      return Scaffold(
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
-          child: const Center(child: PolarisStartupLoader()),
-        ),
-      );
-    }
-
+    _buildPage(_selectedIndex);
     final String languageCode = CitizenPreferencesScope.of(
       context,
     ).languageCode;
@@ -162,9 +156,18 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
-                    child: IndexedStack(
-                      index: _selectedIndex,
-                      children: _pages,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: _pageCache.entries.map((MapEntry<int, Widget> entry) {
+                        final bool isActive = entry.key == _selectedIndex;
+                        return Offstage(
+                          offstage: !isActive,
+                          child: TickerMode(
+                            enabled: isActive,
+                            child: entry.value,
+                          ),
+                        );
+                      }).toList(growable: false),
                     ),
                   ),
                 ),
@@ -173,45 +176,6 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _selectedIndex <= 4
-          ? SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                child: NavigationBar(
-                  selectedIndex: _selectedIndex,
-                  onDestinationSelected: _openPrimaryTab,
-                  destinations: <NavigationDestination>[
-                    NavigationDestination(
-                      icon: const Icon(Icons.dashboard_outlined),
-                      selectedIcon: const Icon(Icons.dashboard),
-                      label: CitizenStrings.tr('dashboard', languageCode),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.notifications_outlined),
-                      selectedIcon: const Icon(Icons.notifications),
-                      label: CitizenStrings.tr('alerts', languageCode),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.flood_outlined),
-                      selectedIcon: const Icon(Icons.flood),
-                      label: CitizenStrings.tr('report', languageCode),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.map_outlined),
-                      selectedIcon: const Icon(Icons.map),
-                      label: CitizenStrings.tr('safe_zones', languageCode),
-                    ),
-                    NavigationDestination(
-                      icon: const Icon(Icons.sos_outlined),
-                      selectedIcon: const Icon(Icons.sos),
-                      label: CitizenStrings.tr('request_help', languageCode),
-                    ),
-                  ],
-                ),
-              ),
-            )
-          : null,
       drawer: Drawer(
         child: SafeArea(
           child: Column(
@@ -352,7 +316,11 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     _safeZonesCache = SharedPrefsSafeZonesCache();
     _alertsApi = HttpCitizenAlertsApi();
     _alertsCache = SharedPrefsCitizenAlertsCache();
-    _loadSummary();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadSummary();
+      }
+    });
   }
 
   Future<void> _loadSummary() async {
@@ -371,7 +339,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       _activeSafeZoneCount = zones.length;
       _safeZonesUpdatedAt = updatedAt;
       safeZonesAvailable = true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Safe zones fetch failed: $error');
       final cachedZones = await _safeZonesCache.loadZones();
       final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
       _activeSafeZoneCount = cachedZones.length;
@@ -385,7 +354,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       _activeAlertsCount = alerts.length;
       _latestAlert = _latestByTimestamp(alerts);
       alertsAvailable = true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Alerts fetch failed: $error');
       final List<CitizenAlert> cachedAlerts = await _alertsCache.loadAlerts();
       _activeAlertsCount = cachedAlerts.length;
       _latestAlert = _latestByTimestamp(cachedAlerts);
@@ -414,22 +384,6 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       }
     }
     return latest;
-  }
-
-  Color _severityColor(String severity) {
-    switch (severity.toUpperCase()) {
-      case 'EMERGENCY':
-        return const Color(0xFFB71C1C);
-      case 'ALERT':
-        return const Color(0xFFDD6B20);
-      case 'WARNING':
-        return const Color(0xFFB7791F);
-      case 'WATCH':
-      case 'ADVISORY':
-        return const Color(0xFF2B6CB0);
-      default:
-        return const Color(0xFF4A5568);
-    }
   }
 
   String _updatedAgo(DateTime? timestamp, String languageCode) {
@@ -662,12 +616,12 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: _severityColor(
+                                    color: citizenAlertSeverityColor(
                                       _latestAlert!.severity,
                                     ).withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
-                                      color: _severityColor(
+                                      color: citizenAlertSeverityColor(
                                         _latestAlert!.severity,
                                       ).withValues(alpha: 0.35),
                                     ),
@@ -676,7 +630,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                                     _latestAlert!.severity,
                                     style: TextStyle(
                                       fontWeight: FontWeight.w700,
-                                      color: _severityColor(
+                                      color: citizenAlertSeverityColor(
                                         _latestAlert!.severity,
                                       ),
                                     ),

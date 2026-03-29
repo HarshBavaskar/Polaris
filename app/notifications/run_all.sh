@@ -35,6 +35,9 @@ fi
 
 echo "🧠 Starting FastAPI backend..."
 uvicorn_args=("app.main:app")
+api_host="${POLARIS_API_HOST:-0.0.0.0}"
+api_port="${POLARIS_API_PORT:-8000}"
+uvicorn_args+=("--host" "$api_host" "--port" "$api_port")
 if [[ "${POLARIS_UVICORN_RELOAD:-0}" == "1" ]]; then
   echo "ℹ️ POLARIS_UVICORN_RELOAD=1 -> starting with --reload"
   uvicorn_args+=("--reload")
