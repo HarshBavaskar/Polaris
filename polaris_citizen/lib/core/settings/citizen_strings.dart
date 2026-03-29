@@ -29,6 +29,14 @@ class CitizenStrings {
       'dash_call_failed': 'Could not place call to {number}',
       'dash_location_copied': 'Location copied for sharing.',
       'dash_summary_fetch_failed': 'Could not fetch live summary.',
+      'dash_need_now_title': 'What do you need right now?',
+      'dash_need_now_subtitle':
+          'Get help fast, check alerts, report flooding, or find a safe place nearby.',
+      'dash_btn_need_help': 'I Need Help',
+      'dash_btn_see_alerts': 'See Alerts',
+      'dash_btn_find_safe_place': 'Find Safe Place',
+      'dash_btn_report_flooding': 'Report Flooding',
+      'dash_latest_alert': 'Latest alert',
       'dash_stay_alert_title': 'Stay Alert. Report Flooding Fast.',
       'dash_stay_alert_subtitle':
           'Use this app to submit flood photos, share water level, and find safe zones nearby.',
@@ -69,6 +77,13 @@ class CitizenStrings {
       'dash_helpline_area_support': '{area} Emergency Support',
       'dash_helpline_tip':
           'Tip: Share your exact area while calling for faster response.',
+      'dash_emergency_tools_title': 'Emergency Tools',
+      'dash_emergency_tools_desc':
+          'Use the fastest action first. Open more options only if you need them.',
+      'dash_call_112_now': 'Emergency Call (112)',
+      'dash_more_helplines': 'More helplines',
+      'dash_hide_helplines': 'Hide helplines',
+      'dash_share_my_location': 'Share My Location',
       'dash_live_location_title': 'Live Location for Help',
       'dash_live_location_desc':
           'Use this only when needed to quickly share your exact location with responders or family.',
@@ -290,6 +305,14 @@ class CitizenStrings {
       'dash_call_failed': '{number} पर कॉल नहीं हो सकी',
       'dash_location_copied': 'लोकेशन शेयर करने के लिए कॉपी कर दी गई है।',
       'dash_summary_fetch_failed': 'लाइव सारांश नहीं मिल सका।',
+      'dash_need_now_title': 'आपको अभी क्या चाहिए?',
+      'dash_need_now_subtitle':
+          'जल्दी मदद लें, अलर्ट देखें, बाढ़ रिपोर्ट करें, या पास की सुरक्षित जगह खोजें।',
+      'dash_btn_need_help': 'मुझे मदद चाहिए',
+      'dash_btn_see_alerts': 'अलर्ट देखें',
+      'dash_btn_find_safe_place': 'सुरक्षित जगह खोजें',
+      'dash_btn_report_flooding': 'बाढ़ रिपोर्ट करें',
+      'dash_latest_alert': 'ताज़ा अलर्ट',
       'dash_stay_alert_title': 'सतर्क रहें। बाढ़ की रिपोर्ट तुरंत करें।',
       'dash_stay_alert_subtitle':
           'इस ऐप से बाढ़ की फोटो भेजें, पानी का स्तर साझा करें और पास के सुरक्षित क्षेत्र देखें।',
@@ -331,6 +354,13 @@ class CitizenStrings {
       'dash_helpline_area_support': '{area} आपातकालीन सहायता',
       'dash_helpline_tip':
           'टिप: तेज प्रतिक्रिया के लिए कॉल करते समय अपना सटीक क्षेत्र बताएं।',
+      'dash_emergency_tools_title': 'आपातकालीन टूल्स',
+      'dash_emergency_tools_desc':
+          'पहले सबसे तेज़ काम करें। बाकी विकल्प जरूरत होने पर खोलें।',
+      'dash_call_112_now': 'आपात कॉल (112)',
+      'dash_more_helplines': 'और हेल्पलाइन',
+      'dash_hide_helplines': 'हेल्पलाइन छिपाएं',
+      'dash_share_my_location': 'मेरी लोकेशन शेयर करें',
       'dash_live_location_title': 'मदद के लिए लाइव लोकेशन',
       'dash_live_location_desc':
           'इसे केवल जरूरत पर उपयोग करें ताकि आपकी सटीक लोकेशन जल्दी साझा हो सके।',
@@ -554,6 +584,14 @@ class CitizenStrings {
       'dash_call_failed': '{number} वर कॉल करता आला नाही',
       'dash_location_copied': 'शेअर करण्यासाठी लोकेशन कॉपी केले.',
       'dash_summary_fetch_failed': 'लाइव्ह सारांश मिळाला नाही.',
+      'dash_need_now_title': 'तुम्हाला आत्ता काय हवे आहे?',
+      'dash_need_now_subtitle':
+          'लवकर मदत घ्या, अलर्ट पाहा, पूर नोंदवा किंवा जवळचे सुरक्षित ठिकाण शोधा.',
+      'dash_btn_need_help': 'मला मदत हवी',
+      'dash_btn_see_alerts': 'अलर्ट पाहा',
+      'dash_btn_find_safe_place': 'सुरक्षित ठिकाण शोधा',
+      'dash_btn_report_flooding': 'पूर नोंदवा',
+      'dash_latest_alert': 'नवीनतम अलर्ट',
       'dash_stay_alert_title': 'सावध रहा. पूराची नोंद पटकन करा.',
       'dash_stay_alert_subtitle':
           'या अॅपद्वारे पूर फोटो पाठवा, पाण्याची पातळी शेअर करा आणि जवळची सुरक्षित क्षेत्रे शोधा.',
@@ -597,6 +635,13 @@ class CitizenStrings {
       'dash_helpline_area_support': '{area} आपत्कालीन मदत',
       'dash_helpline_tip':
           'सूचना: जलद प्रतिसादासाठी कॉल करताना अचूक भाग सांगा.',
+      'dash_emergency_tools_title': 'आपत्कालीन साधने',
+      'dash_emergency_tools_desc':
+          'सर्वात जलद कृती आधी करा. बाकी पर्याय गरज पडल्यास उघडा.',
+      'dash_call_112_now': 'आपत्कालीन कॉल (112)',
+      'dash_more_helplines': 'आणखी हेल्पलाइन',
+      'dash_hide_helplines': 'हेल्पलाइन लपवा',
+      'dash_share_my_location': 'माझे लोकेशन शेअर करा',
       'dash_live_location_title': 'मदतीसाठी लाइव्ह लोकेशन',
       'dash_live_location_desc':
           'गरज असल्यासच वापरा, म्हणजे प्रतिसादकांना तुमची अचूक लोकेशन पटकन देता येईल.',

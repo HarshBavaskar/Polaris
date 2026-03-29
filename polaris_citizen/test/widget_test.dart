@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:polaris_citizen/app.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   testWidgets('citizen dashboard shell renders', (WidgetTester tester) async {
@@ -12,20 +13,17 @@ void main() {
     });
 
     await tester.pumpWidget(const CitizenApp());
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
 
     expect(find.text('Citizen Dashboard'), findsOneWidget);
-    expect(find.text('Stay Alert. Report Flooding Fast.'), findsOneWidget);
+    expect(find.text('What do you need right now?'), findsOneWidget);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
+    expect(find.text('Emergency Call (112)'), findsOneWidget);
+    expect(find.byKey(const Key('dashboard-toggle-helplines')), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
 
-    await tester.scrollUntilVisible(
-      find.text('Emergency Helplines'),
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
+    await tester.tap(find.byKey(const Key('dashboard-toggle-helplines')));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.text('Emergency Helplines'), findsOneWidget);
-    expect(find.byKey(const Key('helpline-112')), findsOneWidget);
     expect(find.byKey(const Key('helpline-101')), findsOneWidget);
     expect(find.byKey(const Key('helpline-area-dropdown')), findsOneWidget);
 
@@ -49,7 +47,7 @@ void main() {
     });
 
     await tester.pumpWidget(const CitizenApp());
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('dashboard-live-view-alerts')),
@@ -61,5 +59,33 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.byKey(const Key('dashboard-live-view-alerts')), findsNothing);
+  });
+
+  testWidgets('drawer can return from my reports to dashboard', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1.0;
+    tester.view.physicalSize = const Size(1080, 2200);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(const CitizenApp());
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('drawer-nav-myreports')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('My Reports'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Open navigation menu'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.byKey(const Key('drawer-nav-dashboard')));
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('What do you need right now?'), findsOneWidget);
   });
 }

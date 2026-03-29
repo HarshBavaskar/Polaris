@@ -1,6 +1,6 @@
 import 'dart:async';
-
 import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../core/settings/citizen_preferences_scope.dart';
 import '../core/settings/citizen_strings.dart';
 import '../features/alerts/alerts_api.dart';
+import '../features/alerts/alert_severity_palette.dart';
 import '../features/alerts/alerts_cache.dart';
 import '../features/alerts/alerts_screen.dart';
 import '../features/alerts/citizen_alert.dart';
@@ -19,7 +20,6 @@ import '../features/safe_zones/safe_zones_cache.dart';
 import '../features/safe_zones/safe_zones_screen.dart';
 import '../features/settings/trust_usability_screen.dart';
 import '../widgets/citizen_top_bar.dart';
-import '../widgets/polaris_startup_loader.dart';
 
 class CitizenDashboardScreen extends StatefulWidget {
   final Stream<int>? tabNavigationStream;
@@ -32,11 +32,9 @@ class CitizenDashboardScreen extends StatefulWidget {
 
 class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   int _selectedIndex = 0;
-  bool _showStartupLoader = true;
-  late final List<Widget> _pages;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   StreamSubscription<int>? _tabNavigationSub;
-  Timer? _startupTimer;
+  final Map<int, Widget> _pageCache = <int, Widget>{};
 
   static const List<String> _titles = <String>[
     'title_dashboard',
@@ -51,34 +49,11 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _pages = <Widget>[
-      _DashboardHomeTab(
-        onGoAlerts: _openAlertsTab,
-        onGoReport: _openReportTab,
-        onGoSafeZones: _openSafeZonesTab,
-        onGoRequestHelp: _openRequestHelpTab,
-        onGoMyReports: _openMyReportsTab,
-      ),
-      const AlertsScreen(),
-      const ReportFloodScreen(),
-      const SafeZonesScreen(),
-      const RequestHelpScreen(),
-      const MyReportsScreen(),
-      const TrustUsabilityScreen(),
-    ];
     _tabNavigationSub = widget.tabNavigationStream?.listen(_openFromSignal);
-    final bool isAndroidUi =
-        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-    _startupTimer = Timer(Duration(milliseconds: isAndroidUi ? 650 : 1300), () {
-      if (mounted) {
-        setState(() => _showStartupLoader = false);
-      }
-    });
   }
 
   @override
   void dispose() {
-    _startupTimer?.cancel();
     _tabNavigationSub?.cancel();
     super.dispose();
   }
@@ -99,7 +74,7 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     if (!mounted) return;
     final int bounded = index < 0
         ? 0
-        : (index >= _pages.length ? _pages.length - 1 : index);
+        : (index >= _titles.length ? _titles.length - 1 : index);
     setState(() => _selectedIndex = bounded);
   }
 
@@ -108,17 +83,38 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
     Navigator.of(context).pop();
   }
 
+  Widget _buildPage(int index) {
+    return _pageCache.putIfAbsent(index, () {
+      switch (index) {
+        case 0:
+          return _DashboardHomeTab(
+            onGoAlerts: _openAlertsTab,
+            onGoReport: _openReportTab,
+            onGoSafeZones: _openSafeZonesTab,
+            onGoRequestHelp: _openRequestHelpTab,
+            onGoMyReports: _openMyReportsTab,
+          );
+        case 1:
+          return const AlertsScreen();
+        case 2:
+          return const ReportFloodScreen();
+        case 3:
+          return const SafeZonesScreen();
+        case 4:
+          return const RequestHelpScreen();
+        case 5:
+          return const MyReportsScreen();
+        case 6:
+          return const TrustUsabilityScreen();
+        default:
+          return const SizedBox.shrink();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_showStartupLoader) {
-      return Scaffold(
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 260),
-          child: const Center(child: PolarisStartupLoader()),
-        ),
-      );
-    }
-
+    _buildPage(_selectedIndex);
     final String languageCode = CitizenPreferencesScope.of(
       context,
     ).languageCode;
@@ -160,9 +156,18 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
-                    child: IndexedStack(
-                      index: _selectedIndex,
-                      children: _pages,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: _pageCache.entries.map((MapEntry<int, Widget> entry) {
+                        final bool isActive = entry.key == _selectedIndex;
+                        return Offstage(
+                          offstage: !isActive,
+                          child: TickerMode(
+                            enabled: isActive,
+                            child: entry.value,
+                          ),
+                        );
+                      }).toList(growable: false),
                     ),
                   ),
                 ),
@@ -238,12 +243,20 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
                 selected: _selectedIndex == 4,
                 onTap: () => _openFromDrawer(4),
               ),
+              const Divider(height: 1),
               ListTile(
                 key: const Key('drawer-nav-myreports'),
                 leading: const Icon(Icons.receipt_long_outlined),
                 title: Text(CitizenStrings.tr('my_reports', languageCode)),
                 selected: _selectedIndex == 5,
                 onTap: () => _openFromDrawer(5),
+              ),
+              ListTile(
+                key: const Key('drawer-nav-trust'),
+                leading: const Icon(Icons.language_outlined),
+                title: Text(CitizenStrings.tr('trust', languageCode)),
+                selected: _selectedIndex == 6,
+                onTap: () => _openFromDrawer(6),
               ),
             ],
           ),
@@ -291,6 +304,7 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
   CitizenAlert? _latestAlert;
   DateTime? _safeZonesUpdatedAt;
   String _selectedArea = _priorityAreas.first;
+  bool _showMoreHelplines = false;
   bool _locating = false;
   Position? _livePosition;
   String? _locationError;
@@ -302,7 +316,11 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
     _safeZonesCache = SharedPrefsSafeZonesCache();
     _alertsApi = HttpCitizenAlertsApi();
     _alertsCache = SharedPrefsCitizenAlertsCache();
-    _loadSummary();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadSummary();
+      }
+    });
   }
 
   Future<void> _loadSummary() async {
@@ -321,7 +339,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       _activeSafeZoneCount = zones.length;
       _safeZonesUpdatedAt = updatedAt;
       safeZonesAvailable = true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Safe zones fetch failed: $error');
       final cachedZones = await _safeZonesCache.loadZones();
       final DateTime? updatedAt = await _safeZonesCache.lastUpdatedAt();
       _activeSafeZoneCount = cachedZones.length;
@@ -335,7 +354,8 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       _activeAlertsCount = alerts.length;
       _latestAlert = _latestByTimestamp(alerts);
       alertsAvailable = true;
-    } catch (_) {
+    } catch (error) {
+      debugPrint('Alerts fetch failed: $error');
       final List<CitizenAlert> cachedAlerts = await _alertsCache.loadAlerts();
       _activeAlertsCount = cachedAlerts.length;
       _latestAlert = _latestByTimestamp(cachedAlerts);
@@ -364,22 +384,6 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
       }
     }
     return latest;
-  }
-
-  Color _severityColor(String severity) {
-    switch (severity.toUpperCase()) {
-      case 'EMERGENCY':
-        return const Color(0xFFB71C1C);
-      case 'ALERT':
-        return const Color(0xFFDD6B20);
-      case 'WARNING':
-        return const Color(0xFFB7791F);
-      case 'WATCH':
-      case 'ADVISORY':
-        return const Color(0xFF2B6CB0);
-      default:
-        return const Color(0xFF4A5568);
-    }
   }
 
   String _updatedAgo(DateTime? timestamp, String languageCode) {
@@ -520,48 +524,32 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  CitizenStrings.tr('dash_stay_alert_title', languageCode),
+                  CitizenStrings.tr('dash_need_now_title', languageCode),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  CitizenStrings.tr('dash_stay_alert_subtitle', languageCode),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  CitizenStrings.tr('dash_emergency_actions', languageCode),
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                Text(CitizenStrings.tr('dash_need_now_subtitle', languageCode)),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
                   children: <Widget>[
                     FilledButton.icon(
-                      onPressed: widget.onGoReport,
-                      icon: const Icon(Icons.flood),
-                      label: Text(
-                        CitizenStrings.tr('report', languageCode),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    FilledButton.icon(
+                      key: const Key('dashboard-primary-help'),
                       onPressed: widget.onGoRequestHelp,
                       icon: const Icon(Icons.sos),
                       label: Text(
-                        CitizenStrings.tr('request_help', languageCode),
+                        CitizenStrings.tr('dash_btn_need_help', languageCode),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     OutlinedButton.icon(
+                      key: const Key('dashboard-primary-alerts'),
                       onPressed: widget.onGoAlerts,
                       icon: const Icon(Icons.notifications_active_rounded),
                       label: Text(
-                        CitizenStrings.tr('alerts', languageCode),
+                        CitizenStrings.tr('dash_btn_see_alerts', languageCode),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -570,19 +558,116 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                       onPressed: widget.onGoSafeZones,
                       icon: const Icon(Icons.shield_outlined),
                       label: Text(
-                        CitizenStrings.tr('safe_zones', languageCode),
+                        CitizenStrings.tr(
+                          'dash_btn_find_safe_place',
+                          languageCode,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: widget.onGoReport,
+                      icon: const Icon(Icons.flood),
+                      label: Text(
+                        CitizenStrings.tr(
+                          'dash_btn_report_flooding',
+                          languageCode,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                Container(
+                  key: const Key('dashboard-latest-alert-card'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: _latestAlert != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Text(
+                              CitizenStrings.tr(
+                                'dash_latest_alert',
+                                languageCode,
+                              ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: <Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: citizenAlertSeverityColor(
+                                      _latestAlert!.severity,
+                                    ).withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: citizenAlertSeverityColor(
+                                        _latestAlert!.severity,
+                                      ).withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    _latestAlert!.severity,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: citizenAlertSeverityColor(
+                                        _latestAlert!.severity,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  CitizenStrings.trf(
+                                    'alerts_updated',
+                                    languageCode,
+                                    <String, String>{
+                                      'ago': _updatedAgo(
+                                        _latestAlert!.timestamp,
+                                        languageCode,
+                                      ),
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _latestAlert!.message,
+                              key: const Key('dashboard-latest-alert-message'),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          CitizenStrings.tr(
+                            'dash_no_live_alerts',
+                            languageCode,
+                          ),
+                        ),
+                ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        const _QuickGuidanceBlock(),
         const SizedBox(height: 12),
         Card(
           child: Padding(
@@ -590,32 +675,25 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  CitizenStrings.tr('dash_live_snapshot', languageCode),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 8),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: <Widget>[
                     Expanded(
-                      child: FilledButton.tonalIcon(
-                        key: const Key('dashboard-live-view-alerts'),
-                        onPressed: widget.onGoAlerts,
-                        icon: const Icon(Icons.notifications_active_rounded),
-                        label: Text(
-                          CitizenStrings.tr(
-                            'dash_view_alerts_feed',
-                            languageCode,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      child: Text(
+                        CitizenStrings.tr('dash_live_snapshot', languageCode),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    TextButton(
+                      key: const Key('dashboard-live-view-alerts'),
+                      onPressed: widget.onGoAlerts,
+                      child: Text(
+                        CitizenStrings.tr('dash_btn_see_alerts', languageCode),
+                      ),
+                    ),
                     IconButton(
                       key: const Key('dashboard-refresh-summary'),
                       onPressed: _loadingSummary ? null : _loadSummary,
@@ -679,85 +757,6 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      if (_latestAlert != null)
-                        Container(
-                          key: const Key('dashboard-latest-alert-card'),
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outlineVariant,
-                            ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: <Widget>[
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: _severityColor(
-                                        _latestAlert!.severity,
-                                      ).withValues(alpha: 0.14),
-                                      borderRadius: BorderRadius.circular(14),
-                                      border: Border.all(
-                                        color: _severityColor(
-                                          _latestAlert!.severity,
-                                        ).withValues(alpha: 0.35),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      _latestAlert!.severity,
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        color: _severityColor(
-                                          _latestAlert!.severity,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Text(
-                                    CitizenStrings.trf(
-                                      'alerts_updated',
-                                      languageCode,
-                                      <String, String>{
-                                        'ago': _updatedAgo(
-                                          _latestAlert!.timestamp,
-                                          languageCode,
-                                        ),
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                _latestAlert!.message,
-                                key: const Key(
-                                  'dashboard-latest-alert-message',
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Text(
-                          CitizenStrings.tr(
-                            'dash_no_live_alerts',
-                            languageCode,
-                          ),
-                        ),
-                      const SizedBox(height: 4),
                       Text(
                         CitizenStrings.trf(
                           'dash_safe_zones_updated',
@@ -794,118 +793,128 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  CitizenStrings.tr('dash_helplines', languageCode),
+                  CitizenStrings.tr('dash_emergency_tools_title', languageCode),
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                Text(CitizenStrings.tr('dash_select_area', languageCode)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  key: const Key('helpline-area-dropdown'),
-                  initialValue: _selectedArea,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: CitizenStrings.tr(
-                      'dash_area_label',
-                      languageCode,
-                    ),
-                  ),
-                  items: _priorityAreas.map((String area) {
-                    return DropdownMenuItem<String>(
-                      value: area,
-                      child: Text(area),
-                    );
-                  }).toList(),
-                  onChanged: (String? value) {
-                    if (value == null) return;
-                    setState(() => _selectedArea = value);
-                  },
+                Text(
+                  CitizenStrings.tr('dash_emergency_tools_desc', languageCode),
                 ),
                 const SizedBox(height: 12),
-                _HelplineTile(
-                  key: const Key('helpline-112'),
-                  label: CitizenStrings.tr(
-                    'dash_helpline_national',
-                    languageCode,
-                  ),
-                  number: '112',
-                  onCall: () => _callHelpline('112'),
-                ),
-                const SizedBox(height: 8),
-                _HelplineTile(
-                  key: const Key('helpline-101'),
-                  label: CitizenStrings.tr('dash_helpline_fire', languageCode),
-                  number: '101',
-                  onCall: () => _callHelpline('101'),
-                ),
-                const SizedBox(height: 8),
-                _HelplineTile(
-                  key: const Key('helpline-108'),
-                  label: CitizenStrings.tr(
-                    'dash_helpline_ambulance',
-                    languageCode,
-                  ),
-                  number: '108',
-                  onCall: () => _callHelpline('108'),
-                ),
-                const SizedBox(height: 8),
-                _HelplineTile(
-                  key: const Key('helpline-1077'),
-                  label: CitizenStrings.trf(
-                    'dash_helpline_area_support',
-                    languageCode,
-                    <String, String>{'area': _selectedArea},
-                  ),
-                  number: '1077',
-                  onCall: () => _callHelpline('1077'),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  CitizenStrings.tr('dash_helpline_tip', languageCode),
-                  style: TextStyle(fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr('dash_live_location_title', languageCode),
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  CitizenStrings.tr('dash_live_location_desc', languageCode),
-                ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  key: const Key('dashboard-fetch-location'),
-                  onPressed: _locating ? null : _fetchLiveLocation,
-                  icon: _locating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location),
-                  label: Text(
-                    _locating
-                        ? CitizenStrings.tr(
-                            'dash_fetching_location',
-                            languageCode,
-                          )
-                        : CitizenStrings.tr(
-                            'dash_get_live_location',
-                            languageCode,
-                          ),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('dashboard-call-112'),
+                    onPressed: () => _callHelpline('112'),
+                    icon: const Icon(Icons.call),
+                    label: Text(
+                      CitizenStrings.tr('dash_call_112_now', languageCode),
+                    ),
                   ),
                 ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: <Widget>[
+                    OutlinedButton.icon(
+                      key: const Key('dashboard-toggle-helplines'),
+                      onPressed: () {
+                        setState(() {
+                          _showMoreHelplines = !_showMoreHelplines;
+                        });
+                      },
+                      icon: const Icon(Icons.phone_in_talk_outlined),
+                      label: Text(
+                        CitizenStrings.tr(
+                          _showMoreHelplines
+                              ? 'dash_hide_helplines'
+                              : 'dash_more_helplines',
+                          languageCode,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton.icon(
+                      key: const Key('dashboard-fetch-location'),
+                      onPressed: _locating ? null : _fetchLiveLocation,
+                      icon: _locating
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.my_location),
+                      label: Text(
+                        _locating
+                            ? CitizenStrings.tr(
+                                'dash_fetching_location',
+                                languageCode,
+                              )
+                            : CitizenStrings.tr(
+                                'dash_share_my_location',
+                                languageCode,
+                              ),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_showMoreHelplines) ...<Widget>[
+                  const SizedBox(height: 12),
+                  Text(CitizenStrings.tr('dash_select_area', languageCode)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    key: const Key('helpline-area-dropdown'),
+                    initialValue: _selectedArea,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: CitizenStrings.tr(
+                        'dash_area_label',
+                        languageCode,
+                      ),
+                    ),
+                    items: _priorityAreas.map((String area) {
+                      return DropdownMenuItem<String>(
+                        value: area,
+                        child: Text(area),
+                      );
+                    }).toList(),
+                    onChanged: (String? value) {
+                      if (value == null) return;
+                      setState(() => _selectedArea = value);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _HelplineTile(
+                    key: const Key('helpline-101'),
+                    label: CitizenStrings.tr(
+                      'dash_helpline_fire',
+                      languageCode,
+                    ),
+                    number: '101',
+                    onCall: () => _callHelpline('101'),
+                  ),
+                  const SizedBox(height: 8),
+                  _HelplineTile(
+                    key: const Key('helpline-108'),
+                    label: CitizenStrings.tr(
+                      'dash_helpline_ambulance',
+                      languageCode,
+                    ),
+                    number: '108',
+                    onCall: () => _callHelpline('108'),
+                  ),
+                  const SizedBox(height: 8),
+                  _HelplineTile(
+                    key: const Key('helpline-1077'),
+                    label: CitizenStrings.trf(
+                      'dash_helpline_area_support',
+                      languageCode,
+                      <String, String>{'area': _selectedArea},
+                    ),
+                    number: '1077',
+                    onCall: () => _callHelpline('1077'),
+                  ),
+                ],
                 if (_locationError != null) ...<Widget>[
                   const SizedBox(height: 8),
                   Text(_locationError!),
@@ -946,6 +955,11 @@ class _DashboardHomeTabState extends State<_DashboardHomeTab> {
                     ],
                   ),
                 ],
+                const SizedBox(height: 8),
+                Text(
+                  CitizenStrings.tr('dash_helpline_tip', languageCode),
+                  style: TextStyle(fontSize: 12),
+                ),
               ],
             ),
           ),
@@ -1027,109 +1041,6 @@ class _HelplineTile extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _QuickGuidanceBlock extends StatelessWidget {
-  const _QuickGuidanceBlock();
-
-  @override
-  Widget build(BuildContext context) {
-    final String languageCode = CitizenPreferencesScope.of(
-      context,
-    ).languageCode;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              CitizenStrings.tr('dash_quick_guide_title', languageCode),
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 10),
-            _GuideStep(
-              icon: Icons.notifications_active_rounded,
-              title: CitizenStrings.tr('dash_quick_step_1_title', languageCode),
-              subtitle: CitizenStrings.tr(
-                'dash_quick_step_1_subtitle',
-                languageCode,
-              ),
-              accent: const Color(0xFF2B6CB0),
-            ),
-            const SizedBox(height: 8),
-            _GuideStep(
-              icon: Icons.flood,
-              title: CitizenStrings.tr('dash_quick_step_2_title', languageCode),
-              subtitle: CitizenStrings.tr(
-                'dash_quick_step_2_subtitle',
-                languageCode,
-              ),
-              accent: const Color(0xFFDD6B20),
-            ),
-            const SizedBox(height: 8),
-            _GuideStep(
-              icon: Icons.sos,
-              title: CitizenStrings.tr('dash_quick_step_3_title', languageCode),
-              subtitle: CitizenStrings.tr(
-                'dash_quick_step_3_subtitle',
-                languageCode,
-              ),
-              accent: const Color(0xFFC53030),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GuideStep extends StatelessWidget {
-  const _GuideStep({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.accent,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color accent;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: accent.withValues(alpha: 0.1),
-        border: Border.all(color: accent.withValues(alpha: 0.35)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Icon(icon, color: accent),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 12.5)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
