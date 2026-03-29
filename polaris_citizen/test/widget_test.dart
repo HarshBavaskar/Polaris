@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:polaris_citizen/app.dart';
+import 'package:flutter/material.dart';
 
 void main() {
   testWidgets('citizen dashboard shell renders', (WidgetTester tester) async {
@@ -12,13 +13,14 @@ void main() {
     });
 
     await tester.pumpWidget(const CitizenApp());
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
 
     expect(find.text('Citizen Dashboard'), findsOneWidget);
     expect(find.text('What do you need right now?'), findsOneWidget);
     expect(find.byTooltip('Open navigation menu'), findsOneWidget);
     expect(find.text('Emergency Call (112)'), findsOneWidget);
     expect(find.byKey(const Key('dashboard-toggle-helplines')), findsOneWidget);
+    expect(find.byType(NavigationBar), findsNothing);
 
     await tester.tap(find.byKey(const Key('dashboard-toggle-helplines')));
     await tester.pump(const Duration(milliseconds: 400));
@@ -45,7 +47,7 @@ void main() {
     });
 
     await tester.pumpWidget(const CitizenApp());
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
 
     await tester.scrollUntilVisible(
       find.byKey(const Key('dashboard-live-view-alerts')),
@@ -70,7 +72,7 @@ void main() {
     });
 
     await tester.pumpWidget(const CitizenApp());
-    await tester.pump(const Duration(milliseconds: 2100));
+    await tester.pump();
 
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pump(const Duration(milliseconds: 400));

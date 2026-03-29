@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/settings/citizen_preferences_scope.dart';
 import '../../core/settings/citizen_strings.dart';
+import 'alert_severity_palette.dart';
 import 'alerts_api.dart';
 import 'alerts_cache.dart';
 import 'citizen_alert.dart';
@@ -115,22 +116,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
       await _loadAlerts();
     } finally {
       _isAutoRefreshing = false;
-    }
-  }
-
-  Color _severityColor(String severity) {
-    switch (severity.toUpperCase()) {
-      case 'EMERGENCY':
-        return const Color(0xFFB71C1C);
-      case 'ALERT':
-        return const Color(0xFFDD6B20);
-      case 'WARNING':
-        return const Color(0xFFB7791F);
-      case 'WATCH':
-      case 'ADVISORY':
-        return const Color(0xFF2B6CB0);
-      default:
-        return const Color(0xFF4A5568);
     }
   }
 
@@ -261,7 +246,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           ),
           const SizedBox(height: 12),
           ..._alerts.map((CitizenAlert alert) {
-            final Color badgeColor = _severityColor(alert.severity);
+            final Color badgeColor = citizenAlertSeverityColor(alert.severity);
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Card(

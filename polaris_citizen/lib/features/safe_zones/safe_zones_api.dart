@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import '../../core/api.dart';
 import 'safe_zone.dart';
@@ -17,16 +18,40 @@ class HttpSafeZonesApi implements SafeZonesApi {
 
   @override
   Future<List<SafeZone>> fetchSafeZones() async {
-    final response = await _client.get(Uri.parse('$baseUrl/map/safe-zones'));
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch safe zones');
+    Object? lastError;
+    for (final String candidateBaseUrl in _candidateBaseUrls()) {
+      final Uri uri = Uri.parse('$candidateBaseUrl/map/safe-zones');
+      try {
+        final http.Response response = await _client
+            .get(uri)
+            .timeout(ApiConfig.requestTimeout);
+        if (response.statusCode != 200) {
+          lastError = Exception(
+            'Safe zones request failed with ${response.statusCode} at $uri',
+          );
+          continue;
+        }
+
+        final List<dynamic> raw = jsonDecode(response.body) as List<dynamic>;
+        return raw
+            .whereType<Map<String, dynamic>>()
+            .map(SafeZone.fromJson)
+            .where((SafeZone zone) => zone.active)
+            .toList();
+      } catch (error) {
+        lastError = error;
+      }
     }
 
-    final List<dynamic> raw = jsonDecode(response.body) as List<dynamic>;
-    return raw
-        .whereType<Map<String, dynamic>>()
-        .map(SafeZone.fromJson)
-        .where((SafeZone zone) => zone.active)
-        .toList();
+    throw Exception(
+      'Failed to fetch safe zones. ${ApiConfig.connectionHint} Last error: $lastError',
+    );
+  }
+
+  Iterable<String> _candidateBaseUrls() {
+    if (baseUrl == ApiConfig.baseUrl) {
+      return ApiConfig.candidateBaseUrls;
+    }
+    return <String>[baseUrl];
   }
 }
