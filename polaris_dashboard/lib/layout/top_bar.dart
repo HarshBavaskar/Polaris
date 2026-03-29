@@ -86,6 +86,12 @@ class _TopBarState extends State<TopBar> {
 
       final alerts = alertsJson is List ? alertsJson : <dynamic>[];
       final activeAlerts = alerts.whereType<Map<String, dynamic>>().where(_isActiveAlert).toList();
+      final latestRiskRank = _riskRank(latestRisk);
+
+      if (latestRisk != 'SAFE') {
+        messages.add('[RISK] Current system risk level: $latestRisk');
+        tone = _toneForRiskRank(latestRiskRank, fallback: tone);
+      }
 
       for (final alert in activeAlerts.take(4)) {
         final severity = alert['severity']?.toString().toUpperCase() ?? 'INFO';
@@ -104,7 +110,7 @@ class _TopBarState extends State<TopBar> {
 
       if (latestRisk == 'SAFE' &&
           pendingReports.isEmpty &&
-          highestSeverityRank <= 1) {
+          activeAlerts.isEmpty) {
         messages
           ..clear()
           ..add('[SAFE] System stable. Monitoring is active.');
@@ -135,9 +141,7 @@ class _TopBarState extends State<TopBar> {
 
   bool _isActiveAlert(Map<String, dynamic> alert) {
     final status = alert['status']?.toString().toUpperCase();
-    final severity = alert['severity']?.toString().toUpperCase() ?? 'INFO';
-    if (status != null && {'QUEUED', 'ACTIVE', 'IN_PROGRESS'}.contains(status)) return true;
-    return {'EMERGENCY', 'ALERT', 'WARNING', 'WATCH', 'ADVISORY'}.contains(severity);
+    return status != null && {'QUEUED', 'ACTIVE', 'IN_PROGRESS'}.contains(status);
   }
 
   int _severityRank(String severity) {
@@ -151,6 +155,34 @@ class _TopBarState extends State<TopBar> {
       default:
         return 0;
     }
+  }
+
+  int _riskRank(String risk) {
+    switch (risk) {
+      case 'IMMINENT':
+      case 'EMERGENCY':
+        return 3;
+      case 'WARNING':
+      case 'ALERT':
+        return 2;
+      case 'WATCH':
+      case 'ADVISORY':
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  _MarqueeTone _toneForRiskRank(
+    int rank, {
+    required _MarqueeTone fallback,
+  }) {
+    if (rank >= 3) return _MarqueeTone.emergency;
+    if (rank >= 2) return _MarqueeTone.alert;
+    if (rank >= 1 && fallback == _MarqueeTone.neutral) {
+      return _MarqueeTone.advisory;
+    }
+    return fallback;
   }
 
   _MarqueePalette _paletteForTone(_MarqueeTone tone, bool isDark) {

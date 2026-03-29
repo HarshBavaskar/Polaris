@@ -30,7 +30,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _backendHealthy = false;
   bool _startingBackend = false;
   bool _stoppingBackend = false;
-  bool _showBackendTerminal = false;
   bool _mlActionLoading = false;
   bool _mlConfigSaving = false;
   bool _autoTrainingEnabled = true;
@@ -42,7 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, dynamic>? _mlStatus;
 
   // VERSION EDIT POINT: update this value when the ongoing version changes.
-  static const String _latestOngoingVersion = 'v0.7';
+  static const String _latestOngoingVersion = 'v1.0';
 
   @override
   void initState() {
@@ -309,7 +308,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     setState(() => _startingBackend = true);
     try {
-      await startBackendLauncher(showTerminal: _showBackendTerminal);
+      await startBackendLauncher(showTerminal: false);
       final base = ApiConfig.baseUrl;
 
       var isUp = false;
@@ -524,21 +523,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 10),
                     _InfoRow(label: 'Version', value: _latestOngoingVersion),
                     const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Show Backend Terminal'),
-                      subtitle: Text(
-                        _showBackendTerminal
-                            ? 'Backend starts with a visible terminal window'
-                            : 'Backend starts hidden in background',
-                        style: TextStyle(color: colorScheme.onSurfaceVariant),
-                      ),
-                      value: _showBackendTerminal,
-                      onChanged: (_startingBackend || _stoppingBackend)
-                          ? null
-                          : (v) => setState(() => _showBackendTerminal = v),
-                    ),
-                    const SizedBox(height: 4),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Backend Server'),
