@@ -66,19 +66,13 @@ class HttpHelpRequestApi implements HelpRequestApi {
 
   @override
   Future<String?> fetchRequestStatus(String requestId) async {
-    final Uri uri = Uri.parse('$baseUrl/dashboard/help-requests').replace(
-      queryParameters: <String, String>{'status': 'ALL', 'limit': '150'},
-    );
+    final Uri uri = Uri.parse('$baseUrl/input/citizen/help-request/$requestId');
     final http.Response response = await _client.get(uri);
     if (response.statusCode != 200) return null;
     try {
       final dynamic decoded = jsonDecode(response.body);
-      if (decoded is! List<dynamic>) return null;
-      for (final dynamic item in decoded) {
-        if (item is! Map<String, dynamic>) continue;
-        if (item['request_id']?.toString() == requestId) {
-          return item['status']?.toString().toUpperCase();
-        }
+      if (decoded is Map<String, dynamic>) {
+        return decoded['status']?.toString().toUpperCase();
       }
     } catch (_) {
       return null;

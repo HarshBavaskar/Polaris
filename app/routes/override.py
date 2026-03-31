@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from datetime import datetime
+from app.auth.jwt_handler import require_authority
 from app.database import (
     overrides_collection,
     alerts_collection,
@@ -9,7 +10,11 @@ from app.notifications.alert_engine import build_alert_payload
 from app.notifications.deliver import deliver
 from app.notifications.valkey_pub import publish_decision
 
-router = APIRouter(prefix="/override", tags=["Authority Override"])
+router = APIRouter(
+    prefix="/override",
+    tags=["Authority Override"],
+    dependencies=[Depends(require_authority)],
+)
 
 
 @router.post("/set")

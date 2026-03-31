@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'api.dart';
+import 'auth_http.dart';
 import 'models/decision.dart';
 import 'models/risk_point.dart';
 import 'models/alert_event.dart';
@@ -67,9 +68,10 @@ class ApiService {
   return data.map((e) => AlertEvent.fromJson(e)).toList();
  }
  // Active override
- static Future<OverrideState?> fetchActiveOverride() async {
-  final r = await http.get(
+  static Future<OverrideState?> fetchActiveOverride() async {
+  final r = await AuthHttp.get(
     Uri.parse("${ApiConfig.baseUrl}/override/active"),
+    authenticated: true,
   );
 
   if (r.statusCode == 404) {
@@ -95,7 +97,7 @@ class ApiService {
   required String reason,
   required String author,
   }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/override/set"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -104,6 +106,7 @@ class ApiService {
       "reason": reason,
       "author": author,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -112,8 +115,9 @@ class ApiService {
   }
 
   static Future<void> clearOverride() async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/override/clear"),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -123,8 +127,9 @@ class ApiService {
 
   // History
   static Future<List<OverrideState>> fetchOverrideHistory() async {
-  final r = await http.get(
+  final r = await AuthHttp.get(
     Uri.parse("${ApiConfig.baseUrl}/override/history"),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -181,7 +186,7 @@ static Future<void> addManualSafeZone({
   required String reason,
   required String author,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/safe-zones/manual/add"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -191,6 +196,7 @@ static Future<void> addManualSafeZone({
       "reason": reason,
       "author": author,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -201,12 +207,13 @@ static Future<void> addManualSafeZone({
 static Future<void> disableManualSafeZone({
   required String zoneId,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/safe-zones/manual/disable"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
       "zone_id": zoneId,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -215,8 +222,9 @@ static Future<void> disableManualSafeZone({
 }
 
 static Future<List<CitizenReport>> fetchPendingCitizenReports() async {
-  final r = await http.get(
+  final r = await AuthHttp.get(
     Uri.parse("${ApiConfig.baseUrl}/input/citizen/pending"),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -233,7 +241,7 @@ static Future<void> reviewCitizenReport({
   String verifier = "Authority",
   String? notes,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/input/citizen/review"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -242,6 +250,7 @@ static Future<void> reviewCitizenReport({
       "verifier": verifier,
       "notes": notes,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -250,8 +259,9 @@ static Future<void> reviewCitizenReport({
 }
 
 static Future<TeamsSnapshot> fetchTeamsSnapshot() async {
-  final r = await http.get(
+  final r = await AuthHttp.get(
     Uri.parse("${ApiConfig.baseUrl}/dashboard/teams/snapshot"),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -267,7 +277,7 @@ static Future<void> assignTeamToHelpRequest({
   String author = "Authority",
   String? notes,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/dashboard/help-requests/$requestId/assign-team"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -275,6 +285,7 @@ static Future<void> assignTeamToHelpRequest({
       "author": author,
       "notes": notes,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -288,7 +299,7 @@ static Future<int> notifyNearbyTeams({
   String author = "Authority",
   String? message,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/dashboard/help-requests/$requestId/notify-nearby"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -296,6 +307,7 @@ static Future<int> notifyNearbyTeams({
       "author": author,
       "message": message,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {
@@ -315,7 +327,7 @@ static Future<void> upsertRescueTeam({
   required double lng,
   String? contactNumber,
 }) async {
-  final r = await http.post(
+  final r = await AuthHttp.post(
     Uri.parse("${ApiConfig.baseUrl}/dashboard/teams/upsert"),
     headers: {"Content-Type": "application/json"},
     body: json.encode({
@@ -327,6 +339,7 @@ static Future<void> upsertRescueTeam({
       "lng": lng,
       "contact_number": contactNumber,
     }),
+    authenticated: true,
   );
 
   if (r.statusCode != 200) {

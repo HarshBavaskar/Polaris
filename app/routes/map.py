@@ -1,6 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from datetime import datetime
 
+from app.auth.jwt_handler import require_authority
 from app.database import safezones_collection
 from app.utils.safezone_detector import (
     filter_low_risk,
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/map", tags=["Map"])
     summary="Auto-detected Safe Zones",
     description="Runs safe-zone detection logic, persists valid zones, and returns results."
 )
-def get_auto_safezones():
+def get_auto_safezones(_: dict = Depends(require_authority)):
     # -----------------------------
     # MOCK DATA (REPLACE LATER)
     # -----------------------------

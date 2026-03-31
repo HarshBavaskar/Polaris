@@ -2,8 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import '../core/api.dart';
+import '../core/auth_http.dart';
 import '../core/api_service.dart';
 import '../core/models/override_state.dart';
 import '../core/models/safe_zone.dart';
@@ -59,8 +59,11 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
   Future<void> loadAll() async {
     setState(() => loading = true);
     try {
-      final decisionRes = await http.get(Uri.parse('$baseUrl/decision/latest'));
-      final historyRes = await http.get(Uri.parse('$baseUrl/override/history'));
+      final decisionRes = await AuthHttp.get(Uri.parse('$baseUrl/decision/latest'));
+      final historyRes = await AuthHttp.get(
+        Uri.parse('$baseUrl/override/history'),
+        authenticated: true,
+      );
       final active = await ApiService.fetchActiveOverride();
       final safeZones = await ApiService.fetchSafeZones();
       final manual = safeZones
@@ -89,7 +92,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
     if (reasonController.text.trim().isEmpty) return;
     setState(() => submitting = true);
 
-    await http.post(
+    await AuthHttp.post(
       Uri.parse('$baseUrl/override/set'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
@@ -99,6 +102,7 @@ class _AuthorityScreenState extends State<AuthorityScreen> {
         'reason': reasonController.text.trim(),
         'author': 'Authority',
       }),
+      authenticated: true,
     );
 
     reasonController.clear();

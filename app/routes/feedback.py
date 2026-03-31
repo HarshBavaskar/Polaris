@@ -1,10 +1,15 @@
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Depends, Form
 from datetime import datetime
 from bson import ObjectId
+from app.auth.jwt_handler import require_authority
 from app.database import feedback_collection, predictions_collection, active_learning_collection
 from app.services.ml_admin_service import maybe_trigger_auto_retrain
 
-router = APIRouter(prefix="/authority/feedback", tags=["Authority Feedback"])
+router = APIRouter(
+    prefix="/authority/feedback",
+    tags=["Authority Feedback"],
+    dependencies=[Depends(require_authority)],
+)
 
 @router.post("/")
 async def submit_feedback(

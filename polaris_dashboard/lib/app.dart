@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'core/authority_auth_controller.dart';
 import 'layout/app_shell.dart';
 import 'core/theme.dart';
 import 'core/theme_controller.dart';
+import 'screens/authority_login_screen.dart';
 
 class PolarisApp extends StatelessWidget {
   const PolarisApp({super.key});
@@ -100,6 +102,7 @@ class PolarisApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeController = context.watch<ThemeController>();
+    final authController = context.watch<AuthorityAuthController>();
     final isAndroidUi =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
@@ -135,7 +138,9 @@ class PolarisApp extends StatelessWidget {
           ),
         );
       },
-      home: const AppShell(),
+      home: authController.isAuthenticated
+          ? const AppShell()
+          : const AuthorityLoginScreen(),
     );
   }
 }

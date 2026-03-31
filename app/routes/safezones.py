@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime
+from app.auth.jwt_handler import require_authority
 from app.database import safezones_collection
 
-router = APIRouter(prefix="/safe-zones", tags=["Safe Zones"])
+router = APIRouter(
+    prefix="/safe-zones",
+    tags=["Safe Zones"],
+    dependencies=[Depends(require_authority)],
+)
 
 
 # =========================================================

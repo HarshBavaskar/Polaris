@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth.jwt_handler import require_authority
 from app.services.ml_admin_service import (
     start_retrain_and_reload_job,
     get_ml_job_status,
@@ -7,7 +8,11 @@ from app.services.ml_admin_service import (
     set_auto_training_config,
 )
 
-router = APIRouter(prefix="/admin/ml", tags=["Admin ML"])
+router = APIRouter(
+    prefix="/admin/ml",
+    tags=["Admin ML"],
+    dependencies=[Depends(require_authority)],
+)
 
 
 @router.post("/retrain-and-reload")

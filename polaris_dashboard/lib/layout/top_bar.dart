@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
 import '../core/api.dart';
+import '../core/auth_http.dart';
 import '../core/refresh_config.dart';
 
 class TopBar extends StatefulWidget {
@@ -60,7 +61,10 @@ class _TopBarState extends State<TopBar> {
       final base = ApiConfig.baseUrl;
       final responses = await Future.wait([
         http.get(Uri.parse('$base/alerts/history?limit=20')),
-        http.get(Uri.parse('$base/input/citizen/pending')),
+        AuthHttp.get(
+          Uri.parse('$base/input/citizen/pending'),
+          authenticated: true,
+        ),
         http.get(Uri.parse('$base/decision/latest')),
       ]);
 

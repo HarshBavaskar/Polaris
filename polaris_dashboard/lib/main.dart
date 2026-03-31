@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'app.dart';
 import 'core/api.dart';
+import 'core/authority_auth_controller.dart';
 import 'core/global_reload.dart';
 import 'core/theme_controller.dart';
 import 'core/web_push_setup_stub.dart'
@@ -200,6 +201,7 @@ Future<void> main() async {
             return reload;
           },
         ),
+        ChangeNotifierProvider(create: (_) => AuthorityAuthController()),
         ChangeNotifierProvider(create: (_) => ThemeController()),
       ],
       child: const PolarisApp(),

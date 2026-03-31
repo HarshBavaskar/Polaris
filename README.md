@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris_Logo_Dark.png" width="600"/>
 
-| **Current Version** | `v0.9.A: Citizen App UX Revamp, Shared Branding, and Mobile Usability Improvements` |
+| **Current Version** | `v0.9.B: Production Hardening, Secure Auth, and Release Readiness` |
 | --- | --- |
 
 </div>
@@ -29,20 +29,39 @@ The result is a safety-first, explainable system built for operational decision 
 
 ---
 
-## Latest Branch Updates (Compared to v0.9)
+## Latest Branch Updates (Compared to v0.9.A)
 
 The README now reflects the latest change set on this branch:
 
 | Commit | Summary |
 | --- | --- |
-| `post-v0.9-ui-01` | Citizen app visual system migrated to dashboard-aligned theme tokens and spacing |
-| `post-v0.9-ui-02` | Navigation shell refactor: branded top bar, simplified emergency dashboard hierarchy |
-| `post-v0.9-ui-03` | Flood severity input upgraded to color-coded sliding selector control |
-| `post-v0.9-ui-04` | Android branding parity: launcher icons, splash assets, and startup loader alignment |
-| `post-v0.9-ui-05` | My Reports UX update: status filtering, spacing normalization, and stronger state affordance |
-| `post-v0.9-ui-06` | Citizen app API config now auto-maps localhost loopback for Android emulator networking |
+| `v0.9.B-sec-01` | Centralized backend runtime config with production startup validation for JWT, CORS, and debug/test toggles |
+| `v0.9.B-sec-02` | Credential-backed JWT issuance and role-based authorization added for authority and ingest workflows |
+| `v0.9.B-sec-03` | Authority, admin, debug, and mutating endpoints are now protected instead of being broadly open |
+| `v0.9.B-sec-04` | Upload handling now sanitizes filenames, enforces image-only content types, and caps payload sizes |
+| `v0.9.B-sec-05` | Repo hygiene tightened with ignored secrets, Firebase templates, safer local config handling, and a production checklist |
+| `v0.9.B-sec-06` | Dashboard now gates protected operations behind authority sign-in and tolerates missing local `google-services.json` during setup |
 
-### Post-v0.9 Highlights
+## Production Checklist
+
+See `PRODUCTION_CHECKLIST.md` for the release hardening and deployment checklist that goes with the new security model.
+
+### v0.9.B Highlights
+
+#### Production Hardening and Secure Operations
+
+- Backend configuration now flows through environment-driven settings with explicit production validation.
+- `POST /auth/token` now issues JWTs only after credential verification instead of acting as an open token mint.
+- Authority, admin, debug, and mutating endpoints require bearer auth with role checks.
+- Debug and test-notification routes are disabled in production by default.
+- Camera and citizen image uploads now sanitize filenames, restrict content types, and enforce upload ceilings.
+- MongoDB connectivity is sourced from environment configuration and verified during startup.
+
+#### Secret and Repo Hygiene
+
+- Local `.env`, Android Firebase config files, uploads, logs, caches, and build outputs are now ignored from git.
+- Example onboarding files are provided for `.env` and Android Firebase configuration.
+- A dedicated `PRODUCTION_CHECKLIST.md` now documents release hardening, secret rotation, and deployment expectations.
 
 #### Notification Reliability
 
@@ -151,7 +170,7 @@ Camera / Images
 
 ---
 
-## Notification and Alert Routing (v0.9)
+## Notification and Alert Routing (v0.9.B)
 
 - Alert dispatch is handled through **Firebase Cloud Messaging (FCM)** only.
 - Auto-dispatch is triggered directly from the decision pipeline in `app/main.py`.
@@ -168,6 +187,9 @@ Camera / Images
 
 ### Required Environment Variables
 
+- `POLARIS_JWT_SECRET`
+- `POLARIS_AUTH_USERNAME`
+- `POLARIS_AUTH_PASSWORD`
 - `FCM_PROJECT_ID`
 - `FCM_SERVICE_ACCOUNT_FILE` (absolute or repo-relative path to Firebase Admin SDK JSON)
 
@@ -189,8 +211,18 @@ Camera / Images
 
 - `POST /alert/register-token`
 - `POST /alert/unregister-token`
-- `POST /alert/test-token`
-- `GET /alert/debug-status`
+- `POST /auth/token`
+- `POST /alert/test-token` (authority token required; disabled in production by default)
+- `GET /alert/debug-status` (authority token required; disabled in production by default)
+
+### Security Notes
+
+- Treat previously committed Firebase config files and local `.env` values as exposed and rotate associated secrets outside the repo.
+- Use `.env.example` as the onboarding template. Keep the real `.env` local or inject it via deployment secrets.
+- Keep Android Firebase config local only:
+  - `polaris_dashboard/android/app/google-services.json`
+  - `polaris_citizen/android/app/src/google-services.json`
+- Protected authority APIs now require `Authorization: Bearer <token>` from `POST /auth/token`.
 
 ---
 
@@ -198,11 +230,11 @@ Camera / Images
 
 ### Core Inference and Alerting
 
-- `POST /input/camera`
+- `POST /input/camera` (protected; ingest/authority token required)
 - `GET /decision/latest`
-- `POST /alert/dispatch`
+- `POST /alert/dispatch` (protected)
 - `GET /backend/health`
-- `POST /backend/start`
+- `POST /backend/start` (protected)
 
 ### Dashboard and Visualization
 
@@ -222,27 +254,28 @@ Camera / Images
 - `POST /input/citizen/image`
 - `POST /input/citizen/water-level`
 - `POST /input/citizen/help-request`
-- `GET /input/citizen/pending`
-- `POST /input/citizen/review`
-- `GET /dashboard/help-requests`
-- `GET /dashboard/teams/snapshot`
-- `POST /dashboard/teams/upsert`
-- `POST /dashboard/help-requests/{request_id}/assign-team`
-- `POST /dashboard/help-requests/{request_id}/notify-nearby`
-- `POST /override/set`
-- `POST /override/clear`
-- `GET /override/history`
-- `GET /override/active`
-- `POST /authority/feedback/`
-- `GET /authority/feedback/active-learning/queue`
-- `GET /authority/feedback/active-learning/stats`
+- `GET /input/citizen/help-request/{request_id}`
+- `GET /input/citizen/pending` (protected)
+- `POST /input/citizen/review` (protected)
+- `GET /dashboard/help-requests` (protected)
+- `GET /dashboard/teams/snapshot` (protected)
+- `POST /dashboard/teams/upsert` (protected)
+- `POST /dashboard/help-requests/{request_id}/assign-team` (protected)
+- `POST /dashboard/help-requests/{request_id}/notify-nearby` (protected)
+- `POST /override/set` (protected)
+- `POST /override/clear` (protected)
+- `GET /override/history` (protected)
+- `GET /override/active` (protected)
+- `POST /authority/feedback/` (protected)
+- `GET /authority/feedback/active-learning/queue` (protected)
+- `GET /authority/feedback/active-learning/stats` (protected)
 
 ### ML Admin
 
-- `POST /admin/ml/retrain-and-reload`
-- `GET /admin/ml/status`
-- `GET /admin/ml/auto-config`
-- `POST /admin/ml/auto-config`
+- `POST /admin/ml/retrain-and-reload` (protected)
+- `GET /admin/ml/status` (protected)
+- `GET /admin/ml/auto-config` (protected)
+- `POST /admin/ml/auto-config` (protected)
 
 ---
 
@@ -251,6 +284,7 @@ Camera / Images
 ### Backend
 
 ```bash
+cp .env.example .env
 python -m venv .venv
 # activate venv for your shell
 pip install -r requirements.txt
@@ -265,6 +299,11 @@ flutter pub get
 flutter run -d chrome --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+The dashboard now opens with an authority sign-in screen.
+You can enter backend credentials there, or still prefill them with:
+`--dart-define=POLARIS_AUTH_USERNAME=...`
+`--dart-define=POLARIS_AUTH_PASSWORD=...`
+
 ### Flutter Citizen App
 
 ```bash
@@ -275,6 +314,7 @@ flutter run --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 
 > On Android emulator, loopback API hosts are mapped internally to `10.0.2.2`.
 > On a physical Android phone, use your laptop LAN IP instead, for example `http://192.168.29.26:8000`, and make sure the backend is started with `--host 0.0.0.0`.
+> Place local Firebase Android config files from the example paths before Android builds; they are intentionally gitignored.
 
 ---
 

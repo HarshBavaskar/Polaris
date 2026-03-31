@@ -4,6 +4,8 @@ import requests
 from datetime import datetime
 import os
 
+from app.auth.client_auth import build_auth_headers
+
 SERVER_URL = "http://127.0.0.1:8000/input/camera"
 TEMP_DIR = "temp_images"
 os.makedirs(TEMP_DIR, exist_ok=True)
@@ -29,9 +31,12 @@ try:
         cv2.imwrite(image_path, frame)
 
         with open(image_path, "rb") as img:
+            base_url = SERVER_URL.rsplit("/input/camera", 1)[0]
             response = requests.post(
                 SERVER_URL,
-                files={"image": img}
+                headers=build_auth_headers(base_url, preferred_role="ingest"),
+                files={"image": img},
+                timeout=20,
             )
 
         print("Server response:", response.json())

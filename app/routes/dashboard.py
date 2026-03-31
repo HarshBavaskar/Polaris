@@ -2,9 +2,10 @@ from datetime import datetime, timedelta
 from math import asin, cos, radians, sin, sqrt
 
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from app.auth.jwt_handler import require_authority
 from app.database import (
     help_requests_collection,
     predictions_collection,
@@ -204,7 +205,11 @@ def eta_timeseries(minutes: int = 60):
 
 
 @router.get("/help-requests")
-def get_help_requests(limit: int = 100, status: str = "OPEN"):
+def get_help_requests(
+    limit: int = 100,
+    status: str = "OPEN",
+    _: dict = Depends(require_authority),
+):
     status_upper = status.strip().upper()
     query = {}
     if status_upper != "ALL":
@@ -217,7 +222,7 @@ def get_help_requests(limit: int = 100, status: str = "OPEN"):
 
 
 @router.post("/teams/upsert")
-def upsert_team(payload: TeamUpsertRequest):
+def upsert_team(payload: TeamUpsertRequest, _: dict = Depends(require_authority)):
     status = payload.status.strip().upper()
     if status not in {"AVAILABLE", "DEPLOYED", "OFFLINE"}:
         raise HTTPException(status_code=400, detail="Invalid team status")
@@ -244,7 +249,11 @@ def upsert_team(payload: TeamUpsertRequest):
 
 
 @router.post("/help-requests/{request_id}/assign-team")
-def assign_team_to_help_request(request_id: str, payload: AssignTeamRequest):
+def assign_team_to_help_request(
+    request_id: str,
+    payload: AssignTeamRequest,
+    _: dict = Depends(require_authority),
+):
     team_id = payload.team_id.strip().upper()
     team = rescue_teams_collection.find_one({"team_id": team_id})
     if not team:
@@ -288,7 +297,11 @@ def assign_team_to_help_request(request_id: str, payload: AssignTeamRequest):
 
 
 @router.post("/help-requests/{request_id}/notify-nearby")
-def notify_nearby_teams(request_id: str, payload: NotifyNearbyRequest):
+def notify_nearby_teams(
+    request_id: str,
+    payload: NotifyNearbyRequest,
+    _: dict = Depends(require_authority),
+):
     try:
         req_object_id = ObjectId(request_id)
     except Exception:
@@ -359,7 +372,7 @@ def notify_nearby_teams(request_id: str, payload: NotifyNearbyRequest):
 
 
 @router.get("/teams/snapshot")
-def get_teams_snapshot():
+def get_teams_snapshot(_: dict = Depends(require_authority)):
     _seed_default_teams_if_empty()
 
     teams = list(rescue_teams_collection.find({}).sort("team_id", 1))

@@ -1,21 +1,24 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 import os
-import shutil
 import threading
 from datetime import datetime
 from contextlib import asynccontextmanager
-from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
-
-from dotenv import load_dotenv
-from fastapi import Depends
-from app.auth.jwt_handler import verify_jwt, create_access_token
+from app.auth.jwt_handler import (
+    authenticate_local_user,
+    create_access_token,
+    require_authority,
+    require_ingest_or_authority,
+)
+from app.config import REPO_ROOT, get_settings
 
 
 
 from app.utils.image_processing import extract_features
 from app.utils.risk_logic import calculate_risk, risk_level
-from app.database import images_collection, predictions_collection, alerts_collection
+from app.database import alerts_collection, images_collection, predictions_collection
 from app.utils.time_series import get_recent_risks, is_sudden_spike
 from app.routes.citizen import router as citizen_router
 from app.utils.fusion_logic import fuse_risk
@@ -46,17 +49,9 @@ from app.notifications.valkey_pub import publish_decision
 from app.notifications.deliver import deliver
 from app.notifications.fcm_push import send_push_fcm_to_targets
 from app.notifications.alert_engine import build_alert_payload
-
-
-
-
-
-
-# Always resolve .env from repo root so FCM variables load regardless of cwd.
-REPO_ROOT = Path(__file__).resolve().parents[1]
-load_dotenv(REPO_ROOT / ".env")
 from app.routes.map import router as map_router
 from app.database import (
+    ensure_database_connection,
     ensure_safezone_indexes,
     ensure_active_learning_indexes,
     ensure_fcm_token_indexes,
@@ -66,9 +61,41 @@ from app.database import (
 )
 from app.routes.safezones import router as safezones_router
 from app.database import safe_zones_collection, fcm_tokens_collection
-from fastapi.middleware.cors import CORSMiddleware
 from app.database import historical_events_collection
 from app.routes.alerts import router as alerts_router
+from app.upload_security import save_image_upload
+
+
+settings = get_settings()
+
+
+class AuthTokenRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=120)
+    password: str = Field(..., min_length=8, max_length=200)
+
+
+class AlertTokenPayload(BaseModel):
+    token: str = Field(..., min_length=20, max_length=4096)
+    platform: str | None = Field(default="unknown", max_length=40)
+    source: str | None = Field(default="app_startup", max_length=60)
+    user_agent: str | None = Field(default="", max_length=300)
+
+
+class TestAlertPayload(BaseModel):
+    token: str = Field(..., min_length=20, max_length=4096)
+    title: str | None = Field(default="Polaris Test Alert", max_length=120)
+    message: str | None = Field(
+        default="This is a direct token test notification.",
+        max_length=300,
+    )
+    severity: str | None = Field(default="ADVISORY", max_length=30)
+    channel: str | None = Field(default="APP_NOTIFICATION", max_length=40)
+
+
+def _protected_feature_guard(*, enabled: bool, detail: str) -> None:
+    if enabled:
+        return
+    raise HTTPException(status_code=404, detail=detail)
 
 
 
@@ -80,7 +107,9 @@ from app.routes.alerts import router as alerts_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup logic
+    settings.validate_startup()
+    settings.ensure_runtime_directories()
+    ensure_database_connection()
     ensure_safezone_indexes()
     ensure_active_learning_indexes()
     ensure_fcm_token_indexes()
@@ -112,7 +141,7 @@ async def lifespan(app: FastAPI):
 
 
 
-app = FastAPI(title="Polaris Detection Server", lifespan=lifespan )
+app = FastAPI(title="Polaris Detection Server", lifespan=lifespan)
 app.include_router(citizen_router)
 app.include_router(feedback_router)
 app.include_router(dashboard_router)
@@ -121,23 +150,14 @@ app.include_router(map_router)
 app.include_router(safezones_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # OK for development
-    allow_credentials=True,
+    allow_origins=["*"] if settings.cors_allow_all else list(settings.allowed_origins),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 app.include_router(alerts_router)
 app.include_router(camera_router)
 app.include_router(admin_ml_router)
-
-
-
-
-
-UPLOAD_DIR = "app/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-
 @app.get("/")
 def root():
     return {"status": "Polaris server running"}
@@ -389,7 +409,7 @@ def _dispatch_alert_payload(payload: dict, source: str = "API_DISPATCH") -> dict
 
 
 @app.post("/backend/start")
-def backend_start():
+def backend_start(_: dict = Depends(require_authority)):
     # This API acknowledges start requests from the dashboard.
     # The process is already running if this endpoint is reachable.
     return {
@@ -401,14 +421,16 @@ def backend_start():
 
 
 @app.post("/input/camera")
-async def receive_camera_image(image: UploadFile = File(...)):
-    # 1. Save image to disk
+async def receive_camera_image(
+    image: UploadFile = File(...),
+    _: dict = Depends(require_ingest_or_authority),
+):
     timestamp = datetime.now()
-    filename = f"{timestamp.strftime('%Y%m%d_%H%M%S')}_{image.filename}"
-    filepath = os.path.join(UPLOAD_DIR, filename)
-
-    with open(filepath, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+    filename, filepath = await save_image_upload(
+        image,
+        target_dir=settings.camera_upload_dir,
+        max_upload_bytes=settings.max_upload_bytes,
+    )
 
     # 2. Extract features
     features = extract_features(filepath)
@@ -641,31 +663,32 @@ def get_latest_decision():
 
 
 @app.post("/alert/dispatch")
-def dispatch_alert(payload: dict):
+def dispatch_alert(payload: dict, _: dict = Depends(require_authority)):
     source = (payload.get("source") or "API_DISPATCH").strip()
     return _dispatch_alert_payload(payload, source=source)
 
 
 @app.post("/alert/test-token")
-def test_alert_token(payload: dict):
+def test_alert_token(payload: TestAlertPayload, _: dict = Depends(require_authority)):
     """
     Sends a test FCM notification to one explicit token.
     Does not use FCM_DEVICE_TOKENS / FCM_TOPIC from .env.
     """
-    token = (payload.get("token") or "").strip()
-    if not token:
-        raise HTTPException(status_code=400, detail="Missing required field: token")
+    _protected_feature_guard(
+        enabled=settings.enable_test_alert_endpoints,
+        detail="Test alert endpoint is disabled.",
+    )
 
     test_payload = {
-        "title": payload.get("title") or "Polaris Test Alert",
-        "message": payload.get("message") or "This is a direct token test notification.",
-        "severity": (payload.get("severity") or "ADVISORY").upper(),
-        "channel": (payload.get("channel") or "APP_NOTIFICATION").upper(),
+        "title": payload.title or "Polaris Test Alert",
+        "message": payload.message or "This is a direct token test notification.",
+        "severity": (payload.severity or "ADVISORY").upper(),
+        "channel": (payload.channel or "APP_NOTIFICATION").upper(),
     }
 
     delivery_result = send_push_fcm_to_targets(
         test_payload,
-        device_tokens=[token],
+        device_tokens=[payload.token.strip()],
         topic=None,
     )
     status = "sent" if delivery_result.get("ok") else "failed"
@@ -678,14 +701,11 @@ def test_alert_token(payload: dict):
 
 
 @app.post("/alert/register-token")
-def register_alert_token(payload: dict):
-    token = (payload.get("token") or "").strip()
-    if len(token) < 20:
-        raise HTTPException(status_code=400, detail="Invalid or missing token")
-
-    platform = (payload.get("platform") or "unknown").strip().lower()
-    source = (payload.get("source") or "app_startup").strip()
-    user_agent = (payload.get("user_agent") or "").strip()
+def register_alert_token(payload: AlertTokenPayload):
+    token = payload.token.strip()
+    platform = (payload.platform or "unknown").strip().lower()
+    source = (payload.source or "app_startup").strip()
+    user_agent = (payload.user_agent or "").strip()
     now = datetime.now()
 
     fcm_tokens_collection.update_one(
@@ -713,11 +733,8 @@ def register_alert_token(payload: dict):
 
 
 @app.post("/alert/unregister-token")
-def unregister_alert_token(payload: dict):
-    token = (payload.get("token") or "").strip()
-    if len(token) < 20:
-        raise HTTPException(status_code=400, detail="Invalid or missing token")
-
+def unregister_alert_token(payload: AlertTokenPayload):
+    token = payload.token.strip()
     result = fcm_tokens_collection.update_one(
         {"token": token},
         {"$set": {"active": False, "updated_at": datetime.now()}},
@@ -730,7 +747,11 @@ def unregister_alert_token(payload: dict):
 
 
 @app.get("/alert/debug-status")
-def get_alert_debug_status():
+def get_alert_debug_status(_: dict = Depends(require_authority)):
+    _protected_feature_guard(
+        enabled=settings.enable_debug_endpoints,
+        detail="Debug status endpoint is disabled.",
+    )
     latest_alert = None
     db_error = None
     try:
@@ -751,8 +772,8 @@ def get_alert_debug_status():
         "db_error": db_error,
     }
 
-@app.get("/alerts/latest")
-def get_latest_alerts(limit: int = 20):
+@app.get("/alerts/recent")
+def get_recent_alerts(limit: int = 20):
     alerts = list(
         alerts_collection.find({}, {"_id": 0})
         .sort("timestamp", -1)
@@ -806,8 +827,8 @@ def get_live_risk_points(limit: int = 50):
 
     return points
 
-@app.get("/map/safe-zones")
-def get_safe_zones():
+@app.get("/map/safe-zones/raw")
+def get_safe_zones(_: dict = Depends(require_authority)):
     zones = list(
         safe_zones_collection.find({}, {"_id": 0})
     )
@@ -823,10 +844,23 @@ def get_historical_events():
     return events
 
 @app.post("/auth/token")
-def issue_token():
-    """
-    Temporary token issuer.
-    Later this will be replaced by real user auth.
-    """
-    token = create_access_token({"role": "authority"})
-    return {"access_token": token, "token_type": "bearer"}
+def issue_token(payload: AuthTokenRequest):
+    if not (settings.authority_username and settings.authority_password) and not (
+        settings.ingest_username and settings.ingest_password
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail="Local auth credentials are not configured on this server.",
+        )
+
+    user = authenticate_local_user(payload.username, payload.password)
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token(user)
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user["role"],
+        "expires_in_minutes": settings.access_token_expire_minutes,
+    }

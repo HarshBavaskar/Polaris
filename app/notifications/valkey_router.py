@@ -3,6 +3,7 @@ import os
 from valkey import Valkey
 from dotenv import load_dotenv
 
+from app.auth.client_auth import build_auth_headers
 from app.notifications.alert_engine import build_alert_payload
 from app.notifications.router_client import http_post_json  # re-use your existing POST helper
 
@@ -53,7 +54,11 @@ def main():
 
         print("Dispatching:", payload)
         try:
-            resp = http_post_json(dispatch_url, payload)
+            resp = http_post_json(
+                dispatch_url,
+                payload,
+                headers=build_auth_headers(base_url, preferred_role="authority"),
+            )
             print("Dispatch response:", resp)
             last_signature = signature
         except Exception as e:

@@ -58,14 +58,14 @@ flutter run -d <android-device-id> --dart-define=POLARIS_API_BASE_URL=http://<YO
 Push notification setup required (one-time):
 
 1. Firebase app config files for `polaris_citizen`:
-   - Android: place Firebase `google-services.json` at `polaris_citizen/android/app/google-services.json`
+   - Android: place Firebase `google-services.json` at `polaris_citizen/android/app/src/google-services.json`
    - iOS: place Firebase `GoogleService-Info.plist` at `polaris_citizen/ios/Runner/GoogleService-Info.plist` and add it to Runner target in Xcode
 2. iOS Xcode capability:
    - enable `Push Notifications` for Runner target
 3. Backend `.env` must include:
    - `FCM_PROJECT_ID`
    - `FCM_SERVICE_ACCOUNT_FILE`
-4. Verify backend config:
+4. Verify backend config with an authority bearer token:
    - `GET /alert/debug-status`
-5. Send test push:
+5. Send test push with an authority bearer token:
    - `POST /alert/test-token` with citizen app token

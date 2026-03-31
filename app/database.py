@@ -1,8 +1,16 @@
 from pymongo import MongoClient
 
-MONGO_URL = "mongodb://localhost:27017"
+from app.config import get_settings
 
-client = MongoClient(MONGO_URL)
+
+settings = get_settings()
+
+client = MongoClient(
+    settings.mongo_url,
+    serverSelectionTimeoutMS=5000,
+    retryWrites=True,
+    appname="polaris-backend",
+)
 
 db = client["polaris"]
 
@@ -21,6 +29,10 @@ active_learning_collection = db["active_learning_samples"]
 help_requests_collection = db["help_requests"]
 rescue_teams_collection = db["rescue_teams"]
 team_notifications_collection = db["team_notifications"]
+
+
+def ensure_database_connection():
+    client.admin.command("ping")
 
 def ensure_safezone_indexes():
     safezones_collection.create_index(

@@ -9,6 +9,8 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
+import '../core/authority_auth_controller.dart';
+import '../core/auth_http.dart';
 import '../core/backend_launcher.dart';
 import '../core/refresh_config.dart';
 import '../core/theme_controller.dart';
@@ -103,7 +105,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         http.get(Uri.parse('$base/decision/latest')),
         http.get(Uri.parse('$base/map/live-risk?limit=50')),
         http.get(Uri.parse('$base/alerts/history?limit=50')),
-        http.get(Uri.parse('$base/input/citizen/pending')),
+        AuthHttp.get(
+          Uri.parse('$base/input/citizen/pending'),
+          authenticated: true,
+        ),
       ]);
 
       final currentStatusRes = responses[0];
@@ -178,8 +183,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final base = ApiConfig.baseUrl;
       final responses = await Future.wait([
-        http.get(Uri.parse('$base/admin/ml/status')),
-        http.get(Uri.parse('$base/admin/ml/auto-config')),
+        AuthHttp.get(
+          Uri.parse('$base/admin/ml/status'),
+          authenticated: true,
+        ),
+        AuthHttp.get(
+          Uri.parse('$base/admin/ml/auto-config'),
+          authenticated: true,
+        ),
       ]);
 
       if (responses[0].statusCode != 200 || responses[1].statusCode != 200) {
@@ -218,8 +229,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     setState(() => _mlActionLoading = true);
     try {
-      final response = await http.post(
+      final response = await AuthHttp.post(
         Uri.parse('${ApiConfig.baseUrl}/admin/ml/retrain-and-reload'),
+        authenticated: true,
       );
       final body = jsonDecode(response.body);
       if (!mounted) return;
@@ -252,7 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final uri = Uri.parse(
         '${ApiConfig.baseUrl}/admin/ml/auto-config?enabled=$enabled&threshold=$threshold',
       );
-      final response = await http.post(uri);
+      final response = await AuthHttp.post(uri, authenticated: true);
       if (response.statusCode != 200) {
         throw Exception('Failed to update auto training config');
       }
@@ -477,6 +489,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final compact = MediaQuery.sizeOf(context).width < 900 || isAndroidUi;
     final colorScheme = Theme.of(context).colorScheme;
+    final authController = context.watch<AuthorityAuthController>();
     final themeController = context.watch<ThemeController>();
 
     final stats = _stats;
@@ -523,6 +536,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 10),
                     _InfoRow(label: 'Version', value: _latestOngoingVersion),
                     const SizedBox(height: 8),
+                    _InfoRow(
+                      label: 'Authority Session',
+                      value: authController.isAuthenticated
+                          ? authController.username
+                          : 'Signed out',
+                    ),
+                    const SizedBox(height: 8),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       title: const Text('Backend Server'),
@@ -562,6 +582,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       value: themeController.isDarkMode,
                       onChanged: themeController.setDarkMode,
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.tonalIcon(
+                        onPressed: authController.isAuthenticated
+                            ? () => authController.signOut()
+                            : null,
+                        icon: const Icon(Icons.logout_rounded),
+                        label: const Text('Sign Out'),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(

@@ -17,6 +17,7 @@ import json
 from urllib.request import Request, urlopen
 from urllib.error import URLError, HTTPError
 
+from app.auth.client_auth import build_auth_headers
 from app.notifications.alert_engine import build_alert_payload
 
 
@@ -27,10 +28,17 @@ def http_get_json(url: str, timeout: int = 5) -> dict:
         return json.loads(data)
 
 
-def http_post_json(url: str, payload: dict, timeout: int = 5) -> dict:
+def http_post_json(
+    url: str,
+    payload: dict,
+    timeout: int = 5,
+    headers: dict[str, str] | None = None,
+) -> dict:
     body = json.dumps(payload).encode("utf-8")
     req = Request(url, data=body, method="POST")
     req.add_header("Content-Type", "application/json")
+    for key, value in (headers or {}).items():
+        req.add_header(key, value)
     with urlopen(req, timeout=timeout) as resp:
         data = resp.read().decode("utf-8")
         return json.loads(data) if data else {"ok": True}
@@ -74,7 +82,11 @@ def main():
             if signature != last_signature:
                 print("Dispatching:", payload)
                 try:
-                    resp = http_post_json(dispatch_url, payload)
+                    resp = http_post_json(
+                        dispatch_url,
+                        payload,
+                        headers=build_auth_headers(base_url, preferred_role="authority"),
+                    )
                     print("Dispatch response:", resp)
                     last_signature = signature
                 except (URLError, HTTPError) as e:

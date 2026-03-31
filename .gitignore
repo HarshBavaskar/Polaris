@@ -2,9 +2,13 @@
 node_modules/
 __pycache__/
 *.pyc
+.pytest_cache/
 .venv/
 env/
 venv/
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
 
 # Build outputs
 dist/
@@ -12,6 +16,8 @@ build/
 *.egg-info/
 .next/
 out/
+polaris_dashboard/build/
+polaris_citizen/build/
 
 # IDE
 .vscode/
@@ -47,6 +53,22 @@ coverage/
 # Firebase / credentials
 *firebase-adminsdk*.json
 service-account*.json
+google-services.json
+**/google-services.json
+**/GoogleService-Info.plist
+key.properties
+*.jks
+*.keystore
 
 # Runtime / local state
 app/runtime/
+app/uploads/
+temp_images/
+logs_backend.txt
+logs_ngrok.txt
+logs_phone_proxy.txt
+
+# Flutter / Android local machine state
+**/android/local.properties
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh

@@ -26,9 +26,21 @@ flutter pub get
 flutter run -d chrome --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 ```
 
+The dashboard now starts on an authority sign-in screen.
+You can type credentials there, or prefill them with:
+`--dart-define=POLARIS_AUTH_USERNAME=<authority-user>`
+`--dart-define=POLARIS_AUTH_PASSWORD=<authority-password>`
+
 ## Optional Android Run
 
 ```bash
 flutter devices
-flutter run -d <android-device-id> --dart-define=POLARIS_API_BASE_URL=http://<YOUR_LAN_IP>:8000
+flutter run -d <android-device-id> \
+  --dart-define=POLARIS_API_BASE_URL=http://<YOUR_LAN_IP>:8000
 ```
+
+## Firebase Android Config
+
+- Keep the real Firebase Android client config at `polaris_dashboard/android/app/google-services.json`.
+- Use `polaris_dashboard/android/app/google-services.example.json` as a placeholder reference only.
+- The real file is intentionally gitignored and must come from local setup or CI secrets.

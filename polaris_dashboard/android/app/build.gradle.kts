@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    id("com.google.gms.google-services")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -47,4 +46,27 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+}
+
+val googleServicesJsonCandidates = listOf(
+    "google-services.json",
+    "src/google-services.json",
+    "src/debug/google-services.json",
+    "src/release/google-services.json",
+)
+
+val expectedGooglePackageName = "com.example.polaris_dashboard"
+val googleServicesFile = googleServicesJsonCandidates
+    .map(::file)
+    .firstOrNull { it.exists() }
+val hasMatchingGoogleClient = googleServicesFile
+    ?.readText()
+    ?.contains("\"package_name\": \"$expectedGooglePackageName\"") == true
+
+if (googleServicesFile != null && hasMatchingGoogleClient) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.lifecycle(
+        "google-services.json missing or package mismatch; skipping com.google.gms.google-services plugin for :app",
+    )
 }
