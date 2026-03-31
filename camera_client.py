@@ -35,7 +35,7 @@ try:
             response = requests.post(
                 SERVER_URL,
                 headers=build_auth_headers(base_url, preferred_role="ingest"),
-                files={"image": img},
+                files={"image": (os.path.basename(image_path), img, "image/jpeg")},
                 timeout=20,
             )
 
