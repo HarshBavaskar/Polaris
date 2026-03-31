@@ -2,7 +2,7 @@
 
 <img src="misc/Polaris_Logo_Dark.png" width="600"/>
 
-| **Current Version** | `v0.9.B: Production Hardening, Secure Auth, and Release Readiness` |
+| **Current Version** | `v0.9.B.Sec: Production Hardening, Secure Auth, and Release Readiness` |
 | --- | --- |
 
 </div>
