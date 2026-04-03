@@ -193,9 +193,6 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(18),
@@ -230,9 +227,6 @@ class _CitizenDashboardScreenState extends State<CitizenDashboardScreen> {
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
                 ),
                 child: Image.asset(
                   'assets/Polaris_Logo_Side.PNG',
@@ -1142,9 +1136,6 @@ class _HelplineTile extends StatelessWidget {
         if (compact) {
           return Container(
             decoration: BoxDecoration(
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
               borderRadius: BorderRadius.circular(10),
             ),
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
@@ -1163,9 +1154,6 @@ class _HelplineTile extends StatelessWidget {
 
         return Container(
           decoration: BoxDecoration(
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
             borderRadius: BorderRadius.circular(10),
           ),
           child: ListTile(

@@ -20,7 +20,6 @@ class TrustUsabilityScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Row(
             children: <Widget>[
@@ -52,7 +51,6 @@ class TrustUsabilityScreen extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,11 +113,6 @@ class TrustUsabilityScreen extends StatelessWidget {
                   ? const Color(0xFF2F855A).withValues(alpha: 0.08)
                   : colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: prefs.dataSaverEnabled
-                    ? const Color(0xFF2F855A).withValues(alpha: 0.2)
-                    : colors.outlineVariant,
-              ),
             ),
             child: Row(
               children: <Widget>[

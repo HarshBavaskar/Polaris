@@ -488,7 +488,6 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                   decoration: BoxDecoration(
                     color: colors.surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: colors.outlineVariant),
                   ),
                   child: Row(
                     children: <Widget>[
@@ -527,7 +526,6 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF388E3C).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF388E3C).withValues(alpha: 0.2)),
                 ),
                 child: Row(
                   children: <Widget>[
@@ -657,7 +655,6 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 decoration: BoxDecoration(
                   color: colors.surfaceContainerHigh,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: colors.outlineVariant),
                 ),
                 child: Row(
                   children: <Widget>[

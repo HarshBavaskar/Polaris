@@ -195,7 +195,6 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             decoration: BoxDecoration(
               color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.outlineVariant),
             ),
             child: Row(
               children: <Widget>[
@@ -333,7 +332,6 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   decoration: BoxDecoration(
                     color: statusColor.withValues(alpha: 0.06),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: statusColor.withValues(alpha: 0.15)),
                   ),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,

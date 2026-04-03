@@ -55,7 +55,6 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
         children: <Widget>[
@@ -65,7 +64,6 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
             decoration: BoxDecoration(
               color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: colors.outlineVariant),
             ),
             child: LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
@@ -116,7 +114,6 @@ class _CitizenTopBarState extends State<CitizenTopBar> {
             decoration: BoxDecoration(
               color: colors.primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: colors.primary.withValues(alpha: 0.22)),
             ),
             child: Row(
               children: <Widget>[

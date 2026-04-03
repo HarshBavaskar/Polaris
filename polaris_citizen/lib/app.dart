@@ -55,15 +55,17 @@ class _CitizenAppState extends State<CitizenApp> {
       ),
       cardTheme: base.cardTheme.copyWith(
         margin: EdgeInsets.zero,
-        elevation: 0.8,
+        elevation: 0,
+        shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: c.outlineVariant, width: 0.6),
+          side: BorderSide.none,
         ),
       ),
       drawerTheme: DrawerThemeData(
         backgroundColor: c.surface,
-        elevation: 3,
+        elevation: 0,
+        shadowColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
         ),
@@ -103,9 +105,7 @@ class _CitizenAppState extends State<CitizenApp> {
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(11)),
           ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: c.outlineVariant, width: 0.8),
-          ),
+          side: const WidgetStatePropertyAll(BorderSide.none),
         ),
       ),
     );

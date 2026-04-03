@@ -39,7 +39,8 @@ class PolarisTheme {
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: scheme.onSurface,
-        elevation: 1,
+        elevation: 0,
+        scrolledUnderElevation: 0,
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -50,7 +51,7 @@ class PolarisTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: scheme.outlineVariant, width: 0.5),
+          side: BorderSide.none,
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
@@ -70,13 +71,13 @@ class PolarisTheme {
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
-        side: BorderSide(color: scheme.outlineVariant, width: 0.5),
+        side: BorderSide.none,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          elevation: 2.6,
-          shadowColor: Colors.black.withValues(alpha: 0.2),
+          elevation: 0,
+          shadowColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -86,16 +87,9 @@ class PolarisTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
-          elevation: WidgetStateProperty.resolveWith<double>((states) {
-            if (states.contains(WidgetState.pressed)) return 0.8;
-            return 1.6;
-          }),
-          shadowColor: WidgetStatePropertyAll(
-            Colors.black.withValues(alpha: 0.14),
-          ),
-          side: WidgetStatePropertyAll(
-            BorderSide(color: scheme.outlineVariant, width: 0.9),
-          ),
+          elevation: const WidgetStatePropertyAll(0),
+          shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+          side: const WidgetStatePropertyAll(BorderSide.none),
           backgroundColor: WidgetStatePropertyAll(scheme.surface),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

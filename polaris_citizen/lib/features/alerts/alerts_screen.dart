@@ -282,7 +282,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
             decoration: BoxDecoration(
               color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: colors.outlineVariant),
             ),
             child: Row(
               children: <Widget>[
@@ -343,7 +342,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: badgeColor.withValues(alpha: 0.18)),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),

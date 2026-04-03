@@ -607,7 +607,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -692,7 +691,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                         decoration: BoxDecoration(
                           color: colors.surfaceContainerHigh,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: colors.outlineVariant),
                         ),
                         child: Column(
                           children: <Widget>[
@@ -818,7 +816,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: colors.outlineVariant),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -844,7 +841,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: colors.outlineVariant),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -898,7 +894,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1027,7 +1022,6 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
           decoration: BoxDecoration(
             color: currentLevelColor.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: currentLevelColor.withValues(alpha: 0.15)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

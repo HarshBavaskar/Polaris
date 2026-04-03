@@ -527,7 +527,6 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Row(
             children: <Widget>[
@@ -559,22 +558,16 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                   ],
                 ),
               ),
-              FilledButton.tonalIcon(
+              IconButton.filledTonal(
                 key: const Key('help-sync-pending-button'),
                 onPressed: _syncingPending ? null : _syncPendingRequests,
                 icon: _syncingPending
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
+                        width: 18,
+                        height: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.sync_rounded, size: 18),
-                label: Text(
-                  _syncingPending
-                      ? CitizenStrings.tr('help_syncing', languageCode)
-                      : CitizenStrings.tr('help_pending_title', languageCode),
-                  style: const TextStyle(fontSize: 12),
-                ),
+                    : const Icon(Icons.sync_rounded),
               ),
             ],
           ),
@@ -587,7 +580,6 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
           decoration: BoxDecoration(
             color: colors.surfaceContainerHigh,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: colors.outlineVariant),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -657,7 +649,6 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
                       decoration: BoxDecoration(
                         color: statusColor.withValues(alpha: 0.06),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: statusColor.withValues(alpha: 0.15)),
                       ),
                       child: Row(
                         children: <Widget>[

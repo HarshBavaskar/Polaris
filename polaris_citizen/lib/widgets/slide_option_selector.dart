@@ -56,7 +56,6 @@ class SlideOptionSelector<T> extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: colors.outlineVariant, width: 0.9),
             ),
             child: Stack(
               children: <Widget>[
@@ -71,7 +70,6 @@ class SlideOptionSelector<T> extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: selectedTone.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: selectedTone, width: 1),
                     ),
                   ),
                 ),
