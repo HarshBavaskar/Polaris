@@ -1,11 +1,9 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 pillow
-opencv-python
+opencv-python-headless
 numpy
-scikit-image
-scipy
 pymongo
 torch
 torchvision

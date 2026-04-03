@@ -40,6 +40,16 @@ def _get_csv(name: str, default: str = "") -> tuple[str, ...]:
     return tuple(values)
 
 
+def _get_path(name: str, default: Path) -> Path:
+    raw = (os.getenv(name) or "").strip()
+    if not raw:
+        return default.resolve()
+    expanded = Path(os.path.expanduser(raw))
+    if expanded.is_absolute():
+        return expanded.resolve()
+    return (REPO_ROOT / expanded).resolve()
+
+
 @dataclass(frozen=True)
 class PolarisSettings:
     environment: str
@@ -129,7 +139,7 @@ def get_settings() -> PolarisSettings:
     debug_default = environment not in {"production", "prod"}
     allowed_origins_default = "*" if debug_default else ""
 
-    upload_root = (REPO_ROOT / "app" / "uploads").resolve()
+    upload_root = _get_path("POLARIS_UPLOAD_ROOT", REPO_ROOT / "app" / "uploads")
 
     return PolarisSettings(
         environment=environment,

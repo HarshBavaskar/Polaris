@@ -219,7 +219,7 @@ Camera / Images
 
 - Treat previously committed Firebase config files and local `.env` values as exposed and rotate associated secrets outside the repo.
 - Use `.env.example` as the onboarding template. Keep the real `.env` local or inject it via deployment secrets.
-- For Azure App Service, prefer `FCM_SERVICE_ACCOUNT_JSON` as an application setting instead of deploying a credential file.
+- For Render, prefer `FCM_SERVICE_ACCOUNT_JSON` as an environment variable instead of managing a file path.
 - Keep Android Firebase config local only:
   - `polaris_dashboard/android/app/google-services.json`
   - `polaris_citizen/android/app/src/google-services.json`
@@ -319,11 +319,11 @@ flutter run --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 
 ---
 
-## Production Deployment
+## Deployment
 
 Recommended deployment split:
 
-- Backend: Azure App Service for Linux using the repo `Dockerfile`
+- Backend: Render web service using the repo `render.yaml` and native Python runtime
 - Dashboard: Firebase Hosting from `polaris_dashboard/build/web`
 - Database: MongoDB Atlas
 
@@ -332,7 +332,7 @@ Build the dashboard for hosting:
 ```bash
 cd polaris_dashboard
 flutter pub get
-flutter build web --dart-define=POLARIS_API_BASE_URL=https://<your-backend>.azurewebsites.net
+flutter build web --dart-define=POLARIS_API_BASE_URL=https://<your-backend-domain>
 ```
 
 Deploy Firebase Hosting from the repo root:
@@ -341,7 +341,7 @@ Deploy Firebase Hosting from the repo root:
 firebase deploy --only hosting
 ```
 
-Use `DEPLOYMENT.md` and `AZURE_APP_SERVICE_SETTINGS.example` for the full Azure + Firebase setup.
+See `DEPLOYMENT.md` for the Render backend setup and free-tier caveats.
 
 ---
 
@@ -356,10 +356,10 @@ Polaris/
     notifications/
     utils/
     ai/
+  render.yaml
+  DEPLOYMENT.md
   polaris_dashboard/
   polaris_dataset/
-  Dockerfile
-  DEPLOYMENT.md
   firebase.json
   README.md
 ```
@@ -378,7 +378,7 @@ Polaris/
 | Messaging | FCM, optional Valkey Pub/Sub |
 | Frontend | Flutter (Web + Android) |
 | Mapping | OpenStreetMap |
-| Deployment | Firebase Hosting scaffold + cloud-ready backend |
+| Deployment | Render backend + Firebase Hosting dashboard |
 
 ---
 

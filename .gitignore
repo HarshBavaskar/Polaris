@@ -63,21 +63,6 @@ key.properties
 *.jks
 *.keystore
 
-# Azure / cloud local secrets
-appsettings.json
-appsettings.*.json
-*.publishsettings
-AZURE_APP_SERVICE_SETTINGS.local
-AZURE_APP_SERVICE_SETTINGS.local.*
-*.pfx
-*.pem
-*.cer
-*.crt
-*.key
-secrets.json
-secrets.*.json
-local.settings.json
-
 # Runtime / local state
 app/runtime/
 app/uploads/

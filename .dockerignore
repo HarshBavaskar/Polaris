@@ -25,6 +25,10 @@ app/uploads
 app/runtime
 polaris_dataset
 polaris_citizen
+polaris_dashboard
+public
+misc
+build
 polaris_dashboard/build
 polaris_dashboard/.dart_tool
 polaris_citizen/build

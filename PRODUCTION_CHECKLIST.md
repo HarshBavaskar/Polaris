@@ -9,9 +9,8 @@
   - `POLARIS_AUTH_PASSWORD`
   - `POLARIS_INGEST_USERNAME`
   - `POLARIS_INGEST_PASSWORD`
-  - `FCM_SERVICE_ACCOUNT_FILE` or `FCM_SERVICE_ACCOUNT_JSON`
+  - `FCM_SERVICE_ACCOUNT_FILE`
 - Keep real `.env`, `google-services.json`, and `GoogleService-Info.plist` files out of git and inject them via local setup or CI/CD secrets.
-- Prefer `FCM_SERVICE_ACCOUNT_JSON` in Azure App Service application settings to avoid shipping a credential file.
 
 ## Backend Configuration
 
@@ -22,7 +21,6 @@
 - Set `POLARIS_ALLOWED_ORIGINS` to explicit HTTPS origins only
 - Set `MONGO_URL` to the production database with auth enabled
 - Set `POLARIS_MAX_UPLOAD_BYTES` to the upload ceiling you actually want to enforce
-- Set `WEBSITES_PORT=8000` in Azure App Service for the containerized backend
 
 ## Infrastructure
 
@@ -48,9 +46,9 @@
 
 ## Hosting Targets
 
-- Deploy the backend container to Azure App Service for Linux.
+- Deploy the backend on a host that can run the current FastAPI + ML stack reliably.
 - Deploy the dashboard web build from `polaris_dashboard/build/web` to Firebase Hosting.
-- Use MongoDB Atlas for `MONGO_URL` and allow the Azure backend to reach it.
+- Use MongoDB Atlas for `MONGO_URL`.
 
 ## Release Hygiene
 

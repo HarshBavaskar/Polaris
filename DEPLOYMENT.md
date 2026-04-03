@@ -1,98 +1,68 @@
-# Polaris Deployment
+# Polaris Backend Deployment
 
-This repo is set up to deploy:
+## Render
 
-- backend -> Azure App Service for Linux using a custom container
-- dashboard web app -> Firebase Hosting
-- database -> MongoDB Atlas `M0`
+This repo now includes a root `render.yaml` so Render can run the backend with its native Python runtime instead of Docker.
 
-## 1. Backend container
+### Service setup
 
-Build the backend image from the repo root:
+1. Push this repo with `render.yaml` at the root.
+2. In Render, create a new Blueprint or Web Service from the repository.
+3. Keep the service root at the repo root `/`.
+4. Render should use the Python runtime with:
+   - build command: `pip install --upgrade pip && pip install -r requirements.txt`
+   - start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
 
-```bash
-docker build -t polaris-backend:latest .
-```
+### Required environment variables
 
-Run it locally with production-like settings:
+Render prompts for variables marked `sync: false` in `render.yaml` when you create the service.
 
-```bash
-docker run --rm -p 8000:8000 --env-file .env polaris-backend:latest
-```
+Required:
 
-The container listens on port `8000`. In Azure App Service, set:
+- `POLARIS_ALLOWED_ORIGINS=https://<your-dashboard-domain>`
+- `MONGO_URL=<your-mongodb-atlas-uri>`
+- `POLARIS_AUTH_USERNAME=<authority-username>`
+- `POLARIS_AUTH_PASSWORD=<authority-password>`
+- `POLARIS_INGEST_USERNAME=<ingest-username>`
+- `POLARIS_INGEST_PASSWORD=<ingest-password>`
+- `FCM_PROJECT_ID=<firebase-project-id>`
+- `FCM_SERVICE_ACCOUNT_JSON=<firebase-admin-json>`
 
-```text
-WEBSITES_PORT=8000
-```
+Generated automatically:
 
-## 2. Azure App Service settings
+- `POLARIS_JWT_SECRET`
 
-Use `AZURE_APP_SERVICE_SETTINGS.example` as the template for App Service application settings.
-
-Recommended secret strategy for FCM:
-
-- Set `FCM_SERVICE_ACCOUNT_JSON` directly in App Service settings.
-- Leave `FCM_SERVICE_ACCOUNT_FILE` empty unless you explicitly mount a file.
-
-Required production values:
+Defaults provided by the Blueprint:
 
 - `POLARIS_ENV=production`
 - `POLARIS_DEBUG=0`
 - `POLARIS_ENABLE_DEBUG_ENDPOINTS=0`
 - `POLARIS_ENABLE_TEST_ALERT_ENDPOINTS=0`
-- `POLARIS_ALLOWED_ORIGINS=https://<site>.web.app,https://<site>.firebaseapp.com`
-- `MONGO_URL=<MongoDB Atlas URI>`
-- `WEBSITES_PORT=8000`
+- `POLARIS_MAX_UPLOAD_BYTES=5242880`
+- `POLARIS_UPLOAD_ROOT=/tmp/polaris/uploads`
+- `ALERT_RETRY_ENABLED=0`
 
-## 3. MongoDB Atlas
+### Health check
 
-Create a free Atlas cluster and database user, then set:
-
-```text
-MONGO_URL=mongodb+srv://<username>:<password>@<cluster>/polaris?retryWrites=true&w=majority
-```
-
-Allow the Azure backend to connect using Atlas network access rules.
-
-## 4. Dashboard build
-
-Build the hosted dashboard with the live backend URL:
+After deploy, verify:
 
 ```bash
-cd polaris_dashboard
-flutter pub get
-flutter build web --dart-define=POLARIS_API_BASE_URL=https://<your-backend>.azurewebsites.net
+curl https://<your-render-service>.onrender.com/backend/health
 ```
 
-Firebase Hosting now serves `polaris_dashboard/build/web`, including the root-level
-`firebase-messaging-sw.js` file required by the dashboard web push setup.
+### Free plan caveats
 
-## 5. Firebase Hosting deploy
+- Render Free spins the service down after 15 minutes of idle time.
+- Free web services have an ephemeral filesystem, so uploaded files are lost on restart, redeploy, or spin-down.
+- Free web services cannot attach persistent disks.
+- Render documents that Free services may be suspended for unusually high service-initiated public internet traffic, including external database access.
 
-From the repo root:
+If you upgrade to a paid Render plan later, set `POLARIS_UPLOAD_ROOT` to a mounted persistent disk path.
 
-```bash
-firebase deploy --only hosting
-```
+### Common Render failure modes for this repo
 
-Firebase Hosting will deploy to:
-
-- `https://<project-id>.web.app`
-- `https://<project-id>.firebaseapp.com`
-
-## 6. Validation
-
-After backend deployment:
-
-```bash
-curl https://<your-backend>.azurewebsites.net/backend/health
-```
-
-After dashboard deployment:
-
-- open the Firebase Hosting URL
-- verify sign-in works
-- verify protected actions still require auth
-- verify public data panels load
-- verify `/firebase-messaging-sw.js` is reachable
+- Missing `MONGO_URL`, causing startup to fail during database ping.
+- Missing production auth variables, causing startup validation to fail.
+- Missing `FCM_SERVICE_ACCOUNT_JSON` or `FCM_SERVICE_ACCOUNT_FILE`.
+- `POLARIS_ALLOWED_ORIGINS` left as `*`, which is rejected in production mode.
+- Expecting uploaded files to survive restarts on the Free plan.

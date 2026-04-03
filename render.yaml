@@ -1,0 +1,45 @@
+services:
+  - name: polaris-backend
+    type: web
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /backend/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: POLARIS_ENV
+        value: production
+      - key: POLARIS_DEBUG
+        value: "0"
+      - key: POLARIS_ENABLE_DEBUG_ENDPOINTS
+        value: "0"
+      - key: POLARIS_ENABLE_TEST_ALERT_ENDPOINTS
+        value: "0"
+      - key: POLARIS_MAX_UPLOAD_BYTES
+        value: "5242880"
+      - key: POLARIS_UPLOAD_ROOT
+        value: /tmp/polaris/uploads
+      - key: ALERT_RETRY_ENABLED
+        value: "0"
+      - key: FCM_TOPIC
+        value: polaris-alerts
+      - key: POLARIS_JWT_SECRET
+        generateValue: true
+      - key: POLARIS_ALLOWED_ORIGINS
+        sync: false
+      - key: MONGO_URL
+        sync: false
+      - key: POLARIS_AUTH_USERNAME
+        sync: false
+      - key: POLARIS_AUTH_PASSWORD
+        sync: false
+      - key: POLARIS_INGEST_USERNAME
+        sync: false
+      - key: POLARIS_INGEST_PASSWORD
+        sync: false
+      - key: FCM_PROJECT_ID
+        sync: false
+      - key: FCM_SERVICE_ACCOUNT_JSON
+        sync: false
