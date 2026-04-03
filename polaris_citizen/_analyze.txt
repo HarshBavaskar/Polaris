@@ -1,0 +1,17 @@
+﻿Analyzing lib...
+
+warning - features\help\request_help_screen.dart:52:13 - The value of the field '_lastHelpSyncAt' isn't used. Try removing the field, or using it. - unused_field
+warning - features\help\request_help_screen.dart:281:10 - The declaration '_updatedAgo' isn't referenced. Try removing the declaration of '_updatedAgo'. - unused_element
+warning - features\safe_zones\safe_zones_screen.dart:46:11 - The value of the field '_locationError' isn't used. Try removing the field, or using it. - unused_field
+warning - screens\citizen_dashboard_screen.dart:115:10 - The declaration '_buildGridButton' isn't referenced. Try removing the declaration of '_buildGridButton'. - unused_element
+warning - screens\citizen_dashboard_screen.dart:344:11 - The value of the field '_summaryError' isn't used. Try removing the field, or using it. - unused_field
+warning - screens\citizen_dashboard_screen.dart:348:13 - The value of the field '_safeZonesUpdatedAt' isn't used. Try removing the field, or using it. - unused_field
+warning - screens\citizen_dashboard_screen.dart:1076:10 - The declaration '_buildGridButton' isn't referenced. Try removing the declaration of '_buildGridButton'. - unused_element
+   info - features\alerts\alerts_screen.dart:182:26 - Use interpolation to compose strings and values. Try using string interpolation to build the composite string. - prefer_interpolation_to_compose_strings
+   info - features\alerts\alerts_screen.dart:184:21 - Use interpolation to compose strings and values. Try using string interpolation to build the composite string. - prefer_interpolation_to_compose_strings
+   info - features\report\report_api.dart:4:8 - The imported package 'http_parser' isn't a dependency of the importing package. Try adding a dependency for 'http_parser' in the 'pubspec.yaml' file. - depend_on_referenced_packages
+   info - features\safe_zones\safe_zones_screen.dart:345:30 - Use interpolation to compose strings and values. Try using string interpolation to build the composite string. - prefer_interpolation_to_compose_strings
+   info - features\safe_zones\safe_zones_screen.dart:347:25 - Use interpolation to compose strings and values. Try using string interpolation to build the composite string. - prefer_interpolation_to_compose_strings
+   info - screens\citizen_dashboard_screen.dart:2:8 - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart'. Try removing the import directive. - unnecessary_import
+
+13 issues found.

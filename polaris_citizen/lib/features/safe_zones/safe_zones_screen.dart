@@ -291,6 +291,8 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     if (_loading && _zones.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -300,96 +302,71 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
         onRefresh: _loadSafeZones,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 56, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
           children: <Widget>[
-            Card(
-              key: const Key('safe-zones-unavailable-card'),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
-                      children: <Widget>[
-                        const Icon(Icons.cloud_off, color: Colors.orange),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            CitizenStrings.tr(
-                              'safezones_unavailable_title',
-                              languageCode,
-                            ),
-                            style: Theme.of(context).textTheme.titleMedium,
+            Center(
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: colors.errorContainer.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.cloud_off_rounded, size: 48, color: colors.error),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    _errorMessage!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      FilledButton.icon(
+                        key: const Key('safe-zones-retry'),
+                        onPressed: _loadSafeZones,
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: Text(CitizenStrings.tr('retry', languageCode)),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton.tonalIcon(
+                        key: const Key('safe-zones-call-112'),
+                        onPressed: _callEmergencyHelpline,
+                        icon: const Icon(Icons.call_rounded),
+                        label: Text(CitizenStrings.tr('safezones_call_helpline', languageCode)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Tooltip(
+                    message: CitizenStrings.tr('safezones_step_check_connection', languageCode) +
+                        '\n' +
+                        CitizenStrings.tr('safezones_step_enable_location', languageCode) +
+                        '\n' +
+                        CitizenStrings.tr('safezones_step_call_helpline', languageCode),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: colors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Icon(Icons.help_outline_rounded, size: 16, color: colors.onSurfaceVariant),
+                          const SizedBox(width: 6),
+                          Text(
+                            CitizenStrings.tr('safezones_next_steps_title', languageCode),
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.onSurfaceVariant),
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Text(_errorMessage!),
-                    const SizedBox(height: 8),
-                    Text(
-                      CitizenStrings.tr(
-                        'safezones_unavailable_help',
-                        languageCode,
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      CitizenStrings.tr(
-                        'safezones_next_steps_title',
-                        languageCode,
-                      ),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      CitizenStrings.tr(
-                        'safezones_step_check_connection',
-                        languageCode,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      CitizenStrings.tr(
-                        'safezones_step_enable_location',
-                        languageCode,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      CitizenStrings.tr(
-                        'safezones_step_call_helpline',
-                        languageCode,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    FilledButton.icon(
-                      key: const Key('safe-zones-retry'),
-                      onPressed: _loadSafeZones,
-                      icon: const Icon(Icons.refresh),
-                      label: Text(CitizenStrings.tr('retry', languageCode)),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      key: const Key('safe-zones-call-112'),
-                      onPressed: _callEmergencyHelpline,
-                      icon: const Icon(Icons.call),
-                      label: Text(
-                        CitizenStrings.tr(
-                          'safezones_call_helpline',
-                          languageCode,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      CitizenStrings.tr('safezones_retry_hint', languageCode),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -402,48 +379,31 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
         onRefresh: _loadSafeZones,
         child: ListView(
           children: <Widget>[
-            SizedBox(height: 160),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(CitizenStrings.tr('safezones_empty', languageCode)),
-                      const SizedBox(height: 8),
-                      Text(
-                        CitizenStrings.tr(
-                          'safezones_next_steps_title',
-                          languageCode,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        CitizenStrings.tr(
-                          'safezones_step_check_connection',
-                          languageCode,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        CitizenStrings.tr(
-                          'safezones_step_enable_location',
-                          languageCode,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        key: const Key('safe-zones-empty-retry'),
-                        onPressed: _loadSafeZones,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(CitizenStrings.tr('retry', languageCode)),
-                      ),
-                    ],
+            const SizedBox(height: 80),
+            Center(
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: colors.surfaceContainerHigh,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.shield_rounded, size: 48, color: colors.onSurfaceVariant),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    CitizenStrings.tr('safezones_empty', languageCode),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    key: const Key('safe-zones-empty-retry'),
+                    onPressed: _loadSafeZones,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: Text(CitizenStrings.tr('retry', languageCode)),
+                  ),
+                ],
               ),
             ),
           ],
@@ -474,252 +434,256 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         children: <Widget>[
+          // Offline banner
           if (_usingCachedZones)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    CitizenStrings.tr('safezones_offline_banner', languageCode),
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFB7791F).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ),
-          if (_usingCachedZones) const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
+              child: Row(
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      FilledButton.icon(
-                        key: const Key('safe-zones-location-btn'),
-                        onPressed: _loadingLocation ? null : _fetchUserLocation,
-                        icon: _loadingLocation
-                            ? const SizedBox(
-                                width: 14,
-                                height: 14,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Icon(Icons.my_location),
-                        label: Text(
-                          _loadingLocation
-                              ? CitizenStrings.tr(
-                                  'safezones_locating',
-                                  languageCode,
-                                )
-                              : CitizenStrings.tr(
-                                  'safezones_use_location',
-                                  languageCode,
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _locationError ??
-                              (_userLocation == null
-                                  ? CitizenStrings.tr(
-                                      'safezones_distance_hidden',
-                                      languageCode,
-                                    )
-                                  : CitizenStrings.tr(
-                                      'safezones_distance_shown',
-                                      languageCode,
-                                    )),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Align(
-                    alignment: Alignment.centerLeft,
+                  const Icon(Icons.cloud_off_rounded, size: 20, color: Color(0xFFB7791F)),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Text(
-                      CitizenStrings.trf(
-                        'safezones_last_updated',
-                        languageCode,
-                        <String, String>{
-                          'ago': _updatedAgo(_lastUpdatedAt, languageCode),
-                        },
-                      ),
+                      CitizenStrings.tr('safezones_offline_banner', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                     ),
                   ),
                 ],
               ),
             ),
+          if (_usingCachedZones) const SizedBox(height: 10),
+
+          // Location + stats row
+          Row(
+            children: <Widget>[
+              InkWell(
+                key: const Key('safe-zones-location-btn'),
+                onTap: _loadingLocation ? null : _fetchUserLocation,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  width: 64,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF388E3C),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: _loadingLocation
+                      ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                      : Icon(
+                          _userLocation != null ? Icons.check_circle_rounded : Icons.my_location_rounded,
+                          size: 28,
+                          color: Colors.white,
+                        ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: colors.outlineVariant),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(Icons.shield_rounded, color: Color(0xFF388E3C), size: 24),
+                      const SizedBox(width: 10),
+                      Text(
+                        orderedZones.length.toString(),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        key: const Key('safe-zones-refresh'),
+                        onPressed: _loadSafeZones,
+                        icon: const Icon(Icons.refresh_rounded, size: 20),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
+
+          // Nearest zone route card
           if (nearest != null && nearestKm != null) ...<Widget>[
             const SizedBox(height: 10),
-            Card(
+            InkWell(
               key: const Key('safe-zones-nearest-route-card'),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              onTap: () => _openRouteToZone(nearest),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF388E3C).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF388E3C).withValues(alpha: 0.2)),
+                ),
+                child: Row(
                   children: <Widget>[
-                    Text(
-                      CitizenStrings.trf(
-                        'safezones_nearest',
-                        languageCode,
-                        <String, String>{'zoneId': nearest.zoneId},
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF388E3C).withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
+                      child: const Icon(Icons.route_rounded, size: 24, color: Color(0xFF388E3C)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      CitizenStrings.trf(
-                        'safezones_distance_eta',
-                        languageCode,
-                        <String, String>{
-                          'km': nearestKm.toStringAsFixed(1),
-                          'eta': _etaMinutes(nearestKm).toString(),
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      CitizenStrings.tr('safezones_route_tip', languageCode),
-                    ),
-                    const SizedBox(height: 8),
-                    OutlinedButton.icon(
-                      key: const Key('safe-zones-open-route'),
-                      onPressed: () => _openRouteToZone(nearest),
-                      icon: const Icon(Icons.route),
-                      label: Text(
-                        CitizenStrings.tr('safezones_open_route', languageCode),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            nearest.zoneId,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${nearestKm.toStringAsFixed(1)} km · ~${_etaMinutes(nearestKm)} min walk',
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: colors.onSurfaceVariant),
+                          ),
+                        ],
                       ),
                     ),
+                    const Icon(Icons.arrow_forward_rounded, color: Color(0xFF388E3C)),
                   ],
                 ),
               ),
             ),
           ],
           const SizedBox(height: 10),
-          Card(
+
+          // Map
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
             child: SizedBox(
               height: mapHeight,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: FlutterMap(
-                  options: MapOptions(initialCenter: center, initialZoom: 12),
-                  children: <Widget>[
-                    TileLayer(
-                      urlTemplate:
-                          'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                      subdomains: const <String>['a', 'b', 'c', 'd'],
-                    ),
-                    CircleLayer(
-                      circles: orderedZones
-                          .map(
-                            (SafeZone zone) => CircleMarker(
-                              point: LatLng(zone.lat, zone.lng),
-                              radius: 12,
-                              color: Colors.green.withValues(alpha: 0.22),
-                              borderColor: Colors.green.shade700,
-                              borderStrokeWidth: 2,
+              child: FlutterMap(
+                options: MapOptions(initialCenter: center, initialZoom: 12),
+                children: <Widget>[
+                  TileLayer(
+                    urlTemplate:
+                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    subdomains: const <String>['a', 'b', 'c', 'd'],
+                  ),
+                  CircleLayer(
+                    circles: orderedZones
+                        .map(
+                          (SafeZone zone) => CircleMarker(
+                            point: LatLng(zone.lat, zone.lng),
+                            radius: 12,
+                            color: Colors.green.withValues(alpha: 0.22),
+                            borderColor: Colors.green.shade700,
+                            borderStrokeWidth: 2,
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  MarkerLayer(
+                    markers: orderedZones
+                        .map(
+                          (SafeZone zone) => Marker(
+                            width: 36,
+                            height: 36,
+                            point: LatLng(zone.lat, zone.lng),
+                            child: const Icon(
+                              Icons.shield,
+                              color: Colors.green,
                             ),
-                          )
-                          .toList(),
-                    ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                  if (_userLocation != null)
                     MarkerLayer(
-                      markers: orderedZones
-                          .map(
-                            (SafeZone zone) => Marker(
-                              width: 36,
-                              height: 36,
-                              point: LatLng(zone.lat, zone.lng),
-                              child: const Icon(
-                                Icons.shield,
-                                color: Colors.green,
-                              ),
-                            ),
-                          )
-                          .toList(),
+                      markers: <Marker>[
+                        Marker(
+                          width: 44,
+                          height: 44,
+                          point: LatLng(
+                            _userLocation!.latitude,
+                            _userLocation!.longitude,
+                          ),
+                          child: const Icon(
+                            Icons.person_pin_circle,
+                            color: Colors.blue,
+                            size: 28,
+                          ),
+                        ),
+                      ],
                     ),
-                    if (_userLocation != null)
-                      MarkerLayer(
-                        markers: <Marker>[
-                          Marker(
-                            width: 44,
-                            height: 44,
-                            point: LatLng(
+                  if (_userLocation != null && nearest != null)
+                    PolylineLayer(
+                      polylines: <Polyline>[
+                        Polyline(
+                          points: <LatLng>[
+                            LatLng(
                               _userLocation!.latitude,
                               _userLocation!.longitude,
                             ),
-                            child: const Icon(
-                              Icons.person_pin_circle,
-                              color: Colors.blue,
-                              size: 28,
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (_userLocation != null && nearest != null)
-                      PolylineLayer(
-                        polylines: <Polyline>[
-                          Polyline(
-                            points: <LatLng>[
-                              LatLng(
-                                _userLocation!.latitude,
-                                _userLocation!.longitude,
-                              ),
-                              LatLng(nearest.lat, nearest.lng),
-                            ],
-                            color: Colors.blue,
-                            strokeWidth: 3,
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
+                            LatLng(nearest.lat, nearest.lng),
+                          ],
+                          color: Colors.blue,
+                          strokeWidth: 3,
+                        ),
+                      ],
+                    ),
+                ],
               ),
             ),
           ),
           const SizedBox(height: 10),
-          Card(
-            child: ListTile(
-              title: Text(
-                CitizenStrings.trf(
-                  'safezones_active_count',
-                  languageCode,
-                  <String, String>{'count': orderedZones.length.toString()},
-                ),
-              ),
-              trailing: IconButton(
-                key: const Key('safe-zones-refresh'),
-                onPressed: _loadSafeZones,
-                icon: const Icon(Icons.refresh),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
+
+          // Zone list
           ...orderedZones.map((SafeZone zone) {
             final double? km = _distanceKm(zone);
-            return Card(
-              margin: const EdgeInsets.fromLTRB(10, 6, 10, 6),
-              child: ListTile(
-                title: Text(
-                  zone.zoneId.isEmpty
-                      ? CitizenStrings.tr(
-                          'safezones_unnamed_zone',
-                          languageCode,
-                        )
-                      : zone.zoneId,
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: colors.outlineVariant),
                 ),
-                subtitle: Text(
-                  '${CitizenStrings.trf('safezones_coords', languageCode, <String, String>{'lat': zone.lat.toStringAsFixed(4), 'lng': zone.lng.toStringAsFixed(4)})}\n'
-                  '${CitizenStrings.trf('safezones_area_pincode', languageCode, <String, String>{'area': _areaLabel(zone), 'pincode': _pincodeLabel(zone)})}\n'
-                  '${CitizenStrings.trf('safezones_source_confidence', languageCode, <String, String>{'source': zone.source, 'confidence': zone.confidence.toString()})}\n'
-                  '${CitizenStrings.trf('alerts_updated', languageCode, <String, String>{'ago': _updatedAgo(zone.lastVerified, languageCode)})}',
-                ),
-                trailing: Text(
-                  km == null ? '--' : '${km.toStringAsFixed(1)} km',
-                  key: const Key('safe-zone-distance-label'),
+                child: Row(
+                  children: <Widget>[
+                    const Icon(Icons.shield_rounded, size: 18, color: Color(0xFF388E3C)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        zone.zoneId.isEmpty
+                            ? CitizenStrings.tr('safezones_unnamed_zone', languageCode)
+                            : zone.zoneId,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      km != null ? '${km.toStringAsFixed(1)} km' : '--',
+                      key: km == null ? const Key('safe-zone-distance-label') : null,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                        color: km != null ? const Color(0xFF388E3C) : colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             );

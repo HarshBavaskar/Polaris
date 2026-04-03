@@ -119,9 +119,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
     }
   }
 
+  IconData _severityIcon(String severity) {
+    switch (severity.toUpperCase()) {
+      case 'EMERGENCY':
+        return Icons.crisis_alert_rounded;
+      case 'ALERT':
+        return Icons.warning_rounded;
+      case 'WARNING':
+        return Icons.report_problem_rounded;
+      case 'WATCH':
+        return Icons.visibility_rounded;
+      case 'ADVISORY':
+        return Icons.info_rounded;
+      default:
+        return Icons.notifications_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     if (_loading && _alerts.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -133,29 +152,60 @@ class _AlertsScreenState extends State<AlertsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(_errorMessage!),
-              const SizedBox(height: 8),
-              Text(
-                CitizenStrings.tr('alerts_next_steps_title', languageCode),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: colors.errorContainer.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.cloud_off_rounded,
+                  size: 48,
+                  color: colors.error,
+                ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 16),
               Text(
-                CitizenStrings.tr('alerts_step_check_connection', languageCode),
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
-              const SizedBox(height: 2),
-              Text(
-                CitizenStrings.tr('alerts_step_open_safezones', languageCode),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                CitizenStrings.tr('alerts_step_call_helpline', languageCode),
-              ),
-              const SizedBox(height: 10),
-              FilledButton(
+              const SizedBox(height: 20),
+              FilledButton.icon(
                 key: const Key('alerts-retry-button'),
                 onPressed: _loadAlerts,
-                child: Text(CitizenStrings.tr('retry', languageCode)),
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(CitizenStrings.tr('retry', languageCode)),
+              ),
+              const SizedBox(height: 16),
+              Tooltip(
+                message: CitizenStrings.tr('alerts_step_check_connection', languageCode) +
+                    '\n' +
+                    CitizenStrings.tr('alerts_step_open_safezones', languageCode) +
+                    '\n' +
+                    CitizenStrings.tr('alerts_step_call_helpline', languageCode),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: colors.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(Icons.help_outline_rounded, size: 16, color: colors.onSurfaceVariant),
+                      const SizedBox(width: 6),
+                      Text(
+                        CitizenStrings.tr('alerts_next_steps_title', languageCode),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
@@ -168,42 +218,28 @@ class _AlertsScreenState extends State<AlertsScreen> {
         onRefresh: _loadAlerts,
         child: ListView(
           children: <Widget>[
-            SizedBox(height: 140),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(CitizenStrings.tr('alerts_empty', languageCode)),
-                      const SizedBox(height: 8),
-                      Text(
-                        CitizenStrings.tr(
-                          'alerts_next_steps_title',
-                          languageCode,
-                        ),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        CitizenStrings.tr(
-                          'alerts_step_check_connection',
-                          languageCode,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        CitizenStrings.tr(
-                          'alerts_step_open_safezones',
-                          languageCode,
-                        ),
-                      ),
-                    ],
+            const SizedBox(height: 80),
+            Center(
+              child: Column(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2F855A).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      size: 56,
+                      color: Color(0xFF2F855A),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Text(
+                    CitizenStrings.tr('alerts_empty', languageCode),
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ],
               ),
             ),
           ],
@@ -216,84 +252,156 @@ class _AlertsScreenState extends State<AlertsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: <Widget>[
+          // Offline banner
           if (_usingCachedAlerts)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  CitizenStrings.tr('alerts_offline_banner', languageCode),
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFB7791F).withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: <Widget>[
+                  const Icon(Icons.cloud_off_rounded, size: 20, color: Color(0xFFB7791F)),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('alerts_offline_banner', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                    ),
+                  ),
+                ],
               ),
             ),
           if (_usingCachedAlerts) const SizedBox(height: 12),
-          Card(
-            child: ListTile(
-              title: Text(
-                CitizenStrings.tr('alerts_feed_title', languageCode),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                '${CitizenStrings.trf('alerts_count', languageCode, <String, String>{'count': _alerts.length.toString()})}\n'
-                '${CitizenStrings.trf('alerts_last_synced', languageCode, <String, String>{'ago': _updatedAgo(_lastUpdatedAt, languageCode)})}',
-              ),
-              trailing: IconButton(
-                key: const Key('alerts-refresh-button'),
-                onPressed: _loading ? null : _loadAlerts,
-                icon: const Icon(Icons.refresh),
-              ),
+
+          // Header row
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.outlineVariant),
             ),
-          ),
-          const SizedBox(height: 12),
-          ..._alerts.map((CitizenAlert alert) {
-            final Color badgeColor = citizenAlertSeverityColor(alert.severity);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF57C00).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.notifications_active_rounded, size: 28, color: Color(0xFFF57C00)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Row(
-                        children: <Widget>[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: badgeColor.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: badgeColor.withValues(alpha: 0.35),
-                              ),
-                            ),
-                            child: Text(
-                              alert.severity,
-                              style: TextStyle(
-                                color: badgeColor,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            CitizenStrings.trf(
-                              'alerts_updated',
-                              languageCode,
-                              <String, String>{
-                                'ago': _updatedAgo(
-                                  alert.timestamp,
-                                  languageCode,
-                                ),
-                              },
-                            ),
-                          ),
-                        ],
+                      Text(
+                        _alerts.length.toString(),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
                       ),
-                      const SizedBox(height: 10),
-                      Text(alert.message),
+                      Text(
+                        CitizenStrings.tr('alerts_feed_title', languageCode),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    IconButton(
+                      key: const Key('alerts-refresh-button'),
+                      onPressed: _loading ? null : _loadAlerts,
+                      icon: const Icon(Icons.refresh_rounded),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    Text(
+                      _updatedAgo(_lastUpdatedAt, languageCode),
+                      style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Alert cards
+          ..._alerts.map((CitizenAlert alert) {
+            final Color badgeColor = citizenAlertSeverityColor(alert.severity);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: badgeColor.withValues(alpha: 0.18)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          _severityIcon(alert.severity),
+                          size: 22,
+                          color: badgeColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: badgeColor.withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    alert.severity,
+                                    style: TextStyle(
+                                      color: badgeColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  _updatedAgo(alert.timestamp, languageCode),
+                                  style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              alert.message,
+                              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),

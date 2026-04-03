@@ -174,6 +174,36 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
     }
   }
 
+  IconData _trackedStatusIcon(TrackedHelpStatus status) {
+    switch (status) {
+      case TrackedHelpStatus.assigned:
+        return Icons.person_rounded;
+      case TrackedHelpStatus.closed:
+        return Icons.check_circle_rounded;
+      case TrackedHelpStatus.failed:
+        return Icons.error_rounded;
+      case TrackedHelpStatus.pendingOffline:
+        return Icons.schedule_rounded;
+      case TrackedHelpStatus.sent:
+        return Icons.send_rounded;
+      case TrackedHelpStatus.received:
+        return Icons.mark_email_read_rounded;
+    }
+  }
+
+  IconData _categoryIcon(String category) {
+    switch (category) {
+      case 'Medical':
+        return Icons.medical_services_rounded;
+      case 'Evacuation':
+        return Icons.directions_run_rounded;
+      case 'Food/Water':
+        return Icons.water_drop_rounded;
+      default:
+        return Icons.help_rounded;
+    }
+  }
+
   Future<void> _loadTracking() async {
     final List<TrackedHelpRequest> current = await _trackingStore.list();
     if (!mounted) return;
@@ -348,276 +378,346 @@ class _RequestHelpScreenState extends State<RequestHelpScreen> {
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     return ListView(
       padding: const EdgeInsets.all(16),
       children: <Widget>[
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr('help_title', languageCode),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 17,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(CitizenStrings.tr('help_desc', languageCode)),
-                const SizedBox(height: 12),
-                SlideOptionSelector<String>(
-                  options: _categories,
-                  selected: _selectedCategory,
-                  labelBuilder: (String category) =>
-                      _categoryLabel(category, languageCode),
-                  onSelected: (String category) =>
-                      setState(() => _selectedCategory = category),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  key: const Key('help-contact-input'),
-                  controller: _contactController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: CitizenStrings.tr(
-                      'help_contact_label',
-                      languageCode,
-                    ),
-                    hintText: CitizenStrings.tr(
-                      'help_contact_hint',
-                      languageCode,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  key: const Key('help-detect-location'),
-                  onPressed: _locating ? null : _detectLocation,
-                  icon: _locating
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location),
-                  label: Text(
-                    _locating
-                        ? CitizenStrings.tr('help_detecting', languageCode)
-                        : CitizenStrings.tr(
-                            'help_attach_location_optional',
-                            languageCode,
-                          ),
-                  ),
-                ),
-                if (_position != null) ...<Widget>[
-                  const SizedBox(height: 6),
-                  Text(
-                    CitizenStrings.trf(
-                      'dash_lat_lng',
-                      languageCode,
-                      <String, String>{
-                        'lat': _position!.latitude.toStringAsFixed(5),
-                        'lng': _position!.longitude.toStringAsFixed(5),
-                      },
+        // ── SOS Banner ──
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFD32F2F),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  const Icon(Icons.sos_rounded, size: 36, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('help_title', languageCode),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 12),
-                FilledButton.icon(
-                  key: const Key('help-submit-button'),
-                  onPressed: _sending ? null : _submitRequest,
-                  icon: _sending
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sos),
-                  label: Text(
-                    _sending
-                        ? CitizenStrings.tr('help_sending', languageCode)
-                        : CitizenStrings.tr('help_send', languageCode),
+              ),
+              const SizedBox(height: 12),
+              // Category selector
+              SlideOptionSelector<String>(
+                options: _categories,
+                selected: _selectedCategory,
+                labelBuilder: (String category) =>
+                    _categoryLabel(category, languageCode),
+                onSelected: (String category) =>
+                    setState(() => _selectedCategory = category),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const Key('help-contact-input'),
+                controller: _contactController,
+                keyboardType: TextInputType.phone,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.15),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr('help_pending_title', languageCode),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  CitizenStrings.trf(
-                    'help_pending_count',
-                    languageCode,
-                    <String, String>{'count': _pendingQueueCount.toString()},
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: Colors.white, width: 1.5),
                   ),
+                  labelText: CitizenStrings.tr('help_contact_label', languageCode),
+                  labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                  hintText: CitizenStrings.tr('help_contact_hint', languageCode),
+                  hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                  prefixIcon: Icon(Icons.phone_rounded, color: Colors.white.withValues(alpha: 0.8)),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  CitizenStrings.trf(
-                    'help_pending_last_synced',
-                    languageCode,
-                    <String, String>{
-                      'ago': _updatedAgo(_lastHelpSyncAt, languageCode),
-                    },
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  key: const Key('help-sync-pending-button'),
-                  onPressed: _syncingPending ? null : _syncPendingRequests,
-                  icon: _syncingPending
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync),
-                  label: Text(
-                    _syncingPending
-                        ? CitizenStrings.tr('help_syncing', languageCode)
-                        : CitizenStrings.trf(
-                            'help_sync_pending_button',
-                            languageCode,
-                            <String, String>{
-                              'count': _pendingQueueCount.toString(),
-                            },
-                          ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        CitizenStrings.tr('help_tracking_title', languageCode),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      key: const Key('help-tracking-refresh'),
-                      onPressed: _refreshingTracking
-                          ? null
-                          : () => _refreshTrackingFromBackend(),
-                      icon: _refreshingTracking
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.refresh),
-                    ),
-                  ],
-                ),
-                if (_trackedRequests.isEmpty)
-                  Text(CitizenStrings.tr('help_tracking_empty', languageCode))
-                else
-                  ..._trackedRequests.take(5).map((TrackedHelpRequest tracked) {
-                    final String statusLabel = _trackedStatusLabel(
-                      tracked.status,
-                      languageCode,
-                    );
-                    final String createdAgo =
-                        CitizenStrings.relativeTimeFromNow(
-                          tracked.createdAt.toLocal(),
-                          languageCode,
-                        );
-                    final Color statusColor = _trackedStatusColor(
-                      tracked.status,
-                    );
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('help-detect-location'),
+                      onTap: _locating ? null : _detectLocation,
+                      borderRadius: BorderRadius.circular(12),
                       child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                Expanded(
-                                  child: Text(
-                                    _categoryLabel(
-                                      tracked.category,
-                                      languageCode,
-                                    ),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                            _locating
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                  )
+                                : Icon(
+                                    _position != null ? Icons.check_circle_rounded : Icons.my_location_rounded,
+                                    size: 18,
+                                    color: Colors.white,
                                   ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 3,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: statusColor.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: statusColor.withValues(alpha: 0.5),
-                                    ),
-                                  ),
-                                  child: Text(
-                                    statusLabel,
-                                    style: TextStyle(
-                                      color: statusColor,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
+                            const SizedBox(width: 8),
                             Text(
-                              CitizenStrings.trf(
-                                'help_track_created',
-                                languageCode,
-                                <String, String>{'ago': createdAgo},
-                              ),
+                              _position != null
+                                  ? '${_position!.latitude.toStringAsFixed(3)}, ${_position!.longitude.toStringAsFixed(3)}'
+                                  : CitizenStrings.tr('help_attach_location_optional', languageCode),
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  }),
-              ],
-            ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  key: const Key('help-submit-button'),
+                  onPressed: _sending ? null : _submitRequest,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFFD32F2F),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: _sending
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.sos_rounded),
+                  label: Text(
+                    _sending
+                        ? CitizenStrings.tr('help_sending', languageCode)
+                        : CitizenStrings.tr('help_send', languageCode),
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Pending Sync Row ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Row(
+            children: <Widget>[
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB7791F).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.sync_rounded, size: 24, color: Color(0xFFB7791F)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      _pendingQueueCount.toString(),
+                      style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 22),
+                    ),
+                    Text(
+                      CitizenStrings.tr('help_pending_title', languageCode),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonalIcon(
+                key: const Key('help-sync-pending-button'),
+                onPressed: _syncingPending ? null : _syncPendingRequests,
+                icon: _syncingPending
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync_rounded, size: 18),
+                label: Text(
+                  _syncingPending
+                      ? CitizenStrings.tr('help_syncing', languageCode)
+                      : CitizenStrings.tr('help_pending_title', languageCode),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Tracking Section ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2B6CB0).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.track_changes_rounded, size: 22, color: Color(0xFF2B6CB0)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('help_tracking_title', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('help-tracking-refresh'),
+                    onPressed: _refreshingTracking
+                        ? null
+                        : () => _refreshTrackingFromBackend(),
+                    icon: _refreshingTracking
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              if (_trackedRequests.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: Column(
+                      children: <Widget>[
+                        Icon(Icons.inbox_rounded, size: 36, color: colors.onSurfaceVariant.withValues(alpha: 0.4)),
+                        const SizedBox(height: 6),
+                        Text(
+                          CitizenStrings.tr('help_tracking_empty', languageCode),
+                          style: TextStyle(color: colors.onSurfaceVariant, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                ..._trackedRequests.take(5).map((TrackedHelpRequest tracked) {
+                  final Color statusColor = _trackedStatusColor(tracked.status);
+                  final String statusLabel = _trackedStatusLabel(tracked.status, languageCode);
+                  final String createdAgo = CitizenStrings.relativeTimeFromNow(
+                    tracked.createdAt.toLocal(),
+                    languageCode,
+                  );
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: statusColor.withValues(alpha: 0.15)),
+                      ),
+                      child: Row(
+                        children: <Widget>[
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              _categoryIcon(tracked.category),
+                              size: 20,
+                              color: statusColor,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  _categoryLabel(tracked.category, languageCode),
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  createdAgo,
+                                  style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: statusColor.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                Icon(_trackedStatusIcon(tracked.status), size: 14, color: statusColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  statusLabel,
+                                  style: TextStyle(
+                                    color: statusColor,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+            ],
           ),
         ),
       ],

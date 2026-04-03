@@ -301,6 +301,21 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
     }
   }
 
+  IconData _levelIcon(String level) {
+    switch (level) {
+      case 'LOW':
+        return Icons.water_rounded;
+      case 'MEDIUM':
+        return Icons.water_rounded;
+      case 'HIGH':
+        return Icons.flood_rounded;
+      case 'SEVERE':
+        return Icons.tsunami_rounded;
+      default:
+        return Icons.water_rounded;
+    }
+  }
+
   Future<void> _useGpsAutoFillArea() async {
     final String languageCode = _languageCode;
     if (_locatingArea) return;
@@ -580,445 +595,505 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode;
+    final ColorScheme colors = Theme.of(context).colorScheme;
+    final Color currentLevelColor = _levelColor(_selectedLevel);
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 28),
       children: <Widget>[
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr(
-                    'report_section_location_zone',
-                    languageCode,
+        // ── Location / Zone Section ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1976D2).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.location_on_rounded, size: 22, color: Color(0xFF1976D2)),
                   ),
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                SlideOptionSelector<String>(
-                  options: const <String>['AREA_PINCODE', 'CUSTOM'],
-                  selected: _zoneMode,
-                  labelBuilder: (String mode) {
-                    if (mode == 'AREA_PINCODE') {
-                      return CitizenStrings.tr(
-                        'report_mode_area_pincode',
-                        languageCode,
-                      );
-                    }
-                    return CitizenStrings.tr(
-                      'report_mode_custom',
-                      languageCode,
-                    );
-                  },
-                  keyBuilder: (String mode) => Key(
-                    mode == 'AREA_PINCODE'
-                        ? 'zone-mode-area-pincode'
-                        : 'zone-mode-custom',
-                  ),
-                  onSelected: (String mode) => setState(() => _zoneMode = mode),
-                ),
-                const SizedBox(height: 8),
-                if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          key: const Key('report-use-my-area'),
-                          onPressed: _useMyAreaDefaults,
-                          icon: const Icon(Icons.bookmark_outline),
-                          label: Text(
-                            CitizenStrings.tr(
-                              'report_my_area_use',
-                              languageCode,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    key: const Key('area-gps-autofill-button'),
-                    onPressed: _locatingArea ? null : _useGpsAutoFillArea,
-                    icon: _locatingArea
-                        ? const SizedBox(
-                            width: 14,
-                            height: 14,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.my_location),
-                    label: Text(
-                      _locatingArea
-                          ? CitizenStrings.tr(
-                              'report_detecting_location',
-                              languageCode,
-                            )
-                          : CitizenStrings.tr(
-                              'report_use_gps_autodetect',
-                              languageCode,
-                            ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('report_section_location_zone', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SlideOptionSelector<String>(
+                options: const <String>['AREA_PINCODE', 'CUSTOM'],
+                selected: _zoneMode,
+                labelBuilder: (String mode) {
+                  if (mode == 'AREA_PINCODE') {
+                    return CitizenStrings.tr('report_mode_area_pincode', languageCode);
+                  }
+                  return CitizenStrings.tr('report_mode_custom', languageCode);
+                },
+                keyBuilder: (String mode) => Key(
+                  mode == 'AREA_PINCODE'
+                      ? 'zone-mode-area-pincode'
+                      : 'zone-mode-custom',
+                ),
+                onSelected: (String mode) => setState(() => _zoneMode = mode),
+              ),
+              const SizedBox(height: 10),
+              // GPS auto-fill & My Area actions
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('area-gps-autofill-button'),
+                      onTap: _locatingArea ? null : _useGpsAutoFillArea,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1976D2).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            _locatingArea
+                                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                                : const Icon(Icons.my_location_rounded, size: 22, color: Color(0xFF1976D2)),
+                            const SizedBox(height: 4),
+                            Text(
+                              _locatingArea
+                                  ? CitizenStrings.tr('report_detecting_location', languageCode)
+                                  : CitizenStrings.tr('report_use_gps_autodetect', languageCode),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('report-use-my-area'),
+                      onTap: _useMyAreaDefaults,
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: colors.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: colors.outlineVariant),
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            const Icon(Icons.bookmark_rounded, size: 22),
+                            const SizedBox(height: 4),
+                            Text(
+                              CitizenStrings.tr('report_my_area_use', languageCode),
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (_zoneMode == 'AREA_PINCODE') ...<Widget>[
+                InputDecorator(
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr('report_city_district', languageCode),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      key: const Key('area-city-dropdown'),
+                      isExpanded: true,
+                      value: _selectedCity,
+                      items: _cities.map((String city) {
+                        return DropdownMenuItem<String>(
+                          value: city,
+                          child: Text(city),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        if (value == null) return;
+                        setState(() {
+                          _selectedCity = value;
+                          _selectedAreaSuggestion = null;
+                          _localityController.clear();
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                if (_areaSuggestions().isNotEmpty) ...<Widget>[
                   const SizedBox(height: 8),
                   InputDecorator(
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      labelText: CitizenStrings.tr(
-                        'report_city_district',
-                        languageCode,
-                      ),
+                      labelText: CitizenStrings.tr('report_suggested_areas', languageCode),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        key: const Key('area-city-dropdown'),
+                        key: const Key('area-suggestion-dropdown'),
                         isExpanded: true,
-                        value: _selectedCity,
-                        items: _cities.map((String city) {
-                          return DropdownMenuItem<String>(
-                            value: city,
-                            child: Text(city),
-                          );
-                        }).toList(),
+                        value:
+                            _selectedAreaSuggestion != null &&
+                                _areaSuggestions().contains(
+                                  _selectedAreaSuggestion,
+                                )
+                            ? _selectedAreaSuggestion
+                            : null,
+                        hint: Text(
+                          CitizenStrings.tr('report_select_area_optional', languageCode),
+                        ),
+                        items: <DropdownMenuItem<String>>[
+                          ..._areaSuggestions().map((String area) {
+                            return DropdownMenuItem<String>(
+                              value: area,
+                              child: Text(area),
+                            );
+                          }),
+                        ],
                         onChanged: (String? value) {
-                          if (value == null) return;
                           setState(() {
-                            _selectedCity = value;
-                            _selectedAreaSuggestion = null;
-                            _localityController.clear();
+                            if (value == null) {
+                              _selectedAreaSuggestion = null;
+                              _localityController.clear();
+                            } else {
+                              _selectedAreaSuggestion = value;
+                              _localityController.text = value;
+                            }
                           });
                         },
                       ),
                     ),
                   ),
-                  if (_areaSuggestions().isNotEmpty) ...<Widget>[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(
-                            CitizenStrings.tr(
-                              'report_area_suggestions',
-                              languageCode,
-                            ),
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                ],
+                const SizedBox(height: 8),
+                TextField(
+                  key: const Key('area-locality-input'),
+                  controller: _localityController,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr('report_locality_label', languageCode),
+                    hintText: CitizenStrings.tr('report_locality_hint', languageCode),
+                    prefixIcon: const Icon(Icons.location_city_rounded, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  key: const Key('area-pincode-input'),
+                  controller: _pincodeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr('report_pincode_label', languageCode),
+                    hintText: CitizenStrings.tr('report_pincode_hint', languageCode),
+                    prefixIcon: const Icon(Icons.pin_rounded, size: 20),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: InkWell(
+                        key: const Key('report-save-my-area'),
+                        onTap: _saveMyAreaDefaults,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: colors.outlineVariant),
                           ),
-                        ),
-                        TextButton.icon(
-                          key: const Key('area-clear-selection-button'),
-                          onPressed: () {
-                            setState(() {
-                              _selectedAreaSuggestion = null;
-                              _localityController.clear();
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                          label: Text(
-                            CitizenStrings.tr(
-                              'report_clear_selected_area',
-                              languageCode,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Icon(Icons.bookmark_add_outlined, size: 16, color: colors.onSurfaceVariant),
+                              const SizedBox(width: 6),
+                              Text(
+                                CitizenStrings.tr('report_my_area_save', languageCode),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.onSurfaceVariant),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    InputDecorator(
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        labelText: CitizenStrings.tr(
-                          'report_suggested_areas',
-                          languageCode,
-                        ),
-                        helperText: CitizenStrings.tr(
-                          'report_suggested_helper',
-                          languageCode,
                         ),
                       ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          key: const Key('area-suggestion-dropdown'),
-                          isExpanded: true,
-                          value:
-                              _selectedAreaSuggestion != null &&
-                                  _areaSuggestions().contains(
-                                    _selectedAreaSuggestion,
-                                  )
-                              ? _selectedAreaSuggestion
-                              : null,
-                          hint: Text(
-                            CitizenStrings.tr(
-                              'report_select_area_optional',
-                              languageCode,
-                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InkWell(
+                        key: const Key('report-clear-my-area'),
+                        onTap: _clearMyAreaDefaults,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: colors.outlineVariant),
                           ),
-                          items: <DropdownMenuItem<String>>[
-                            ..._areaSuggestions().map((String area) {
-                              return DropdownMenuItem<String>(
-                                value: area,
-                                child: Text(area),
-                              );
-                            }),
-                          ],
-                          onChanged: (String? value) {
-                            setState(() {
-                              if (value == null) {
-                                _selectedAreaSuggestion = null;
-                                _localityController.clear();
-                              } else {
-                                _selectedAreaSuggestion = value;
-                                _localityController.text = value;
-                              }
-                            });
-                          },
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: <Widget>[
+                              Icon(Icons.delete_outline_rounded, size: 16, color: colors.onSurfaceVariant),
+                              const SizedBox(width: 6),
+                              Text(
+                                CitizenStrings.tr('report_my_area_clear_saved', languageCode),
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: colors.onSurfaceVariant),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 8),
-                  TextField(
-                    key: const Key('area-locality-input'),
-                    controller: _localityController,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: CitizenStrings.tr(
-                        'report_locality_label',
-                        languageCode,
-                      ),
-                      hintText: CitizenStrings.tr(
-                        'report_locality_hint',
-                        languageCode,
-                      ),
-                      helperText: CitizenStrings.tr(
-                        'report_locality_helper',
-                        languageCode,
-                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  CitizenStrings.trf(
+                    'report_generated_zone_id',
+                    languageCode,
+                    <String, String>{
+                      'zone': _normalizedZoneId().isEmpty
+                          ? '--'
+                          : _normalizedZoneId(),
+                    },
+                  ),
+                  style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
+                ),
+              ],
+              if (_zoneMode == 'CUSTOM')
+                TextField(
+                  key: const Key('custom-zone-id-input'),
+                  controller: _zoneIdController,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: CitizenStrings.tr('report_custom_zone_id_label', languageCode),
+                    hintText: CitizenStrings.tr('report_custom_zone_id_hint', languageCode),
+                    prefixIcon: const Icon(Icons.edit_location_alt_rounded, size: 20),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // ── Flood Photo Section ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: colors.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.outlineVariant),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF7B1FA2).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.photo_camera_rounded, size: 22, color: Color(0xFF7B1FA2)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('report_section_flood_photo', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    key: const Key('area-pincode-input'),
-                    controller: _pincodeController,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: CitizenStrings.tr(
-                        'report_pincode_label',
-                        languageCode,
-                      ),
-                      hintText: CitizenStrings.tr(
-                        'report_pincode_hint',
-                        languageCode,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      OutlinedButton.icon(
-                        key: const Key('report-save-my-area'),
-                        onPressed: _saveMyAreaDefaults,
-                        icon: const Icon(Icons.bookmark_add_outlined),
-                        label: Text(
-                          CitizenStrings.tr(
-                            'report_my_area_save',
-                            languageCode,
-                          ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('pick-photo-camera'),
+                      onTap: _sendingPhoto ? null : () => _pickPhoto(ImageSource.camera),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7B1FA2).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            const Icon(Icons.photo_camera_rounded, size: 28, color: Color(0xFF7B1FA2)),
+                            const SizedBox(height: 6),
+                            Text(
+                              CitizenStrings.tr('report_camera', languageCode),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                            ),
+                          ],
                         ),
                       ),
-                      OutlinedButton.icon(
-                        key: const Key('report-clear-my-area'),
-                        onPressed: _clearMyAreaDefaults,
-                        icon: const Icon(Icons.delete_outline),
-                        label: Text(
-                          CitizenStrings.tr(
-                            'report_my_area_clear_saved',
-                            languageCode,
-                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      key: const Key('pick-photo-gallery'),
+                      onTap: _sendingPhoto ? null : () => _pickPhoto(ImageSource.gallery),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7B1FA2).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: <Widget>[
+                            const Icon(Icons.photo_library_rounded, size: 28, color: Color(0xFF7B1FA2)),
+                            const SizedBox(height: 6),
+                            Text(
+                              CitizenStrings.tr('report_gallery', languageCode),
+                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (_selectedImage != null) ...<Widget>[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2F855A).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: <Widget>[
+                      const Icon(Icons.check_circle_rounded, size: 16, color: Color(0xFF2F855A)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _selectedImage!.name,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    CitizenStrings.trf(
-                      'report_generated_zone_id',
-                      languageCode,
-                      <String, String>{
-                        'zone': _normalizedZoneId().isEmpty
-                            ? '--'
-                            : _normalizedZoneId(),
-                      },
-                    ),
-                  ),
-                ],
-                if (_zoneMode == 'CUSTOM')
-                  TextField(
-                    key: const Key('custom-zone-id-input'),
-                    controller: _zoneIdController,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: CitizenStrings.tr(
-                        'report_custom_zone_id_label',
-                        languageCode,
-                      ),
-                      hintText: CitizenStrings.tr(
-                        'report_custom_zone_id_hint',
-                        languageCode,
-                      ),
-                    ),
-                  ),
+                ),
               ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr('report_section_flood_photo', languageCode),
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 10,
-                  children: <Widget>[
-                    OutlinedButton.icon(
-                      key: const Key('pick-photo-camera'),
-                      onPressed: _sendingPhoto
-                          ? null
-                          : () => _pickPhoto(ImageSource.camera),
-                      icon: const Icon(Icons.photo_camera_outlined),
-                      label: Text(
-                        CitizenStrings.tr('report_camera', languageCode),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      key: const Key('pick-photo-gallery'),
-                      onPressed: _sendingPhoto
-                          ? null
-                          : () => _pickPhoto(ImageSource.gallery),
-                      icon: const Icon(Icons.photo_library_outlined),
-                      label: Text(
-                        CitizenStrings.tr('report_gallery', languageCode),
-                      ),
-                    ),
-                  ],
-                ),
-                if (_selectedImage != null) ...<Widget>[
-                  const SizedBox(height: 8),
-                  Text(
-                    CitizenStrings.trf(
-                      'report_selected_file',
-                      languageCode,
-                      <String, String>{'name': _selectedImage!.name},
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                FilledButton.icon(
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
                   key: const Key('submit-photo-button'),
                   onPressed: _sendingPhoto ? null : _submitFloodPhoto,
                   icon: _sendingPhoto
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.cloud_upload_outlined),
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.cloud_upload_rounded),
                   label: Text(
                     _sendingPhoto
                         ? CitizenStrings.tr('report_submitting', languageCode)
-                        : CitizenStrings.tr(
-                            'report_submit_flood_photo',
-                            languageCode,
-                          ),
+                        : CitizenStrings.tr('report_submit_flood_photo', languageCode),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 16),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  CitizenStrings.tr(
-                    'report_section_flooding_level',
-                    languageCode,
+
+        // ── Water Level Section ──
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: currentLevelColor.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: currentLevelColor.withValues(alpha: 0.15)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: currentLevelColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(_levelIcon(_selectedLevel), size: 22, color: currentLevelColor),
                   ),
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 8),
-                SlideOptionSelector<String>(
-                  options: _levels,
-                  selected: _selectedLevel,
-                  labelBuilder: (String level) => level,
-                  keyBuilder: (String level) => Key('level-$level'),
-                  optionColorBuilder: _levelColor,
-                  onSelected: (String level) {
-                    setState(() => _selectedLevel = level);
-                  },
-                ),
-                const SizedBox(height: 10),
-                FilledButton.icon(
-                  key: const Key('submit-level-button'),
-                  onPressed: _sendingLevel ? null : _submitWaterLevel,
-                  icon: _sendingLevel
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send_rounded),
-                  label: Text(
-                    _sendingLevel
-                        ? CitizenStrings.tr('report_submitting', languageCode)
-                        : CitizenStrings.tr(
-                            'report_submit_water_level',
-                            languageCode,
-                          ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      CitizenStrings.tr('report_section_flooding_level', languageCode),
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  key: const Key('sync-pending-levels-button'),
-                  onPressed: _syncingPending ? null : _syncPendingWaterLevels,
-                  icon: _syncingPending
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.sync),
-                  label: Text(
-                    _syncingPending
-                        ? CitizenStrings.tr(
-                            'report_syncing_pending',
-                            languageCode,
-                          )
-                        : CitizenStrings.trf(
-                            'report_sync_pending_button',
-                            languageCode,
-                            <String, String>{
-                              'count': _pendingWaterLevelCount.toString(),
-                            },
-                          ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SlideOptionSelector<String>(
+                options: _levels,
+                selected: _selectedLevel,
+                labelBuilder: (String level) => level,
+                keyBuilder: (String level) => Key('level-$level'),
+                optionColorBuilder: _levelColor,
+                onSelected: (String level) {
+                  setState(() => _selectedLevel = level);
+                },
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('submit-level-button'),
+                      onPressed: _sendingLevel ? null : _submitWaterLevel,
+                      icon: _sendingLevel
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                          : const Icon(Icons.send_rounded),
+                      label: Text(
+                        _sendingLevel
+                            ? CitizenStrings.tr('report_submitting', languageCode)
+                            : CitizenStrings.tr('report_submit_water_level', languageCode),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 10),
+                  FilledButton.tonalIcon(
+                    key: const Key('sync-pending-levels-button'),
+                    onPressed: _syncingPending ? null : _syncPendingWaterLevels,
+                    icon: _syncingPending
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.sync_rounded),
+                    label: Text(
+                      _pendingWaterLevelCount.toString(),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ],

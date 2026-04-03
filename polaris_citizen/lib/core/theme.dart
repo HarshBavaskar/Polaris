@@ -42,10 +42,12 @@ class PolarisTheme {
         elevation: 1,
       ),
       cardTheme: CardThemeData(
-        elevation: 2.4,
-        shadowColor: Colors.black.withValues(alpha: 0.15),
-        color: scheme.surface,
-        surfaceTintColor: scheme.surfaceTint,
+        elevation: 0,
+        shadowColor: Colors.transparent,
+        color: isDark
+            ? const Color(0xFF1E1E22)
+            : scheme.surfaceContainerHigh,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(color: scheme.outlineVariant, width: 0.5),

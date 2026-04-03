@@ -68,6 +68,15 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     }
   }
 
+  IconData _typeIcon(CitizenReportType type) {
+    switch (type) {
+      case CitizenReportType.waterLevel:
+        return Icons.water_rounded;
+      case CitizenReportType.floodPhoto:
+        return Icons.photo_camera_rounded;
+    }
+  }
+
   Color _statusColor(CitizenReportStatus status) {
     switch (status) {
       case CitizenReportStatus.synced:
@@ -76,6 +85,17 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
         return const Color(0xFFB7791F);
       case CitizenReportStatus.failed:
         return const Color(0xFFC53030);
+    }
+  }
+
+  IconData _statusIcon(CitizenReportStatus status) {
+    switch (status) {
+      case CitizenReportStatus.synced:
+        return Icons.check_circle_rounded;
+      case CitizenReportStatus.pendingOffline:
+        return Icons.schedule_rounded;
+      case CitizenReportStatus.failed:
+        return Icons.error_rounded;
     }
   }
 
@@ -93,6 +113,8 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
   @override
   Widget build(BuildContext context) {
     final String languageCode = _languageCode(context);
+    final ColorScheme colors = Theme.of(context).colorScheme;
+
     if (_loading && _reports.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -104,12 +126,26 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
-              Text(_errorMessage!),
-              const SizedBox(height: 8),
-              FilledButton(
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: colors.errorContainer.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.error_outline_rounded, size: 48, color: colors.error),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              FilledButton.icon(
                 key: const Key('my-reports-retry-button'),
                 onPressed: _loadReports,
-                child: Text(CitizenStrings.tr('retry', languageCode)),
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(CitizenStrings.tr('retry', languageCode)),
               ),
             ],
           ),
@@ -153,69 +189,80 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
         children: <Widget>[
-          Card(
-            child: ListTile(
-              title: Text(
-                CitizenStrings.tr('myreports_title', languageCode),
-                style: const TextStyle(fontWeight: FontWeight.w700),
-              ),
-              subtitle: Text(
-                CitizenStrings.trf(
-                  'myreports_count',
-                  languageCode,
-                  <String, String>{'count': _reports.length.toString()},
+          // Header row
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: colors.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: colors.outlineVariant),
+            ),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: colors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.receipt_long_rounded, size: 28, color: colors.primary),
                 ),
-              ),
-              trailing: IconButton(
-                key: const Key('my-reports-refresh-button'),
-                onPressed: _loading ? null : _loadReports,
-                icon: const Icon(Icons.refresh),
-              ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        _reports.length.toString(),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
+                      ),
+                      Text(
+                        CitizenStrings.tr('myreports_title', languageCode),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  key: const Key('my-reports-refresh-button'),
+                  onPressed: _loading ? null : _loadReports,
+                  icon: const Icon(Icons.refresh_rounded),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: <Widget>[
-                  Chip(
-                    label: Text(
-                      CitizenStrings.trf(
-                        'myreports_synced',
-                        languageCode,
-                        <String, String>{'count': syncedCount.toString()},
-                      ),
-                    ),
-                    avatar: const Icon(Icons.check_circle, size: 18),
-                  ),
-                  Chip(
-                    label: Text(
-                      CitizenStrings.trf(
-                        'myreports_pending',
-                        languageCode,
-                        <String, String>{'count': pendingCount.toString()},
-                      ),
-                    ),
-                    avatar: const Icon(Icons.schedule, size: 18),
-                  ),
-                  Chip(
-                    label: Text(
-                      CitizenStrings.trf(
-                        'myreports_failed',
-                        languageCode,
-                        <String, String>{'count': failedCount.toString()},
-                      ),
-                    ),
-                    avatar: const Icon(Icons.error, size: 18),
-                  ),
-                ],
+
+          // Stats row
+          Row(
+            children: <Widget>[
+              _StatChip(
+                icon: Icons.check_circle_rounded,
+                color: const Color(0xFF2F855A),
+                count: syncedCount,
               ),
-            ),
+              const SizedBox(width: 8),
+              _StatChip(
+                icon: Icons.schedule_rounded,
+                color: const Color(0xFFB7791F),
+                count: pendingCount,
+              ),
+              const SizedBox(width: 8),
+              _StatChip(
+                icon: Icons.error_rounded,
+                color: const Color(0xFFC53030),
+                count: failedCount,
+              ),
+            ],
           ),
           const SizedBox(height: 12),
+
+          // Filter
           SlideOptionSelector<String>(
             options: const <String>['all', 'synced', 'pending', 'failed'],
             selected: _filter,
@@ -254,13 +301,25 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             },
             onSelected: (String option) => setState(() => _filter = option),
           ),
+
           if (visibleReports.isEmpty) ...<Widget>[
-            const SizedBox(height: 120),
+            const SizedBox(height: 60),
             Center(
-              child: Text(
-                _reports.isEmpty
-                    ? CitizenStrings.tr('myreports_empty', languageCode)
-                    : 'No reports in this filter.',
+              child: Column(
+                children: <Widget>[
+                  Icon(
+                    Icons.inbox_rounded,
+                    size: 48,
+                    color: colors.onSurfaceVariant.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _reports.isEmpty
+                        ? CitizenStrings.tr('myreports_empty', languageCode)
+                        : 'No reports in this filter.',
+                    style: TextStyle(color: colors.onSurfaceVariant),
+                  ),
+                ],
               ),
             ),
           ] else ...<Widget>[
@@ -268,108 +327,135 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             ...visibleReports.map((CitizenReportRecord report) {
               final Color statusColor = _statusColor(report.status);
               return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Container(
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: statusColor.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        const SizedBox(height: 10),
-                        Row(
+                        child: Icon(
+                          _typeIcon(report.type),
+                          size: 20,
+                          color: statusColor,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(
-                              _typeLabel(report.type, languageCode),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
+                            Row(
+                              children: <Widget>[
+                                Text(
+                                  _typeLabel(report.type, languageCode),
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Icon(_statusIcon(report.status), size: 12, color: statusColor),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _statusLabel(report.status, languageCode),
+                                        style: TextStyle(
+                                          color: statusColor,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.14),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: statusColor.withValues(alpha: 0.35),
-                                ),
-                              ),
-                              child: Text(
-                                _statusLabel(report.status, languageCode),
+                            const SizedBox(height: 4),
+                            Text(
+                              report.zoneId,
+                              style: TextStyle(fontSize: 12, color: colors.onSurfaceVariant),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (report.level != null && report.level!.isNotEmpty)
+                              Text(
+                                report.level!,
                                 style: TextStyle(
-                                  color: statusColor,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w700,
+                                  color: statusColor,
                                 ),
                               ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _updatedAgo(report.createdAt, languageCode),
+                              style: TextStyle(fontSize: 11, color: colors.onSurfaceVariant),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
-                        Text(
-                          CitizenStrings.trf(
-                            'myreports_zone',
-                            languageCode,
-                            <String, String>{'zone': report.zoneId},
-                          ),
-                        ),
-                        if (report.level != null && report.level!.isNotEmpty)
-                          Text(
-                            CitizenStrings.trf(
-                              'myreports_level',
-                              languageCode,
-                              <String, String>{'level': report.level!},
-                            ),
-                          ),
-                        if (report.note != null && report.note!.isNotEmpty)
-                          Text(
-                            report.note!,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        const SizedBox(height: 10),
-                        Text(
-                          CitizenStrings.trf(
-                            'myreports_created',
-                            languageCode,
-                            <String, String>{
-                              'ago': _updatedAgo(
-                                report.createdAt,
-                                languageCode,
-                              ),
-                            },
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        Text(
-                          CitizenStrings.trf(
-                            'myreports_updated',
-                            languageCode,
-                            <String, String>{
-                              'ago': _updatedAgo(
-                                report.updatedAt,
-                                languageCode,
-                              ),
-                            },
-                          ),
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
             }),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final int count;
+
+  const _StatChip({
+    required this.icon,
+    required this.color,
+    required this.count,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: <Widget>[
+            Icon(icon, size: 22, color: color),
+            const SizedBox(height: 4),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
