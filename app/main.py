@@ -774,6 +774,50 @@ def get_alert_debug_status(_: dict = Depends(require_authority)):
         "db_error": db_error,
     }
 
+
+@app.get("/alert/status")
+def get_alert_status(_: dict = Depends(require_authority)):
+    latest_alert = None
+    latest_prediction = None
+    db_error = None
+    tokens_by_platform: dict[str, int] = {}
+
+    try:
+        latest_alert = alerts_collection.find_one(
+            {},
+            sort=[("timestamp", -1)],
+            projection={"_id": 0},
+        )
+        latest_prediction = predictions_collection.find_one(
+            {},
+            sort=[("timestamp", -1)],
+            projection={
+                "_id": 0,
+                "timestamp": 1,
+                "alert_severity": 1,
+                "final_decision": 1,
+            },
+        )
+        for platform in ("web", "android", "ios", "unknown"):
+            count = fcm_tokens_collection.count_documents(
+                {"active": True, "platform": platform}
+            )
+            if count:
+                tokens_by_platform[platform] = count
+    except Exception as exc:
+        db_error = str(exc)
+
+    return {
+        "status": "ok",
+        "timestamp": datetime.now(),
+        "fcm": _get_fcm_debug_config(),
+        "registered_tokens_by_platform": tokens_by_platform,
+        "last_alert": latest_alert,
+        "last_delivery": (latest_alert or {}).get("delivery"),
+        "last_prediction": latest_prediction,
+        "db_error": db_error,
+    }
+
 @app.get("/alerts/recent")
 def get_recent_alerts(limit: int = 20):
     alerts = list(

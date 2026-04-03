@@ -538,6 +538,24 @@ class _ReportFloodScreenState extends State<ReportFloodScreen> {
       if (!mounted) return;
       _showMessage(message);
       setState(() => _selectedImage = null);
+    } on CitizenReportHttpException catch (error) {
+      await _historyStore.upsertRecord(
+        CitizenReportRecord(
+          id: reportId,
+          type: CitizenReportType.floodPhoto,
+          zoneId: zoneId,
+          status: CitizenReportStatus.failed,
+          createdAt: now,
+          updatedAt: DateTime.now().toLocal(),
+          note: error.message,
+        ),
+      );
+      if (!mounted) return;
+      _showMessage(
+        error.message.trim().isEmpty
+            ? CitizenStrings.tr('report_submission_failed_photo', languageCode)
+            : error.message,
+      );
     } catch (_) {
       await _historyStore.upsertRecord(
         CitizenReportRecord(
