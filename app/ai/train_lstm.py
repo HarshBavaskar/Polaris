@@ -4,11 +4,6 @@ from app.ai.temporal_dataset import build_temporal_dataset
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-X, y = build_temporal_dataset()
-
-X = torch.tensor(X, dtype=torch.float32)
-y = torch.tensor(y, dtype=torch.long)
-
 class TemporalLSTM(nn.Module):
     def __init__(self):
         super().__init__()
