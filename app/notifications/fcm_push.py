@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Dict, List
 from pathlib import Path
 from datetime import datetime
@@ -53,6 +54,24 @@ def _get_access_token(service_account_file: str):
         return None, f"Failed to load FCM service account: {exc}"
 
 
+def _get_access_token_from_json(service_account_json: str):
+    try:
+        from google.auth.transport.requests import Request
+        from google.oauth2 import service_account
+    except Exception:
+        return None, "Missing google-auth dependency. Install with: pip install google-auth"
+
+    try:
+        credentials = service_account.Credentials.from_service_account_info(
+            json.loads(service_account_json),
+            scopes=FCM_SCOPE,
+        )
+        credentials.refresh(Request())
+        return credentials.token, None
+    except Exception as exc:
+        return None, f"Failed to load FCM service account JSON: {exc}"
+
+
 def _is_permanent_token_failure(status_code: int | None, resp_text: str) -> bool:
     text = (resp_text or "").upper()
     if status_code in {400, 403, 404, 410}:
@@ -102,6 +121,7 @@ def send_push_fcm_to_targets(
     """
     project_id = (os.getenv("FCM_PROJECT_ID") or "").strip()
     service_account_file = (os.getenv("FCM_SERVICE_ACCOUNT_FILE") or "").strip()
+    service_account_json = (os.getenv("FCM_SERVICE_ACCOUNT_JSON") or "").strip()
     service_account_file = os.path.expanduser(service_account_file)
     if service_account_file and not os.path.isabs(service_account_file):
         service_account_file = str((REPO_ROOT / service_account_file).resolve())
@@ -115,14 +135,14 @@ def send_push_fcm_to_targets(
             "error": "Missing FCM_PROJECT_ID in .env",
         }
 
-    if not service_account_file:
+    if not service_account_file and not service_account_json:
         return {
             "ok": False,
             "provider": "fcm",
-            "error": "Missing FCM_SERVICE_ACCOUNT_FILE in .env",
+            "error": "Missing FCM_SERVICE_ACCOUNT_FILE or FCM_SERVICE_ACCOUNT_JSON in environment",
         }
 
-    if not os.path.exists(service_account_file):
+    if service_account_file and not os.path.exists(service_account_file):
         return {
             "ok": False,
             "provider": "fcm",
@@ -136,7 +156,10 @@ def send_push_fcm_to_targets(
             "error": "No FCM targets provided (device token or topic required)",
         }
 
-    access_token, token_error = _get_access_token(service_account_file)
+    if service_account_json:
+        access_token, token_error = _get_access_token_from_json(service_account_json)
+    else:
+        access_token, token_error = _get_access_token(service_account_file)
     if token_error:
         return {"ok": False, "provider": "fcm", "error": token_error}
 

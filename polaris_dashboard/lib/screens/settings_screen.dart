@@ -548,7 +548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: const Text('Backend Server'),
                       subtitle: Text(
                         !backendLauncherSupported
-                            ? 'Backend launcher supported on desktop only'
+                            ? 'Remote deployment mode: health is visible here, but local process control is desktop-only'
                             : _startingBackend
                             ? 'Starting backend...'
                             : _stoppingBackend

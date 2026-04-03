@@ -201,6 +201,7 @@ def _resolve_env_path(value: str) -> str:
 def _get_fcm_debug_config() -> dict:
     project_id = (os.getenv("FCM_PROJECT_ID") or "").strip()
     service_account_raw = (os.getenv("FCM_SERVICE_ACCOUNT_FILE") or "").strip()
+    service_account_json = (os.getenv("FCM_SERVICE_ACCOUNT_JSON") or "").strip()
     service_account_path = _resolve_env_path(service_account_raw) if service_account_raw else ""
     service_account_exists = bool(service_account_path and os.path.exists(service_account_path))
     device_tokens = _parse_csv(os.getenv("FCM_DEVICE_TOKENS", ""))
@@ -227,9 +228,9 @@ def _get_fcm_debug_config() -> dict:
     issues = []
     if not project_id:
         issues.append("Missing FCM_PROJECT_ID")
-    if not service_account_raw:
-        issues.append("Missing FCM_SERVICE_ACCOUNT_FILE")
-    elif not service_account_exists:
+    if not service_account_raw and not service_account_json:
+        issues.append("Missing FCM_SERVICE_ACCOUNT_FILE or FCM_SERVICE_ACCOUNT_JSON")
+    elif service_account_raw and not service_account_exists:
         issues.append(f"Service account file not found: {service_account_path}")
     if not device_tokens and not topic and registered_tokens_count == 0:
         issues.append(
@@ -243,6 +244,7 @@ def _get_fcm_debug_config() -> dict:
         "project_id": project_id or None,
         "service_account_file": service_account_path or None,
         "service_account_file_exists": service_account_exists,
+        "service_account_json_configured": bool(service_account_json),
         "device_tokens_count": len(device_tokens),
         "device_tokens_preview": [_mask_token(token) for token in device_tokens[:3]],
         "registered_tokens_count": registered_tokens_count,

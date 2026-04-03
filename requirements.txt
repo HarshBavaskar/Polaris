@@ -12,3 +12,6 @@ torchvision
 python-dotenv
 requests
 google-auth
+python-jose[cryptography]
+valkey
+

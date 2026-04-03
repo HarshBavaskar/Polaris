@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "public": "public",
+    "public": "polaris_dashboard/build/web",
     "ignore": [
       "firebase.json",
       "**/.*",

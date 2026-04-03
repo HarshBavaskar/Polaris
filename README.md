@@ -191,7 +191,7 @@ Camera / Images
 - `POLARIS_AUTH_USERNAME`
 - `POLARIS_AUTH_PASSWORD`
 - `FCM_PROJECT_ID`
-- `FCM_SERVICE_ACCOUNT_FILE` (absolute or repo-relative path to Firebase Admin SDK JSON)
+- `FCM_SERVICE_ACCOUNT_FILE` (absolute or repo-relative path to Firebase Admin SDK JSON) or `FCM_SERVICE_ACCOUNT_JSON`
 
 ### Optional Target and Merge Variables
 
@@ -219,6 +219,7 @@ Camera / Images
 
 - Treat previously committed Firebase config files and local `.env` values as exposed and rotate associated secrets outside the repo.
 - Use `.env.example` as the onboarding template. Keep the real `.env` local or inject it via deployment secrets.
+- For Azure App Service, prefer `FCM_SERVICE_ACCOUNT_JSON` as an application setting instead of deploying a credential file.
 - Keep Android Firebase config local only:
   - `polaris_dashboard/android/app/google-services.json`
   - `polaris_citizen/android/app/src/google-services.json`
@@ -318,6 +319,32 @@ flutter run --dart-define=POLARIS_API_BASE_URL=http://127.0.0.1:8000
 
 ---
 
+## Production Deployment
+
+Recommended deployment split:
+
+- Backend: Azure App Service for Linux using the repo `Dockerfile`
+- Dashboard: Firebase Hosting from `polaris_dashboard/build/web`
+- Database: MongoDB Atlas
+
+Build the dashboard for hosting:
+
+```bash
+cd polaris_dashboard
+flutter pub get
+flutter build web --dart-define=POLARIS_API_BASE_URL=https://<your-backend>.azurewebsites.net
+```
+
+Deploy Firebase Hosting from the repo root:
+
+```bash
+firebase deploy --only hosting
+```
+
+Use `DEPLOYMENT.md` and `AZURE_APP_SERVICE_SETTINGS.example` for the full Azure + Firebase setup.
+
+---
+
 ## Project Structure
 
 ```text
@@ -331,8 +358,9 @@ Polaris/
     ai/
   polaris_dashboard/
   polaris_dataset/
+  Dockerfile
+  DEPLOYMENT.md
   firebase.json
-  public/
   README.md
 ```
 

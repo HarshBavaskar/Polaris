@@ -18,6 +18,8 @@ build/
 out/
 polaris_dashboard/build/
 polaris_citizen/build/
+polaris_dashboard/firebase-debug.log
+firebase-debug.log
 
 # IDE
 .vscode/
@@ -53,12 +55,28 @@ coverage/
 # Firebase / credentials
 *firebase-adminsdk*.json
 service-account*.json
+*-firebase-adminsdk-*.json
 google-services.json
 **/google-services.json
 **/GoogleService-Info.plist
 key.properties
 *.jks
 *.keystore
+
+# Azure / cloud local secrets
+appsettings.json
+appsettings.*.json
+*.publishsettings
+AZURE_APP_SERVICE_SETTINGS.local
+AZURE_APP_SERVICE_SETTINGS.local.*
+*.pfx
+*.pem
+*.cer
+*.crt
+*.key
+secrets.json
+secrets.*.json
+local.settings.json
 
 # Runtime / local state
 app/runtime/
