@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 import requests
+from dotenv import load_dotenv
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+load_dotenv(REPO_ROOT / ".env")
 
 
 _TOKEN_CACHE: dict[tuple[str, str], str] = {}
