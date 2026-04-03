@@ -115,8 +115,7 @@ def set_override(payload: dict):
     return {"status": "override_set", "alert_dispatch": alert_status}
 
 
-@router.post("/clear")
-def clear_override():
+def _clear_override_state():
     overrides_collection.update_many(
         {"active": True},
         {
@@ -136,6 +135,17 @@ def clear_override():
         publish_decision(latest_final_decision)
 
     return {"status": "override_cleared"}
+
+
+@router.post("/clear")
+def clear_override():
+    return _clear_override_state()
+
+
+@router.get("/clear", include_in_schema=False)
+def clear_override_legacy():
+    # Temporary compatibility for stale dashboard clients that still issue GET.
+    return _clear_override_state()
 
 
 @router.get("/history")
