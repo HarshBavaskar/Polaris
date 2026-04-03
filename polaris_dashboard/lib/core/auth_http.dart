@@ -75,7 +75,7 @@ class AuthHttp {
     bool authenticated = false,
   }) async {
     return _send(
-      () => _client.get(uri, headers: headers),
+      'GET',
       uri,
       headers: headers,
       authenticated: authenticated,
@@ -89,7 +89,7 @@ class AuthHttp {
     bool authenticated = false,
   }) async {
     return _send(
-      () => _client.post(uri, headers: headers, body: body),
+      'POST',
       uri,
       headers: headers,
       body: body,
@@ -98,14 +98,19 @@ class AuthHttp {
   }
 
   static Future<http.Response> _send(
-    Future<http.Response> Function() fallbackRequest,
+    String method,
     Uri uri, {
     Map<String, String>? headers,
     Object? body,
     required bool authenticated,
   }) async {
     if (!authenticated) {
-      return fallbackRequest();
+      return _sendUnauthenticated(
+        method: method,
+        uri: uri,
+        headers: headers,
+        body: body,
+      );
     }
 
     Future<http.Response> runRequest() async {
@@ -113,10 +118,12 @@ class AuthHttp {
         if (headers != null) ...headers,
         'Authorization': 'Bearer ${await _ensureToken()}',
       };
-      if (body == null) {
-        return _client.get(uri, headers: mergedHeaders);
-      }
-      return _client.post(uri, headers: mergedHeaders, body: body);
+      return _sendUnauthenticated(
+        method: method,
+        uri: uri,
+        headers: mergedHeaders,
+        body: body,
+      );
     }
 
     http.Response response = await runRequest();
@@ -127,6 +134,22 @@ class AuthHttp {
     _bearerToken = null;
     response = await runRequest();
     return response;
+  }
+
+  static Future<http.Response> _sendUnauthenticated({
+    required String method,
+    required Uri uri,
+    Map<String, String>? headers,
+    Object? body,
+  }) {
+    switch (method) {
+      case 'GET':
+        return _client.get(uri, headers: headers);
+      case 'POST':
+        return _client.post(uri, headers: headers, body: body);
+      default:
+        throw UnsupportedError('Unsupported HTTP method: $method');
+    }
   }
 
   static Future<String> _ensureToken() async {

@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/time_utils.dart';
+
 enum CitizenReportType { waterLevel, floodPhoto }
 
 enum CitizenReportStatus { synced, pendingOffline, failed }
@@ -74,11 +76,9 @@ class CitizenReportRecord {
     );
 
     final DateTime createdAt =
-        DateTime.tryParse(value['created_at']?.toString() ?? '')?.toLocal() ??
-        DateTime.now().toLocal();
+        parseTimestampToLocal(value['created_at']) ?? DateTime.now().toLocal();
     final DateTime updatedAt =
-        DateTime.tryParse(value['updated_at']?.toString() ?? '')?.toLocal() ??
-        createdAt;
+        parseTimestampToLocal(value['updated_at']) ?? createdAt;
 
     final String? level = value['level']?.toString();
     final String? note = value['note']?.toString();

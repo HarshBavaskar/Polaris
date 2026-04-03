@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/time_utils.dart';
+
 enum TrackedHelpStatus {
   sent,
   received,
@@ -62,12 +64,8 @@ class TrackedHelpRequest {
     final String category = value['category']?.toString() ?? '';
     final String contact = value['contact_number']?.toString() ?? '';
     final String statusName = value['status']?.toString() ?? '';
-    final DateTime? createdAt = DateTime.tryParse(
-      value['created_at']?.toString() ?? '',
-    );
-    final DateTime? updatedAt = DateTime.tryParse(
-      value['updated_at']?.toString() ?? '',
-    );
+    final DateTime? createdAt = parseTimestampToLocal(value['created_at']);
+    final DateTime? updatedAt = parseTimestampToLocal(value['updated_at']);
     if (localId.isEmpty ||
         category.isEmpty ||
         contact.isEmpty ||

@@ -1,3 +1,5 @@
+import '../../core/time_utils.dart';
+
 class SafeZone {
   final String zoneId;
   final double lat;
@@ -25,9 +27,7 @@ class SafeZone {
 
   factory SafeZone.fromJson(Map<String, dynamic> json) {
     DateTime? parseDate(dynamic value) {
-      if (value == null) return null;
-      if (value is String) return DateTime.tryParse(value);
-      return DateTime.tryParse(value.toString());
+      return parseTimestampToLocal(value);
     }
 
     return SafeZone(

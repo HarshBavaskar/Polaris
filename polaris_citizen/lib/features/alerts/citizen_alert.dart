@@ -1,3 +1,5 @@
+import '../../core/time_utils.dart';
+
 class CitizenAlert {
   final String id;
   final String severity;
@@ -23,7 +25,7 @@ class CitizenAlert {
         DateTime.now().toUtc().toIso8601String();
 
     final DateTime parsedTimestamp =
-        DateTime.tryParse(rawTimestamp)?.toLocal() ?? DateTime.now().toLocal();
+        parseTimestampToLocal(rawTimestamp) ?? DateTime.now().toLocal();
 
     final String rawId = json['_id']?.toString() ?? '';
     final String computedId = rawId.isNotEmpty
