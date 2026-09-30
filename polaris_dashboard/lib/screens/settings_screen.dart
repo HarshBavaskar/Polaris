@@ -987,25 +987,6 @@ class _UrgencyPulseState extends State<_UrgencyPulse>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final alpha = 0.10 + (_controller.value * 0.2);
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withValues(alpha: alpha),
-                blurRadius: 18,
-                spreadRadius: 0.4,
-              ),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: widget.child,
-    );
+    return widget.child;
   }
 }

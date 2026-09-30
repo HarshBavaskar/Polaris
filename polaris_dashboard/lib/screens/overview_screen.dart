@@ -1477,26 +1477,6 @@ class _AttentionPulseState extends State<_AttentionPulse>
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.enabled) return widget.child;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final pulse = 0.10 + (_controller.value * 0.14);
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withValues(alpha: pulse),
-                blurRadius: 20,
-                spreadRadius: 0.4,
-              ),
-            ],
-          ),
-          child: child,
-        );
-      },
-      child: widget.child,
-    );
+    return widget.child;
   }
 }
