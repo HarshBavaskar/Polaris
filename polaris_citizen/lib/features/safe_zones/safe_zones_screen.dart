@@ -574,8 +574,18 @@ class _SafeZonesScreenState extends State<SafeZonesScreen> {
                 children: <Widget>[
                   TileLayer(
                     urlTemplate:
-                        'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                    subdomains: const <String>['a', 'b', 'c', 'd'],
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'dev.polaris.citizen',
+                    maxNativeZoom: 19,
+                  ),
+                  const RichAttributionWidget(
+                    attributions: [
+                      TextSourceAttribution(
+                        '© OpenStreetMap contributors',
+                        textStyle: TextStyle(fontSize: 10),
+                      ),
+                    ],
+                    showFlutterMapAttribution: false,
                   ),
                   CircleLayer(
                     circles: orderedZones

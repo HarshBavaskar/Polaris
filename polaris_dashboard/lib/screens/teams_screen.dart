@@ -329,8 +329,18 @@ class _TeamsScreenState extends State<TeamsScreen> {
             children: [
               TileLayer(
                 urlTemplate:
-                    'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'dev.polaris.dashboard',
+                maxNativeZoom: 19,
+              ),
+              const RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution(
+                    '© OpenStreetMap contributors',
+                    textStyle: TextStyle(fontSize: 10),
+                  ),
+                ],
+                showFlutterMapAttribution: false,
               ),
               MarkerLayer(
                 markers: [
